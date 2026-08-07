@@ -1424,20 +1424,12 @@ async function handleExitClick(){
 
 function performExit(){
   try {
-    window.close();
-  } catch (e) { /* ignore */ }
-  setTimeout(showExitScreen, 150);
-}
-
-function showExitScreen(){
-  try {
-    document.body.innerHTML =
-      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
-      'font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg,#121212);color:#eee;text-align:center;">' +
-      '<div><h1 style="margin:0 0 8px">Thanks for playing!</h1>' +
-      '<p style="color:var(--muted,#9aa0a6)">You can close this browser tab now.</p></div></div>';
+    /* Sends the player back to the Perry's Stuff home page rather than
+       trying to close the tab (browsers block window.close() on tabs
+       the page itself didn't open, so this is more reliable anyway). */
+    window.location.href = '../index.html';
   } catch (err) {
-    console.error('showExitScreen error', err);
+    console.error('performExit error', err);
   }
 }
 
