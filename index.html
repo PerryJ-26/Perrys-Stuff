@@ -1,58 +1,219 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Noblewood.com</title>
+<title>Perry's Stuff</title>
 <style>
-  /* Color palette and shared values, grouped for easy editing later */
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, change a theme by editing this block only ===== */
   :root {
-    --color-background: #1b1f27;
-    --color-surface: #262c38;
-    --color-text: #f2f2f2;
-    --color-accent: #5aa9e6;
+    /* Page structure */
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    /* Nav bar (About / Contact Me / Exit) */
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    /* Game list rows */
+    --row-bg: #ffffff;
+    --row-border: #cfe0ef;
+    --row-hover-bg: #d6e9fb;
+    --row-title-text: #1c2b36;
+    --thumb-bg: #dceaf7;
+    --thumb-text: #5f89ab;
+    --thumb-border: #b9d4ec;
+
+    /* "Coming soon" state for games not yet published */
+    --soon-badge-bg: #f0f4f8;
+    --soon-badge-text: #8a99a8;
   }
 
-  body {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
     margin: 0;
-    background-color: var(--color-background);
-    color: var(--color-text);
+    height: 100%;
+    background: var(--bg);
     font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* ---- Header ---- */
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  /* ---- Nav bar: three outlined buttons ---- */
+  nav {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--row-border);
   }
 
-  .placeholder-card {
-    background-color: var(--color-surface);
+  nav a {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  /* ---- Game list ---- */
+  main {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  .game-list {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--row-border);
     border-radius: 8px;
-    padding: 40px 50px;
+    overflow: hidden;
+  }
+
+  /* Entire row is the clickable hotspot */
+  .game-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--row-bg);
+    text-decoration: none;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--row-border);
+    transition: background 150ms ease;
+  }
+
+  .game-row:last-child {
+    border-bottom: none;
+  }
+
+  .game-row:hover {
+    background: var(--row-hover-bg);
+  }
+
+  /* Thumbnail placeholder - swap the inner <span> text for an <img> once you have a screenshot */
+  .game-thumb {
+    flex: 0 0 160px;
+    height: 100px;
+    background: var(--thumb-bg);
+    border: 1px dashed var(--thumb-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--thumb-text);
+    font-size: 0.85rem;
     text-align: center;
-    max-width: 500px;
+    overflow: hidden;
   }
 
-  h1 {
-    font-size: 2rem;
-    margin-bottom: 10px;
-    color: var(--color-accent);
+  .game-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
-  p {
-    font-size: 1rem;
-    line-height: 1.5rem;
+  .game-title {
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--row-title-text);
+    flex: 1;
+  }
+
+  /* Badge for games not yet linked up */
+  .soon-badge {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--soon-badge-text);
+    background: var(--soon-badge-bg);
+    padding: 4px 10px;
+    border-radius: 12px;
+    margin-left: 10px;
+  }
+
+  /* A row with no game yet behaves like plain text, not a link */
+  .game-row.disabled {
+    cursor: default;
+  }
+  .game-row.disabled:hover {
+    background: var(--row-bg);
   }
 </style>
 </head>
 <body>
 
-  <!-- Temporary placeholder page, just to confirm GitHub Pages is live and working -->
-  <div class="placeholder-card">
-    <h1>Noblewood.com</h1>
-    <p>This is a placeholder page. If you're seeing this, GitHub Pages is set up and working correctly.</p>
-    <p>The real home page is coming soon.</p>
-  </div>
+  <header>
+    <h1>Perry's Stuff</h1>
+  </header>
+
+  <nav>
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact Me</a>
+    <a href="#" id="exitLink">Exit</a>
+  </nav>
+
+  <main>
+    <div class="game-list">
+
+      <!-- Each row is one big clickable link (the whole row is the hotspot) -->
+      <a class="game-row disabled" href="javascript:void(0)">
+        <div class="game-thumb"><span>Screenshot coming soon</span></div>
+        <div class="game-title">Tic Tac Toe <span class="soon-badge">Coming soon</span></div>
+      </a>
+
+      <a class="game-row" href="games/yahtzee.html">
+        <div class="game-thumb"><span>Screenshot coming soon</span></div>
+        <div class="game-title">Yahtzee</div>
+      </a>
+
+      <a class="game-row disabled" href="javascript:void(0)">
+        <div class="game-thumb"><span>Screenshot coming soon</span></div>
+        <div class="game-title">Acey Deucey <span class="soon-badge">Coming soon</span></div>
+      </a>
+
+      <a class="game-row disabled" href="javascript:void(0)">
+        <div class="game-thumb"><span>Screenshot coming soon</span></div>
+        <div class="game-title">Pinochle <span class="soon-badge">Coming soon</span></div>
+      </a>
+
+    </div>
+  </main>
+
+  <script>
+    // Simple "Exit" behavior - closes the tab if the browser allows it,
+    // otherwise just does nothing harmful (browsers block window.close()
+    // on tabs the page itself didn't open).
+    document.getElementById('exitLink').addEventListener('click', function (e) {
+      e.preventDefault();
+      window.close();
+    });
+  </script>
 
 </body>
 </html>
