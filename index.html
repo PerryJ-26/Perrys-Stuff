@@ -12,7 +12,7 @@
     --header-bg: #4a90c2;
     --header-text: #ffffff;
 
-    /* Nav bar (About / Contact Me / Exit) */
+    /* Nav bar (About / Contact */
     --nav-bg: #ffffff;
     --nav-border: #4a90c2;
     --nav-text: #2c6693;
@@ -174,8 +174,7 @@
 
   <nav>
     <a href="about.html">About</a>
-    <a href="contact.html">Contact Me</a>
-    <a href="#" id="exitLink">Exit</a>
+    <a href="contact.html">Contact</a>
   </nav>
 
   <main>
@@ -188,7 +187,7 @@
       </a>
 
       <a class="game-row" href="games/yahtzee.html">
-        <div class="game-thumb"><span>Screenshot coming soon</span></div>
+        <div class="game-thumb"><img src="images/yahtzee.jpg" alt="Yahtzee game screenshot"></div>
         <div class="game-title">Yahtzee</div>
       </a>
 
@@ -205,15 +204,6 @@
     </div>
   </main>
 
-  <script>
-    // Simple "Exit" behavior - closes the tab if the browser allows it,
-    // otherwise just does nothing harmful (browsers block window.close()
-    // on tabs the page itself didn't open).
-    document.getElementById('exitLink').addEventListener('click', function (e) {
-      e.preventDefault();
-      window.close();
-    });
-  </script>
 
 </body>
 </html>
