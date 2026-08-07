@@ -1,0 +1,537 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tic Tac Toe</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  /* ===== ALL COLORS LIVE HERE - change a theme by editing this block only ===== */
+  :root{
+    /* Page structure */
+    --bg:#00a3d9;
+    --panel:#00a3d9;
+    --header-bg:#265cbb;
+    --header-border:#151515;
+    --text:#eee;
+    --muted:#9aa0a6;
+    --card:#555555;
+    --nav-btn-bg:#4caf50;
+    --nav-btn-text:#fff;
+
+    /* Tic Tac Toe board */
+    --cell-bg-1:#eaf3fc;
+    --cell-bg-2:#d3e7fb;
+    --cell-border:#b7d9f5;
+    --cell-text:#0d3b66;
+    --cell-shadow:rgba(20,60,110,0.25);
+    --cell-hover-bg-1: #00a3d9; /* #dcecfb;*/
+    --cell-hover-bg-2: #00d900; /*#c3ddf7; */
+    --cell-x-color:#002db3;
+    --cell-o-color:#29b6f6;
+    --cell-win-bg-1:#bfe0fb;
+    --cell-win-bg-2:#93cdf7;
+    --cell-win-border:#1e88e5;
+    --status-color:#ff265c; /* #42a5f5; */
+
+    /* Controls row (Reset / AI / Exit) */
+    --controls-btn-bg:#e3f0fc;
+    --controls-btn-border:#b8d9f5;
+    --controls-btn-text:#0d3b66;
+    --controls-btn-hover-bg:#d3e7fb;
+    --controls-primary-bg:#166abe;
+    --controls-primary-hover-bg:#699fff;
+
+    /* Universal popup modal */
+    --modal-bg:#f0f0e1;
+    --modal-text:#1a1a1a;
+    --modal-text-muted:#444;
+    --modal-primary-bg:#166abe;
+    --modal-primary-text:#fff;
+    --modal-secondary-bg:#dcdccd;
+    --modal-secondary-text:#1a1a1a;
+
+    /* Error overlay (only shows if something breaks) */
+    --error-bg:rgba(180,40,40,0.95);
+    --error-text:#fff;
+  }
+
+  html,body{
+    height:100%;
+    margin:0;
+    padding:0 96px;
+    box-sizing:border-box;
+    display:flex;
+    flex-direction:column;
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:var(--bg);color:var(--text)}
+    header{background:var(--header-bg);
+    padding:18px 20px;
+    font-size:50px;
+    text-align:center;
+    border-bottom:1px solid var(--header-border)}
+  
+  nav{
+    display:flex;gap:12px;
+    justify-content:center;
+    padding:12px;
+    background:var(--panel);
+    border-bottom:1px solid var(--header-border)}
+  
+  nav a{
+    background:var(--nav-btn-bg);
+    color:var(--nav-btn-text);
+    border:0;
+    padding:8px 14px;
+    border-radius:6px;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-block}
+  
+  nav a:hover{
+    opacity:.95}
+  
+  main{
+    padding:12px 20px;
+    max-width:1200px;
+    flex:1;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:0 auto;
+    box-sizing:border-box}
+   
+  .row{
+    display:flex;gap:20px;
+    flex-wrap:wrap;
+    align-items:flex-start;
+    justify-content:center}
+   
+  .card{
+    background:var(--card);
+    padding:24px 288px 96px 288px;
+    border-radius:8px;
+    box-shadow:0 2px 6px rgba(0,0,0,.6);
+    width:fit-content}
+
+  /* Tic Tac Toe board */
+  #board{
+    display:grid;
+    grid-template-columns:repeat(3,100px);
+    grid-auto-rows:100px;
+    gap:8px;
+    justify-content:center}
+    
+  .cell{
+    background: linear-gradient(145deg,var(--cell-bg-1),var(--cell-bg-2));
+    border: 1px solid var(--cell-border);
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:2.6rem;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--cell-text);
+    box-shadow: 0 2px 6px var(--cell-shadow), inset 0 1px 1px rgba(255,255,255,0.7);
+    transition: background 160ms ease, transform 120ms ease, box-shadow 160ms ease;}
+  
+  .cell:hover:not(.disabled){
+    background:var(--cell-hover-bg-1);
+    /* background: linear-gradient(145deg,var(--cell-hover-bg-1),var(--cell-hover-bg-2)); */
+    transform: translateY(-2px);}
+    
+  .cell.disabled{cursor:default;opacity:.85}
+  
+  .cell.x{color:var(--cell-x-color)}
+  
+  .cell.o{color:var(--cell-o-color)}
+  
+  .cell.win{
+    background: linear-gradient(145deg,var(--cell-win-bg-1),var(--cell-win-bg-2));
+    box-shadow: 0 0 0 3px var(--cell-win-border), 0 4px 12px rgba(20,80,150,0.4);}
+    
+  #status{
+    color:var(--status-color);
+    font-weight:600}
+    
+  .controls{
+    margin-top:24px;
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap}
+    
+  .controls button{
+    padding:8px 14px;
+    border-radius:6px;
+    border:1px solid var(--controls-btn-border);
+    background:var(--controls-btn-bg);
+    color:var(--controls-btn-text);
+    font-weight:600;
+    cursor:pointer;
+    transition:background 140ms ease}
+    
+  .controls button:hover{
+    background:var(--controls-btn-hover-bg)}
+    
+  .controls button.primary{
+    background:var(--controls-primary-bg);
+    color:#fff;border:0}
+    
+  .controls button.primary:hover{
+    background:var(--controls-primary-hover-bg)}
+
+  /* Universal popup modal */
+  #universalModal{
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.65);
+    z-index:99998}
+    
+  #universalModal .box{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    background:var(--modal-bg);
+    color:var(--modal-text);
+    padding:24px;border-radius:10px;
+    max-width:380px;
+    width:90%;
+    text-align:center;
+    box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    
+  #universalModalTitle{
+    margin:0 0 10px;
+    color:var(--modal-text);
+    font-weight:bold;
+    font-size:1.17em;
+    display:none}
+    
+  #universalModalText{
+    margin:0 0 18px;
+    color:var(--modal-text-muted);
+    white-space:pre-line}
+    
+  #universalModalButtons{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap}
+  
+  .modalBtn{
+    border:0;
+    padding:8px 14px;
+    border-radius:6px;
+    cursor:pointer}
+    
+  .modalBtn.primary{
+    background:var(--modal-primary-bg);
+    color:var(--modal-primary-text);
+    font-weight:600}
+    
+  .modalBtn.secondary{
+    background:var(--modal-secondary-bg);
+    color:var(--modal-secondary-text)}
+
+  /* Error overlay */
+  #errorOverlay{
+    position:fixed;
+    left:12px;
+    right:12px;
+    top:12px;
+    background:var(--error-bg);
+    color:var(--error-text);
+    padding:12px;
+    border-radius:8px;
+    z-index:99999;
+    font-family:monospace;
+    display:none;
+    max-height:40vh;
+    overflow:auto;
+    box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+
+  @media(max-width:1200px){
+    #board{
+    grid-template-columns:repeat(3,80px);
+    grid-auto-rows:80px}
+    .card{padding:48px}}
+    
+</style>
+</head>
+<body>
+
+<header style="font-weight:bold;">Tic Tac Toe</header>
+
+<main>
+  <div class="row">
+    <div class="card" style="text-align:center">
+<!--       <h1 style="margin:0 0 8px">Tic Tac Toe</h1> -->
+      <div class="controls" style="margin-top:0">
+        <button onclick="resetGame()" class="primary">New Game</button>
+        <button onclick="toggleAI()" class="primary">AI Opponent: On</button>
+        <button onclick="confirmExitTicTacToe()" class="primary">Exit Game</button>
+      </div>
+      <div id="status" class="small" style="font-size:30px;margin-top:48px">Player X's Turn</div>
+      <div id="board" style="margin-top:24px"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Error overlay (hidden until an error occurs) -->
+<div id="errorOverlay" role="alert"></div>
+
+<div id="universalModal" role="dialog" aria-modal="true">
+  <div class="box">
+    <div id="universalModalTitle"></div>
+    <p id="universalModalText"></p>
+    <div id="universalModalButtons"></div>
+  </div>
+</div>
+
+<script>
+/* Global safety: capture errors and show overlay */
+(function(){
+  const overlay = document.getElementById('errorOverlay');
+  function showError(msg){
+    overlay.style.display = 'block';
+    overlay.textContent = msg;
+    console.error(msg);
+  }
+  window.addEventListener('error', function(e){
+    showError('Error: ' + (e && e.message ? e.message : String(e)));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    showError('Unhandled promise rejection: ' + (e && e.reason ? (e.reason.message || JSON.stringify(e.reason)) : String(e)));
+  });
+})();
+
+/* -------------------------
+   Tic Tac Toe
+   ------------------------- */
+const boardElement = document.getElementById('board');
+const statusElement = document.getElementById('status');
+let board = Array(9).fill(null);
+let currentPlayer = 'X';
+let gameOver = false;
+let aiEnabled = true;
+let aiPlayer = 'O';
+
+function toggleAI(){
+  aiEnabled = !aiEnabled;
+  const btn = document.querySelector("button[onclick='toggleAI()']");
+  if (btn) btn.textContent = `AI Opponent: ${aiEnabled ? 'On' : 'Off'}`;
+  resetGame();
+}
+
+function setCellMark(cell, value){
+  cell.textContent = value || '';
+  cell.classList.remove('x','o');
+  if(value === 'X') cell.classList.add('x');
+  else if(value === 'O') cell.classList.add('o');
+}
+
+function createBoard(){
+  try {
+    boardElement.innerHTML = '';
+    board.forEach((v,i)=>{
+      const cell = document.createElement('div');
+      cell.className='cell';
+      cell.dataset.index=i;
+      setCellMark(cell, v);
+      cell.addEventListener('click', onCellClick);
+      boardElement.appendChild(cell);
+    });
+  } catch (err) {
+    console.error('createBoard error', err);
+    document.getElementById('errorOverlay').textContent = 'createBoard error: ' + err.message;
+    document.getElementById('errorOverlay').style.display = 'block';
+  }
+}
+
+function onCellClick(e){
+  try {
+    const index = +e.target.dataset.index;
+    if(gameOver || board[index]) return;
+    board[index] = currentPlayer;
+    setCellMark(e.target, currentPlayer);
+    const winCombo = checkWin(currentPlayer);
+    if(winCombo){
+      statusElement.textContent = `Player ${currentPlayer} wins!`;
+      endGame(winCombo); return;
+    }
+    if(board.every(c=>c!==null)){
+      statusElement.textContent = "It's a draw!"; endGame(); return;
+    }
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    statusElement.textContent = `Player ${currentPlayer}'s Turn`;
+    if(aiEnabled && currentPlayer === aiPlayer && !gameOver){
+      setTimeout(aiMove, 300);
+    }
+  } catch (err) {
+    console.error('onCellClick error', err);
+    document.getElementById('errorOverlay').textContent = 'onCellClick error: ' + err.message;
+    document.getElementById('errorOverlay').style.display = 'block';
+  }
+}
+
+function checkWin(player){
+  const combos = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return combos.find(c=>c.every(i=>board[i]===player)) || null;
+}
+
+function endGame(winningCombo){
+  gameOver = true;
+  document.querySelectorAll('.cell').forEach(c=>c.classList.add('disabled'));
+  if(winningCombo){
+    winningCombo.forEach(i=>{
+      const cell = document.querySelector(`.cell[data-index='${i}']`);
+      if(cell) cell.classList.add('win');
+    });
+  }
+}
+
+function resetGame(){
+  board = Array(9).fill(null);
+  currentPlayer = 'X';
+  gameOver = false;
+  statusElement.textContent = "Player X's Turn";
+  createBoard();
+}
+createBoard();
+
+function aiMove(){
+  try {
+    const combos = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    // win
+    for(let combo of combos){
+      const [a,b,c]=combo; const line=[board[a],board[b],board[c]];
+      if(line.filter(v=>v===aiPlayer).length===2 && line.includes(null)){
+        makeAIMove(combo[line.indexOf(null)]); return;
+      }
+    }
+    // block
+    const human = aiPlayer==='X'?'O':'X';
+    for(let combo of combos){
+      const [a,b,c]=combo; const line=[board[a],board[b],board[c]];
+      if(line.filter(v=>v===human).length===2 && line.includes(null)){
+        makeAIMove(combo[line.indexOf(null)]); return;
+      }
+    }
+    // center, corner, random
+    if(board[4]===null){ makeAIMove(4); return; }
+    const corners=[0,2,6,8].filter(i=>board[i]===null);
+    if(corners.length){ makeAIMove(corners[Math.floor(Math.random()*corners.length)]); return; }
+    const open = board.map((v,i)=>v===null?i:null).filter(x=>x!==null);
+    makeAIMove(open[Math.floor(Math.random()*open.length)]);
+  } catch (err) {
+    console.error('aiMove error', err);
+    document.getElementById('errorOverlay').textContent = 'aiMove error: ' + err.message;
+    document.getElementById('errorOverlay').style.display = 'block';
+  }
+}
+
+function makeAIMove(i){
+  try {
+    board[i]=aiPlayer;
+    const cell = document.querySelector(`.cell[data-index='${i}']`);
+    if(cell) setCellMark(cell, aiPlayer);
+    const winCombo = checkWin(aiPlayer);
+    if(winCombo){ statusElement.textContent = `Player ${aiPlayer} wins!`; endGame(winCombo); return; }
+    if(board.every(c=>c!==null)){ statusElement.textContent = "It's a draw!"; endGame(); return; }
+    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+    statusElement.textContent = `Player ${currentPlayer}'s Turn`;
+  } catch (err) {
+    console.error('makeAIMove error', err);
+    document.getElementById('errorOverlay').textContent = 'makeAIMove error: ' + err.message;
+    document.getElementById('errorOverlay').style.display = 'block';
+  }
+}
+
+/* -------------------------
+   Universal popup modal - shared look for every popup on this page
+   ------------------------- */
+function showModal({ title, message, buttons, fontSizePt } = {}){
+  return new Promise((resolve)=>{
+    const modal = document.getElementById('universalModal');
+    const titleEl = document.getElementById('universalModalTitle');
+    const textEl = document.getElementById('universalModalText');
+    const buttonsEl = document.getElementById('universalModalButtons');
+
+    if(titleEl){
+      if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
+      else { titleEl.style.display = 'none'; }
+    }
+    if(textEl){
+      textEl.textContent = message || '';
+      textEl.style.fontSize = (fontSizePt || 12) + 'pt';
+    }
+    if(buttonsEl){
+      buttonsEl.innerHTML = '';
+      (buttons || [{label:'OK', value:undefined, primary:true}]).forEach((def)=>{
+        const btn = document.createElement('button');
+        btn.textContent = def.label;
+        btn.className = 'modalBtn ' + (def.primary ? 'primary' : 'secondary');
+        btn.onclick = () => {
+          if(modal) modal.style.display = 'none';
+          resolve(def.value);
+        };
+        buttonsEl.appendChild(btn);
+      });
+    }
+    if(modal) modal.style.display = 'block';
+  });
+}
+
+function showMessage(text, fontSizePt){
+  return showModal({ message: text, fontSizePt, buttons: [{ label:'OK', value:undefined, primary:true }] });
+}
+
+function showConfirm(text){
+  return showModal({ message: text, buttons: [
+    { label:'OK', value:true, primary:true },
+    { label:'Cancel', value:false, primary:false }
+  ]});
+}
+
+async function confirmExitTicTacToe(){
+  try {
+    const choice = await showModal({
+      title: 'Exit Game',
+      message: 'Are you sure you want to exit?',
+      buttons: [
+        { label:'Yes', value:true, primary:true },
+        { label:'Cancel', value:false, primary:false }
+      ]
+    });
+    if(choice) performExit();
+  } catch (err) {
+    console.error('confirmExitTicTacToe error', err);
+  }
+}
+
+function performExit(){
+  window.location.href = 'index.html';
+}
+
+function showExitScreen(){
+  try {
+    document.body.innerHTML =
+      '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+      'font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg,#121212);color:#eee;text-align:center;">' +
+      '<div><h1 style="margin:0 0 8px">Thanks for playing!</h1>' +
+      '<p style="color:var(--muted,#9aa0a6)">You can close this browser tab now.</p></div></div>';
+  } catch (err) {
+    console.error('showExitScreen error', err);
+  }
+}
+</script>
+</body>
+</html>
