@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,6 +36,20 @@
     height: 100%;
     background: var(--bg);
     font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Always reserve space for a vertical scrollbar, even on short pages,
+     so the header doesn't shift left/right between pages with and
+     without enough content to actually need one */
+  html {
+    overflow-y: scroll;
+  }
+
+  /* Keeps the header and nav visible at the top while the page scrolls */
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
 
   header {
@@ -75,7 +90,7 @@
   }
 
   main {
-    max-width: 892px;
+    max-width: min(892px, calc(100% - 40px));
     margin: 30px auto;
     padding: 0 20px 40px;
   }
@@ -117,14 +132,16 @@
 </head>
 <body>
 
-  <header>
-    <h1>Game Hub</h1>
-  </header>
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="contact.html">Contact</a>
-  </nav>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
 
   <main>
     <h2 class="page-title">About</h2>
