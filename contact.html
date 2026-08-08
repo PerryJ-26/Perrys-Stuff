@@ -1,0 +1,134 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact - Perry's Stuff</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches index.html ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --email-text: #2c6693;
+    --email-hover-bg: #dceaf7;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: 500px;
+    margin: 60px auto;
+    padding: 0 20px;
+  }
+
+  .contact-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 35px;
+    text-align: center;
+  }
+
+  .contact-card p {
+    color: var(--body-text);
+    font-size: 1.1rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .email-link {
+    display: inline-block;
+    margin-top: 10px;
+    color: var(--email-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.15rem;
+    padding: 10px 22px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    transition: background 150ms ease;
+  }
+
+  .email-link:hover {
+    background: var(--email-hover-bg);
+  }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>Perry's Stuff</h1>
+  </header>
+
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="about.html">About</a>
+  </nav>
+
+  <main>
+    <div class="contact-card">
+      <p>I encourage comments and suggestions.</p>
+      <p>If you have a hankering, shoot me an email.</p>
+      <a class="email-link" href="mailto:PerryJ26@Noblewood.com">PerryJ26 [at] Noblewood [dot] com</a>
+    </div>
+  </main>
+
+</body>
+</html>
