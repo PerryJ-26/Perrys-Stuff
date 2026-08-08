@@ -1,0 +1,2345 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pinochle</title>
+<style>
+  /* ===================================================================
+     LAYOUT PHILOSOPHY
+     Redesigned to match a reference screenshot: a solid green board with
+     a black outline, named characters with cartoon avatars and speech
+     bubbles, a bright yellow bidding panel in the center, and a
+     Team/Score/Bid/Bidder/Melds table in the corner. Structurally it's
+     still the same CSS-grid seating (N/W/felt/E/S) as before — this pass
+     is almost entirely a re-skin, not a layout rewrite.
+     =================================================================== */
+  :root{
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --yellow: #eef07a;
+    --yellow-border: #2a2a10;
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+    --pass-btn-bg: #8a2020;
+    --pass-btn-border: #4a1010;
+
+    --bubble-bg: #ffffff;
+    --bubble-border: #111111;
+
+    --cardback-1: #d6394a;   /* cardback diamond pattern, red */
+    --cardback-2: #ffffff;   /* cardback diamond pattern, white */
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.45);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+    --glow-active: rgba(255,255,255,.6);
+  }
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; margin:0; }
+  body{
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--page-bg); /* light neutral backdrop so the board reads as a
+                             framed play area, not a full-bleed background */
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* the page itself never scrolls — see the table-wrap
+                          sizing notes below for how that's enforced */
+  }
+
+  /* ---------- Page title ---------- */
+  /* ---------- Top bar: title left, buttons right, one row ---------- */
+  #topBar{
+    flex-shrink: 0;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    height: 44px; /* fixed, rather than sized by its content — this way
+                      pageTitle's font-size can grow without taking any
+                      space away from table-wrap/felt below it */
+    padding: 0;
+    margin: 0 4in; /* matches table-wrap's own side margins so the title
+                       and buttons line up with the board's left/right
+                       edges below, instead of the viewport's edges */
+  }
+  #pageTitle{
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup{
+    display:flex;
+    gap:10px;
+  }
+  #topBar button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor:pointer;
+    font-size:.8rem;
+    font-weight:700;
+  }
+  #topBar button:hover{ background:#fff; }
+
+  /* ---------- The board ---------- */
+  #table-wrap{
+    display:grid;
+    grid-template-columns: 150px 1fr 150px;
+    /* One static layout for every phase — no more dynamically swapping
+       row heights based on game phase. That was meant to free up space
+       during bidding/melding, but forcing the whole grid to recompute on
+       every phase change was almost certainly what caused the multi-
+       second stutter, on top of making the board visibly jump around.
+       Bill's row is tightened here instead (it had real unused space
+       below his cards), redirecting that room to South's row, which is
+       where the clipping actually happens. */
+    grid-template-rows: minmax(175px,195px) minmax(300px,1fr) minmax(265px,350px);
+    gap: 6px;
+    padding: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    /* Trimmed further from last pass to free up more room for the board
+       now that cards are bigger — sides stay generous, top/bottom are
+       kept to just what's needed. */
+    margin: 0.05in 4in 0.1in;
+    position: relative;
+  }
+
+  #pauseOverlay{
+    display:none;
+    position:absolute; inset:0; z-index:50;
+    background: rgba(0,0,0,.15);
+    /* Was pointer-events:none, which let clicks fall straight through to
+       the board underneath while "paused" — you could still play a card
+       or click a bid button mid-pause, which could leave game state
+       inconsistent by the time a deferred AI/trick timer finally fired
+       after resuming (the same silent-freeze pattern documented below
+       in pausableTimeout/advanceTrick, just triggered a different way).
+       Now the overlay actually blocks interaction with the board. */
+    pointer-events:auto;
+    align-items:flex-start; justify-content:center;
+    padding-top: 16px;
+  }
+  #pauseOverlay .pause-badge{
+    background: rgba(0,0,0,.75);
+    color:#fff;
+    font-size:1.3rem;
+    font-weight:700;
+    padding: 10px 22px;
+    border-radius: 10px;
+    text-align:center;
+  }
+
+  .seat{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 6px;
+    position: relative;
+    overflow: hidden; /* no scrollbars — content is sized to fit instead */
+    min-height: 0;
+  }
+  /* Active-seat highlight now lives on the name itself since there's no
+     avatar to glow anymore */
+  .seat.active .name{
+    text-shadow: 0 0 8px var(--glow-active), 0 1px 2px rgba(0,0,0,.6);
+  }
+  .seat .name{
+    font-weight:700;
+    font-size: calc(.9rem + 2px);
+    color:#fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .name-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    width:100%;
+    margin-top:2px;
+  }
+  #seat-N .name-row, #seat-S .name-row{ justify-content:center; }
+  #seat-W .name-row{ justify-content:flex-start; }
+  #seat-E .name-row{ justify-content:flex-end; }
+  /* Combines what used to be two separate lines (Declarer/Dealer tag,
+     and tricks-taken count) into one — that alone meaningfully shrinks
+     how much height each seat needs, which is what was causing "Declarer"
+     to get clipped at the bottom of the board. */
+  .meta-line{
+    font-size:.68rem;
+    font-weight:700;
+    min-height: 1em;
+    text-align:center;
+    white-space: nowrap;
+  }
+  .meta-line .tag{ color: var(--yellow); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .meta-line .tricks{ color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .meta-line .sep{ color:#fff; opacity:.6; margin: 0 3px; }
+
+  /* Speech bubbles — hidden until showBubble() reveals them, with a
+     little CSS-triangle tail pointing back toward the avatar that said it.
+     display:none by default (not just opacity:0) so a hidden bubble takes
+     up zero layout space — with big cards now, every seat's height is
+     tight, and a bubble reserving space it isn't using was part of what
+     squeezed the rest of the board. */
+  .bubble{
+    display:none;
+    position:relative;
+    background: var(--bubble-bg);
+    border: 2px solid var(--bubble-border);
+    border-radius: 16px;
+    padding: 9px 16px;
+    font-size:1.05rem;
+    font-weight:600;
+    color: var(--ink);
+    max-width: 190px;
+    text-align:center;
+    pointer-events:none;
+    z-index: 10;
+  }
+  .bubble.visible{ display:block; }
+  .bubble.tail-top::before, .bubble.tail-top::after{
+    content:''; position:absolute; left:22px; border:9px solid transparent;
+  }
+  .bubble.tail-top::before{ top:-18px; border-bottom-color: var(--bubble-border); }
+  .bubble.tail-top::after{ top:-15px; border-bottom-color: var(--bubble-bg); }
+  .bubble.tail-bottom::before, .bubble.tail-bottom::after{
+    content:''; position:absolute; left:22px; border:9px solid transparent;
+  }
+  .bubble.tail-bottom::before{ bottom:-18px; border-top-color: var(--bubble-border); }
+  .bubble.tail-bottom::after{ bottom:-15px; border-top-color: var(--bubble-bg); }
+  .bubble.tail-left::before, .bubble.tail-left::after{
+    content:''; position:absolute; top:18px; border:9px solid transparent;
+  }
+  .bubble.tail-left::before{ left:-18px; border-right-color: var(--bubble-border); }
+  .bubble.tail-left::after{ left:-15px; border-right-color: var(--bubble-bg); }
+  .bubble.tail-right::before, .bubble.tail-right::after{
+    content:''; position:absolute; top:18px; border:9px solid transparent;
+  }
+  .bubble.tail-right::before{ right:-18px; border-left-color: var(--bubble-border); }
+  .bubble.tail-right::after{ right:-15px; border-left-color: var(--bubble-bg); }
+
+  /* Cardback fans: horizontal (North) vs vertical (West/East) */
+  .cardback-row{ display:flex; margin-top:6px; }
+  .cardback-row.vertical{ flex-direction:column; align-items:center; }
+  .cardback{
+    width:84px; height:118px;
+    /* Diamond lattice instead of plain diagonal stripes: a solid red base
+       with two crossing sets of white diagonal bands. The earlier stripe
+       version had its first gradient layer fully opaque, which hid the
+       second layer entirely — this version keeps both bands translucent
+       enough that they actually weave together. */
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius:6px;
+    margin-left:-60px;
+  }
+  .cardback-row .cardback:first-child{ margin-left:0; }
+  /* No per-card content on a cardback, so the vertical stack (West/East)
+     can overlap far more aggressively than a real hand of cards could —
+     that's what keeps 12 full-size cardbacks fitting in the seat's height.
+     They're also rotated 90° — a common convention for the side seats in
+     card game UIs, so the cards read as "facing" the table's center. */
+  .cardback-row.vertical .cardback{ margin-left:0; margin-top:-113px; transform: rotate(90deg); }
+  .cardback-row.vertical .cardback:first-child{ margin-top:0; }
+
+
+  #seat-N{ grid-column:2; grid-row:1; }
+  #seat-W{ grid-column:1; grid-row:2; }
+  #seat-E{ grid-column:3; grid-row:2; }
+  #seat-S{ grid-column:2; grid-row:3; justify-content:flex-start; }
+
+  /* ---------- Center area: trick-in-progress AND the bidding UI share
+     this space, since only one is ever relevant at a given moment ---------- */
+  #felt{
+    grid-column:2; grid-row:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    position:relative;
+    overflow: hidden;
+    min-height: 0;
+    /* Double red border around the center playing area, with a 2px gap
+       between the two lines. Using box-shadow rather than outline —
+       #felt has overflow:hidden, and outline rendering next to an
+       element's own overflow:hidden is unreliable across browsers even
+       though it shouldn't be per spec. box-shadow doesn't have that
+       problem. The first ring matches the felt's own green background
+       (table-wrap's background, since felt itself has none) to fake the
+       gap; the second is the actual outer red line. */
+    box-shadow: 0 0 0 2px var(--board-green), 0 0 0 4px var(--red);
+  }
+  #trickArea{
+    display:grid;
+    grid-template-areas:
+      ".    n    ."
+      "w    c    e"
+      ".    s    .";
+    grid-template-columns: 68px 68px 68px;
+    grid-template-rows: 93px 93px 93px;
+    gap:6px;
+  }
+  .trick-slot{ display:flex; align-items:center; justify-content:center; }
+  #tc-N{ grid-area:n; } #tc-E{ grid-area:e; } #tc-S{ grid-area:s; } #tc-W{ grid-area:w; }
+  #trumpBadge{
+    position:absolute; top:8px; right:8px; z-index:15;
+    background: var(--shadow-soft);
+    color:#1b1b1b;
+    border: 2px solid rgba(0,0,0,.35);
+    border-radius: 12px;
+    padding: 8px 20px;
+    font-size:1.35rem;
+    font-weight:700;
+  }
+
+  /* ---------- Card visuals ---------- */
+  /* Rank+suit live in the top-left corner (mirrored bottom-right), with a
+     big suit symbol in the middle. This is the traditional playing-card
+     layout for a reason: when cards overlap in a fan, the next card
+     covers the RIGHT side of the one under it, so corner content stays
+     visible — centered content (what this used to be) gets covered up
+     and becomes unreadable the moment cards overlap. */
+  .card{
+    width:84px; height:118px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding: 4px;
+    font-weight:800;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    color: var(--ink);
+    user-select:none;
+  }
+  .card.red{ color: var(--red); }
+  .card .corner{ font-size:1.1rem; line-height:1; }
+  .card .center-suit{ font-size:2.6rem; text-align:center; }
+  /* Grid cells in #trickArea are 68x93 — this now uses nearly all of
+     that (previously 62x87, which was too small to hold text at the
+     1.1rem/2.6rem sizes without the bottom corner overflowing past the
+     card's edge). Tighter padding reclaims a bit more room too. */
+  .card.mini{ width:66px; height:91px; padding:2px; }
+  .card.mini .corner{ font-size:1.1rem; }
+  .card.mini .center-suit{ font-size:2.6rem; }
+
+  /* South (human) hand — overlapping fan (restored), sized big to match
+     the reference. overflow is hidden rather than auto/scroll on both
+     axes: the overlap keeps 12 cards well within the available width so
+     there's nothing to scroll to in the first place. */
+  #south-hand{
+    display:flex;
+    justify-content:center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    margin-top: 2px;
+    padding: 20px 4px 6px;
+    width: 100%;
+  }
+  #south-hand .cardWrap{
+    flex-shrink: 0;
+    margin-left: -50px;
+    position: relative; /* lets z-index below actually take effect */
+  }
+  #south-hand .cardWrap:first-child{ margin-left: 0; }
+  /* When reviewing cards passed to you as declarer, your hand temporarily
+     grows to 16 — the normal -50px overlap was sized for exactly 12
+     cards, so 16 cards at that spacing overflowed the container width
+     and got clipped (mostly the leftmost card, since overflow:hidden
+     with centered content clips unevenly once combined with the overlap
+     direction). Tighter overlap keeps the full, larger hand within the
+     same width. */
+  #south-hand.crowded .cardWrap{ margin-left: -59px; }
+  #south-hand.crowded .cardWrap:first-child{ margin-left: 0; }
+  #south-hand .card{
+    cursor:pointer;
+    transition: transform .12s;
+  }
+  #south-hand .card:hover{ transform: translateY(-8px); }
+  /* Applied briefly during a genuine south-hand rebuild (see render()) so
+     a card your mouse is already on doesn't visibly animate into its
+     hover-lifted state — it should just already be there. */
+  #south-hand.no-transition .card{ transition: none !important; }
+  #south-hand .card.disabled{
+    opacity:.35;
+    cursor: not-allowed;
+  }
+  #south-hand .card.disabled:hover{ transform:none; }
+  /* Selection indicator is border/glow only — deliberately NOT using
+     transform. Any transform value (even a small translateY) makes CSS
+     paint that element above every normal, non-transformed sibling,
+     regardless of hand order — that's what kept covering neighbors no
+     matter how much z-index or margin was layered on top of it. Skipping
+     transform entirely means the selected card stays in its normal
+     stacking position, so the fan's overlap order is completely
+     unaffected by selection. */
+  #south-hand .cardWrap.selected .card{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+  /* "Used" = appeared in at least one declared meld already — a subtle
+     marker only, the card stays fully selectable for reuse in another
+     meld (e.g. a queen in a marriage can also count toward "queens
+     around"), unlike the old hard lock this replaced. */
+
+  /* ---------- Bid / Pass / Meld control panels ---------- */
+  .control-panel{
+    display:none;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+    background: var(--yellow);
+    border: 2px solid var(--yellow-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-top:4px;
+    width: 100%;
+    max-width: 380px;
+    max-height: 100%;
+    overflow: hidden; /* no scrollbars — content is sized to fit instead */
+  }
+  .control-panel.wide-panel{ max-width: 480px; }
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  .control-panel table{ width:100%; border-collapse:collapse; font-size:.85rem; margin-bottom:6px; }
+  .control-panel td, .control-panel th{ border:1px solid #b3a94a; padding:3px 8px; text-align:center; }
+  .control-panel th{ background: rgba(255,255,255,.25); }
+  /* Round Complete's two tables need to fit in less space than a normal
+     control-panel gets — tighter padding/font here instead of scrolling. */
+  .control-panel.wide-panel table{ font-size:.78rem; margin-bottom:4px; }
+  .control-panel.wide-panel td, .control-panel.wide-panel th{ padding:1px 8px; }
+  .control-panel.wide-panel h3{ margin: 0 0 4px; }
+  .control-panel.wide-panel button{ padding:3px 12px; margin-top:2px; }
+  .control-panel h3{
+    width:100%; text-align:center; margin:0 0 2px;
+    font-size:.88rem; color:#3a3a10;
+  }
+  .control-panel button{
+    background: #fff;
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .control-panel button:hover{ background:#f2f2f2; }
+  .control-panel button:disabled{ opacity:.4; cursor:not-allowed; }
+  .control-panel button.pass{ background:var(--pass-btn-bg); color:#fff; border-color:var(--pass-btn-border); }
+  .control-panel .bidStatus{ width:100%; text-align:center; font-size:calc(.78rem + 3px); color:#3a3a10; margin-bottom:2px; }
+  .control-panel .meldGroupList{ width:100%; font-size:calc(.72rem + 3px); max-height:60px; overflow-y:auto; margin-bottom:4px; text-align:center; color:#3a3a10; }
+  /* Meld panel needs more room than the other control panels — it now
+     carries an extra instructional line plus the running group list. */
+  #meldPanel{ min-height: 190px; }
+  #meldPanel .meldGroupList{ max-height: 90px; }
+  #meldPanel .meldHelp{ width:100%; text-align:center; font-size:calc(.78rem + 3px); color:#3a3a10; margin-bottom:4px; line-height:1.3; }
+
+  /* ---------- Score table (top-left corner) — restyled to match the
+     Trump badge's look: same dark-green translucent background, white
+     bold text, rounded border, instead of the old small cream table. ---------- */
+  #scoreTable{
+    position:absolute; top:8px; left:8px; z-index:15;
+    background: var(--shadow-soft);
+    border: 2px solid rgba(0,0,0,.35);
+    border-radius: 10px;
+    padding: 7px 10px;
+    box-shadow: 0 2px 6px var(--shadow-medium);
+  }
+  #scoreTable table{ border-collapse: collapse; }
+  #scoreTable th, #scoreTable td{
+    padding: 3px 10px;
+    text-align:center;
+    white-space:nowrap;
+    color:#1b1b1b;
+  }
+  #scoreTable th{
+    font-size:calc(.68rem + 2px);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom: 1px solid rgba(0,0,0,.3);
+  }
+  #scoreTable td{ font-size:calc(.85rem + 2px); font-weight:400; }
+  #scoreTable tr:not(:last-child) td{ border-bottom: 1px solid rgba(0,0,0,.15); }
+
+  /* ---------- Log ---------- */
+  #logToggle{
+    position:fixed; bottom:10px; left:10px;
+    background: var(--cream); color:var(--ink);
+    border:2px solid var(--board-border); border-radius:20px;
+    padding:8px 14px; cursor:pointer; font-size:.8rem; z-index:50;
+  }
+  #logPanel{
+    position:fixed; bottom:50px; left:10px; width:320px; max-height:50vh;
+    background: var(--cream); border:2px solid var(--board-border); border-radius:8px;
+    padding:10px; overflow-y:auto; font-size:.78rem; z-index:50; display:none;
+    color: var(--ink);
+  }
+  #logPanel div{ margin-bottom:4px; border-bottom:1px solid #ccc; padding-bottom:3px;}
+
+  /* ---------- Universal modal ---------- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+    align-items:center; justify-content:center;
+  }
+  #universalModal .modalBox{
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y:auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{
+    display:flex; gap:10px; justify-content:center; margin-top:16px;
+  }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+  #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
+  #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
+
+  /* =================================================================
+     Border around the whole playing field. Kept deliberately simple —
+     a plain `border`, nothing fancier — after both the outline and
+     box-shadow versions of a double-line effect reportedly weren't
+     showing up at all. This is about as bulletproof as CSS gets, so if
+     even this doesn't show, the cause is something other than the
+     border technique itself.
+     ================================================================= */
+
+  @media (max-width: 720px){
+    #table-wrap{
+      grid-template-columns: 80px 1fr 80px;
+      grid-template-rows: minmax(120px,140px) minmax(150px,1fr) minmax(180px,210px);
+      margin: 6px 16px 10px;
+    }
+    .card, .cardback{ width:44px; height:64px; }
+    .card .corner{ font-size:.62rem; }
+    .card .center-suit{ font-size:1.2rem; }
+    #south-hand .cardWrap{ margin-left: -22px; }
+    .cardback-row .cardback{ margin-left: -30px; }
+    .cardback-row.vertical .cardback{ margin-left:0; margin-top: -58px; }
+    #scoreTable th{ font-size:.62rem; }
+    #scoreTable td{ font-size:.8rem; }
+    #scoreTable th, #scoreTable td{ padding: 2px 8px; }
+    #pageTitle{ font-size:1.1rem; }
+    #topBar{ padding: 5px 0; margin: 0 16px; }
+    #topBar button{ padding:5px 9px; font-size:.7rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="topBar">
+  <h1 id="pageTitle">Pinochle</h1>
+  <div id="buttonGroup">
+    <button id="newHandBtn">New Game</button>
+    <button id="rulesBtn">Rules</button>
+    <button id="optionsBtn">Options</button>
+    <button id="exitBtn">Exit</button>
+  </div>
+</div>
+
+<div id="table-wrap">
+  <div id="pauseOverlay"><div class="pause-badge">⏸ PAUSED — press Space to resume</div></div>
+  <div class="seat" id="seat-N">
+    <div class="name-row">
+      <div class="name">Bill</div>
+      <div class="bubble tail-left" id="bubble-N"></div>
+    </div>
+    <div class="meta-line" id="meta-N"></div>
+    <div class="cardback-row" id="cards-N"></div>
+  </div>
+
+  <div class="seat" id="seat-W">
+    <div class="name-row">
+      <div class="name">Mike</div>
+      <div class="bubble tail-left" id="bubble-W"></div>
+    </div>
+    <div class="meta-line" id="meta-W"></div>
+    <div class="cardback-row vertical" id="cards-W"></div>
+  </div>
+
+  <div id="felt">
+    <div id="trickArea">
+      <div class="trick-slot" id="tc-N"></div>
+      <div class="trick-slot" id="tc-W"></div>
+      <div class="trick-slot" id="tc-C"></div>
+      <div class="trick-slot" id="tc-E"></div>
+      <div class="trick-slot" id="tc-S"></div>
+    </div>
+    <div id="bidPanel" class="control-panel"></div>
+    <div id="trumpPanel" class="control-panel"></div>
+    <div id="meldPanel" class="control-panel"></div>
+    <div id="passPanel" class="control-panel"></div>
+    <div id="roundPanel" class="control-panel wide-panel"></div>
+  </div>
+
+  <div class="seat" id="seat-E">
+    <div class="name-row">
+      <div class="bubble tail-right" id="bubble-E"></div>
+      <div class="name">Lisa</div>
+    </div>
+    <div class="meta-line" id="meta-E"></div>
+    <div class="cardback-row vertical" id="cards-E"></div>
+  </div>
+
+  <div class="seat" id="seat-S">
+    <div id="south-hand"></div>
+    <div class="name-row">
+      <div class="name" id="south-name">You</div>
+      <div class="bubble tail-left" id="bubble-S"></div>
+    </div>
+    <div class="meta-line" id="meta-S"></div>
+  </div>
+
+  <div id="scoreTable">
+    <table>
+      <tr><th>Team</th><th>Bid</th><th>Score</th></tr>
+      <tr>
+        <td id="team-ns-label">You &amp; Bill</td>
+        <td id="ns-bid">—</td>
+        <td id="ns-score">0</td>
+      </tr>
+      <tr>
+        <td id="team-ew-label">Mike &amp; Lisa</td>
+        <td id="ew-bid">—</td>
+        <td id="ew-score">0</td>
+      </tr>
+    </table>
+  </div>
+
+  <div id="trumpBadge"><span style="font-weight:400;">Trump:</span></div>
+</div>
+
+<button id="logToggle">Game Log</button>
+<div id="logPanel"></div>
+
+<div id="universalModal">
+  <div class="modalBox">
+    <h2 id="modalTitle">Title</h2>
+    <div class="modalBody" id="modalBody">Body</div>
+    <div class="modalBtns" id="modalBtns"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   PINOCHLE — standalone game
+   4 players (partnership): South = You, North = your partner (AI),
+   East & West = opponents (AI). Single 48-card deck (two copies of
+   9,J,Q,K,10,A in each suit). Standard American partnership rules,
+   simplified in a few places noted inline where full auction-pinochle
+   rules get genuinely ambiguous between different house-rule sets.
+   ===================================================================== */
+
+// ---------------------------------------------------------------------
+// CONSTANTS
+// ---------------------------------------------------------------------
+const SUITS = ['♠','♥','♦','♣'];
+const RED_SUITS = ['♥','♦'];
+const RANKS = ['A','10','K','Q','J','9']; // trick-taking strength order, high to low
+// Card point values are fixed by the game (not house-rule flexible) —
+// this is what makes the 240 (+10 for last trick = 250) point deck.
+const RANK_POINTS = { 'A':10, '10':10, 'K':10, 'Q':0, 'J':0, '9':0 };
+const RANK_STRENGTH = { 'A':6, '10':5, 'K':4, 'Q':3, 'J':2, '9':1 };
+// "Counters" in pinochle jargon — the big scoring cards. Used by the
+// house rule requiring the non-declaring team to win at least one trick
+// containing one of these, or forfeit their meld for the hand.
+const COUNTER_RANKS = ['A','10','K'];
+
+const SEATS = ['S','W','N','E']; // turn order is clockwise; S sits at bottom, W left, N top, E right
+const SEAT_NAME = { S:'You', W:'Mike', N:'Bill', E:'Lisa' };
+const TEAM = { S:'NS', N:'NS', W:'EW', E:'EW' };
+const PARTNER = { S:'N', N:'S', W:'E', E:'W' };
+// Team labels for the score table — built from SEAT_NAME so renaming a
+// character above automatically updates the table too.
+// Function instead of a fixed object so it always reflects the current
+// SEAT_NAME.S — needed since the player can rename themselves in Options.
+function getTeamLabel(team){
+  return team === 'NS' ? `${SEAT_NAME.S} & ${SEAT_NAME.N}` : `${SEAT_NAME.W} & ${SEAT_NAME.E}`;
+}
+
+const MIN_BID = 250;
+const BID_STEP = 10;
+const GAME_TARGET = 1500;
+// Was previously two separate hardcoded numbers (120 in the AI's bidding
+// logic, 130 in the human bid panel) that had no relationship to MIN_BID
+// at all — meaning raising MIN_BID could put it ABOVE those caps, and
+// nobody would ever be able to bid. Scales proportionally now instead.
+const MAX_BID = Math.round(MIN_BID * 2.4);
+// House-rule addition: after trump is named, each player passes this many
+// cards to their partner before melding. Not part of every pinochle
+// ruleset — easy to set to 0 to turn the feature off entirely.
+const PASS_COUNT = 4;
+
+// ---------------------------------------------------------------------
+// STATE
+// Kept as one object so it's easy to see the whole shape of a "hand"
+// at a glance, and so render() can just read from a single source.
+// ---------------------------------------------------------------------
+let state = {
+  scores: { NS: 0, EW: 0 },
+  dealerIdx: 0,          // index into SEATS of current dealer
+  hands: { S:[], N:[], E:[], W:[] },
+  trump: null,
+  bid: 0,
+  bidWinner: null,
+  bidHistory: [],
+  biddingOrder: [],
+  biddingTurn: 0,
+  passesInRow: 0,
+  passedSeats: new Set(), // seats that have passed this auction — skipped for the rest of it
+  highestBidderSeenBid: false,
+  phase: 'deal',          // deal | bidding | trump | passing | humanMeld | meld | play | scoring
+  melds: { S:0, N:0, E:0, W:0 },
+  meldDetail: { S:[], N:[], E:[], W:[] },
+  trick: {},               // seat -> card currently on the felt
+  trickLeader: null,
+  tricksWon: { NS: [], EW: [] }, // arrays of card-point totals per trick, for reference
+  pointsThisHand: { NS: 0, EW: 0 },
+  lastTrickWinner: null,
+  cardsPlayedCount: 0,
+
+  // --- card passing: sequential declarer/partner exchange ---
+  passSelection: [],       // card ids the human has picked so far this stage
+  passDeclarer: null,      // seat that won the bid
+  passPartner: null,       // declarer's partner seat
+  passStage: 'toDeclarer', // 'toDeclarer' | 'toPartner' — which half of the exchange is active
+  passStageOneCards: [],   // cards partner sent to declarer, for the recap modal
+  passStageTwoCards: [],   // cards declarer sent back, for the recap modal
+
+  // --- manual human melding ---
+  humanMeldSelection: [],     // card ids currently highlighted, not yet declared
+  humanMeldUsed: new Set(), // card ids used in at least one declared meld — informational only, no longer blocks reselection
+  humanMeldGroups: [],        // [{label, points, cardIds}] — what the player has declared so far
+  humanMeldTotal: 0,
+  meldError: '',               // feedback shown inside the meld panel when a declare attempt is invalid
+
+  // --- score table (Bid/Bidder columns show each team's most recent bid) ---
+  teamBidInfo: { NS: { amount:0, bidder:null }, EW: { amount:0, bidder:null } },
+
+  // --- tricks taken this hand, per player (not per team) ---
+  tricksTaken: { S:0, N:0, E:0, W:0 },
+
+  // House rule: has the non-declaring team won at least one trick with a
+  // counter (A/10/K) yet this hand? If not by the end, their meld is
+  // forfeited.
+  nonDeclarerWonCounterTrick: false,
+
+  // Options setting: when true, the AI declares South's meld automatically
+  // (same calcMeld() logic used for the other three players) instead of
+  // South melding by hand. Deliberately not reset by dealNewHand()/newGame()
+  // — it's a standing preference, not per-round state.
+  aiCreatesMelds: false,
+
+  // Options setting: when true, shows every player's actual cards (as
+  // compact colored text, not full card graphics) instead of cardbacks —
+  // for testing/debugging. Also not reset by dealNewHand()/newGame().
+  viewAllCards: false,
+
+  // Options setting: enables the spacebar as a pause/resume toggle.
+  spacebarPauseEnabled: false,
+  // Live pause state — when true, scheduled AI/game-progression timers
+  // (bidding, playing, trick advancement) hold off firing until unpaused.
+  // Doesn't block your own manual actions if it happens to be your turn.
+  paused: false
+};
+
+let log = [];
+// Tracks the last HTML rendered into #south-hand — used to skip
+// recreating the DOM when nothing about it actually changed (see render()).
+let _lastSouthHandHtml = '';
+
+// ---------------------------------------------------------------------
+// DECK / DEAL
+// ---------------------------------------------------------------------
+function buildDeck(){
+  const deck = [];
+  SUITS.forEach(suit=>{
+    RANKS.forEach(rank=>{
+      // two copies of every card — this is the "double deck" feel of
+      // pinochle even though it's technically a single 48-card pack
+      deck.push({ suit, rank, id: suit+rank+'_a' });
+      deck.push({ suit, rank, id: suit+rank+'_b' });
+    });
+  });
+  return deck;
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function sortHand(cards){
+  // Group by suit, and within suit low-to-high left-to-right — makes the
+  // human hand readable and gives the AI a stable, predictable view.
+  const suitOrder = ['♠','♥','♣','♦'];
+  return [...cards].sort((a,b)=>{
+    if(a.suit !== b.suit) return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+    return RANK_STRENGTH[a.rank] - RANK_STRENGTH[b.rank];
+  });
+}
+
+// Pause support: wraps setTimeout so scheduled game-progression callbacks
+// (AI bidding/playing, trick advancement) respect state.paused. If still
+// paused when the timer would fire, it just keeps rechecking every 200ms
+// instead of firing — once unpaused, it runs normally.
+function pausableTimeout(fn, delay){
+  const wrapped = () => {
+    if(state.paused){
+      setTimeout(wrapped, 200);
+    } else {
+      // Guarded: fn() drives bidding/passing/trick-play progression, and
+      // an uncaught error here (e.g. from state left inconsistent by
+      // something that happened while paused) used to die silently right
+      // here — nothing else was scheduled to pick the chain back up, so
+      // the game looked permanently frozen right at the moment of
+      // resuming. Catch it, log it, and at least re-render so the board
+      // isn't left visually stuck even if that particular step failed.
+      try {
+        fn();
+      } catch(err){
+        console.error('pausableTimeout: game-progression step failed', err);
+        addLog('⚠ Something went wrong resuming the game. If it looks stuck, try New Hand.');
+        render();
+      }
+    }
+  };
+  setTimeout(wrapped, delay);
+}
+
+function dealNewHand(){
+  try {
+    dealNewHandInner();
+  } catch(err){
+    // Every path that starts a new hand (Deal Next Round, Start a new
+    // game, and the very first deal at startup) funnels through here.
+    // Previously an uncaught error partway through this — however
+    // unlikely — would leave state.hands partly reset with nothing to
+    // show and nothing to click, which looks exactly like a frozen game
+    // with no cards, and no indication anything went wrong.
+    console.error('dealNewHand failed', err);
+    addLog('⚠ Something went wrong starting the new hand. If the board looks stuck, try Exit and reopen, or use New Hand from the menu.');
+    render();
+  }
+}
+function dealNewHandInner(){
+  const deck = shuffle(buildDeck());
+  state.hands = { S:[], N:[], E:[], W:[] };
+  for(let i=0;i<48;i++){
+    const seat = SEATS[i % 4];
+    // deal starting left of dealer, one card of a 4-round deal — for a
+    // human it doesn't matter who "physically" gets card 1, so we just
+    // deal round-robin across all four seats.
+    state.hands[seat].push(deck[i]);
+  }
+  SEATS.forEach(s => state.hands[s] = sortHand(state.hands[s]));
+
+  state.trump = null;
+  document.getElementById('trumpBadge').innerHTML = '<span style="font-weight:400;">Trump:</span>';
+  state.bid = 0;
+  state.bidWinner = null;
+  state.bidHistory = [];
+  state.passesInRow = 0;
+  state.passedSeats = new Set();
+  state.melds = { S:0, N:0, E:0, W:0 };
+  state.meldDetail = { S:[], N:[], E:[], W:[] };
+  state.trick = {};
+  state.trickLeader = null;
+  state.pointsThisHand = { NS:0, EW:0 };
+  state.lastTrickWinner = null;
+  state.cardsPlayedCount = 0;
+  state.passSelection = [];
+  state.passDeclarer = null;
+  state.passPartner = null;
+  state.passStage = 'toDeclarer';
+  state.passStageOneCards = [];
+  state.passStageTwoCards = [];
+  state.humanMeldSelection = [];
+  state.humanMeldUsed = new Set();
+  state.humanMeldGroups = [];
+  state.humanMeldTotal = 0;
+  state.meldError = '';
+  state.teamBidInfo = { NS: { amount:0, bidder:null }, EW: { amount:0, bidder:null } };
+  state.tricksTaken = { S:0, N:0, E:0, W:0 };
+  state.nonDeclarerWonCounterTrick = false;
+  hideAllBubbles();
+
+  // bidding starts to the left of the dealer
+  const startIdx = (state.dealerIdx + 1) % 4;
+  state.biddingOrder = [0,1,2,3].map(i => SEATS[(startIdx+i)%4]);
+  state.biddingTurn = 0;
+  state.phase = 'bidding';
+
+  addLog(`New hand dealt. Dealer: ${SEAT_NAME[SEATS[state.dealerIdx]]}. Bidding starts with ${SEAT_NAME[state.biddingOrder[0]]}.`);
+  render();
+  setHandMsg('');
+  processBiddingTurn();
+}
+
+// ---------------------------------------------------------------------
+// MELD CALCULATION
+// Each player melds only their OWN 12-card hand (partnership pinochle
+// rule — you don't combine hands). Team meld = sum of the two partners.
+// This meld table is the common "standard American" set; some kitchen-
+// table groups vary the four-of-a-kind values or add a 9-of-trump
+// ("dix") bonus — easy to tweak the numbers below if you play those.
+// ---------------------------------------------------------------------
+function calcMeld(hand, trump){
+  const detail = [];
+  let total = 0;
+  const count = (suit, rank) => hand.filter(c=>c.suit===suit && c.rank===rank).length;
+
+  // --- Run: A-10-K-Q-J of trump ---
+  const runCards = ['A','10','K','Q','J'];
+  const runCopies = Math.min(...runCards.map(r=>count(trump,r)));
+  if(runCopies >= 1){
+    const pts = runCopies===2 ? 1500 : 150;
+    total += pts;
+    detail.push({ label: `${runCopies===2?'Double run':'Run'} (A-10-K-Q-J of trump)`, points: pts });
+  }
+
+  // --- Marriages (K+Q same suit) ---
+  // A run already "uses up" one K/Q pair of trump, so we only count
+  // marriages beyond what the run already accounted for.
+  SUITS.forEach(suit=>{
+    let kCount = count(suit,'K');
+    let qCount = count(suit,'Q');
+    if(suit === trump && runCopies >= 1){
+      kCount -= runCopies; qCount -= runCopies;
+    }
+    const pairs = Math.max(0, Math.min(kCount,qCount));
+    if(pairs > 0){
+      const per = suit===trump ? 40 : 20;
+      total += per*pairs;
+      detail.push({ label: `${pairs>1?pairs+'x ':''}${suit===trump?'Royal marriage':'Marriage'} (${suit})`, points: per*pairs });
+    }
+  });
+
+  // --- Pinochle: J♦ + Q♠ ---
+  const jd = count('♦','J'), qs = count('♠','Q');
+  const pinPairs = Math.min(jd,qs);
+  if(pinPairs === 1){ total += 40; detail.push({ label:'Pinochle (J♦+Q♠)', points:40 }); }
+  if(pinPairs === 2){ total += 300; detail.push({ label:'Double pinochle', points:300 }); }
+
+  // --- Dix: 9 of trump ---
+  const dixCount = count(trump, '9');
+  if(dixCount === 1){ total += 10; detail.push({ label:'Dix (9 of trump)', points:10 }); }
+  if(dixCount === 2){ total += 20; detail.push({ label:'Double dix', points:20 }); }
+
+  // --- Four of a kind (one of each suit), single or double set ---
+  const quadTable = { A:[100,1000], K:[80,900], Q:[60,600], J:[40,400] };
+  Object.keys(quadTable).forEach(rank=>{
+    const copies = Math.min(...SUITS.map(s=>count(s,rank)));
+    if(copies >= 1){
+      const pts = copies===2 ? quadTable[rank][1] : quadTable[rank][0];
+      total += pts;
+      detail.push({ label: `${copies===2?'Double ':''}${rank==='A'?'Aces':rank==='K'?'Kings':rank==='Q'?'Queens':'Jacks'} around`, points: pts });
+    }
+  });
+
+  return { total, detail };
+}
+
+// ---------------------------------------------------------------------
+// MANUAL MELD VALIDATION (South only)
+// Checks an exact set of selected cards against the same combo values
+// used above in calcMeld — this is what makes manual melding "real"
+// rather than just cosmetic: if the selection doesn't exactly match a
+// known combo, it's rejected and the player has to try again, the same
+// way a mis-laid meld would get challenged at a real table.
+// ---------------------------------------------------------------------
+function rankAroundLabel(r){ return {A:'Aces', K:'Kings', Q:'Queens', J:'Jacks'}[r]; }
+
+function validateMeldSelection(cards, trump){
+  if(!cards.length) return { valid:false };
+
+  // Run / double run: exactly A-10-K-Q-J of trump, once or twice each
+  if(cards.every(c=>c.suit===trump)){
+    const need = ['A','10','K','Q','J'];
+    const countRank = r => cards.filter(c=>c.rank===r).length;
+    if(cards.length===5 && need.every(r=>countRank(r)===1)){
+      return { valid:true, label:'Run (A-10-K-Q-J of trump)', points:150 };
+    }
+    if(cards.length===10 && need.every(r=>countRank(r)===2)){
+      return { valid:true, label:'Double run', points:1500 };
+    }
+  }
+
+  // Marriage / double marriage: K+Q (or 2x K+Q) of the same suit
+  if(cards.length===2 && cards[0].suit===cards[1].suit){
+    const ranks = cards.map(c=>c.rank).sort().join(',');
+    if(ranks === 'K,Q'){
+      const suit = cards[0].suit;
+      return { valid:true, label: (suit===trump?'Royal marriage':'Marriage')+` (${suit})`, points: suit===trump?40:20 };
+    }
+  }
+  if(cards.length===4 && cards.every(c=>c.suit===cards[0].suit)){
+    const suit = cards[0].suit;
+    const kC = cards.filter(c=>c.rank==='K').length, qC = cards.filter(c=>c.rank==='Q').length;
+    if(kC===2 && qC===2){
+      const per = suit===trump ? 80 : 40;
+      return { valid:true, label:(suit===trump?'Double royal marriage':'Double marriage')+` (${suit})`, points: per };
+    }
+  }
+
+  // Pinochle / double pinochle: J♦ + Q♠
+  if(cards.length===2){
+    const jd = cards.filter(c=>c.suit==='♦' && c.rank==='J').length;
+    const qs = cards.filter(c=>c.suit==='♠' && c.rank==='Q').length;
+    if(jd===1 && qs===1) return { valid:true, label:'Pinochle (J♦+Q♠)', points:40 };
+  }
+  if(cards.length===4){
+    const jd = cards.filter(c=>c.suit==='♦' && c.rank==='J').length;
+    const qs = cards.filter(c=>c.suit==='♠' && c.rank==='Q').length;
+    if(jd===2 && qs===2) return { valid:true, label:'Double pinochle', points:300 };
+  }
+
+  // Dix / double dix: 9 of trump
+  if(cards.length===1 && cards[0].suit===trump && cards[0].rank==='9'){
+    return { valid:true, label:'Dix (9 of trump)', points:10 };
+  }
+  if(cards.length===2 && cards.every(c=>c.suit===trump && c.rank==='9')){
+    return { valid:true, label:'Double dix', points:20 };
+  }
+
+  // Around / double around: one (or two) of a rank in every suit
+  if(cards.length===4){
+    const rank = cards[0].rank;
+    if(['A','K','Q','J'].includes(rank) && cards.every(c=>c.rank===rank)){
+      const suitsSeen = new Set(cards.map(c=>c.suit));
+      if(suitsSeen.size===4){
+        const table = { A:100, K:80, Q:60, J:40 };
+        return { valid:true, label:`${rankAroundLabel(rank)} around`, points: table[rank] };
+      }
+    }
+  }
+  if(cards.length===8){
+    const rank = cards[0].rank;
+    if(['A','K','Q','J'].includes(rank) && cards.every(c=>c.rank===rank)){
+      const bySuit = {};
+      cards.forEach(c=> bySuit[c.suit] = (bySuit[c.suit]||0)+1);
+      if(Object.keys(bySuit).length===4 && Object.values(bySuit).every(v=>v===2)){
+        const table = { A:1000, K:900, Q:600, J:400 };
+        return { valid:true, label:`Double ${rankAroundLabel(rank)} around`, points: table[rank] };
+      }
+    }
+  }
+
+  return { valid:false };
+}
+
+// ---------------------------------------------------------------------
+// BIDDING
+// Simple auction: each player either passes or names a bid strictly
+// higher than the current one. If all four pass, the dealer takes the
+// default MIN_BID and automatically wins the round (house rule).
+// ---------------------------------------------------------------------
+function processBiddingTurn(){
+  if(state.phase !== 'bidding') return;
+
+  const activeSeats = SEATS.filter(s => !state.passedSeats.has(s));
+
+  // Ends the auction: only one bidder left standing with a live bid.
+  // (This replaces the old "3 consecutive passes" check — now that a
+  // passed player is skipped permanently rather than just for one turn,
+  // passesInRow could still be under 3 at the exact moment only one
+  // active bidder remains, which left the game re-prompting that lone
+  // bidder to bid against no one — the actual cause of the "nothing
+  // happens after bidding ends" freeze.)
+  if(state.bid > 0 && activeSeats.length <= 1){
+    finishBidding();
+    return;
+  }
+  // Everyone passed with no bid at all — house rule: the dealer takes
+  // the default MIN_BID and automatically wins the round, rather than
+  // redealing.
+  if(activeSeats.length === 0){
+    const dealerSeat = SEATS[state.dealerIdx];
+    state.bid = MIN_BID;
+    state.bidWinner = dealerSeat;
+    state.teamBidInfo[TEAM[dealerSeat]] = { amount: MIN_BID, bidder: SEAT_NAME[dealerSeat] };
+    addLog(`All four players passed. ${SEAT_NAME[dealerSeat]} (the dealer) takes the default bid of ${MIN_BID} and automatically wins the round.`);
+    finishBidding();
+    return;
+  }
+
+  // Skip anyone who's already passed this hand — they're out of the
+  // auction, not just sitting out a single turn.
+  while(state.passedSeats.has(state.biddingOrder[state.biddingTurn % 4])){
+    state.biddingTurn++;
+  }
+  const seat = state.biddingOrder[state.biddingTurn % 4];
+
+  highlightActiveSeat(seat);
+
+  if(seat === 'S'){
+    renderBidPanel();
+  } else {
+    pausableTimeout(()=> aiBid(seat), 700);
+  }
+}
+
+function aiBid(seat){
+  const hand = state.hands[seat];
+  const strength = estimateHandStrength(hand);
+  // Rough heuristic: convert hand strength into a "comfortable ceiling"
+  // bid, then decide whether to top the current bid or pass. strength
+  // tops out around ~130 regardless of the bid economy in play, so it's
+  // mapped proportionally onto the [MIN_BID, MAX_BID] range rather than
+  // added to a hardcoded base — that's what lets this keep working
+  // sensibly if MIN_BID/MAX_BID change.
+  const ceiling = MIN_BID + Math.round(strength * (MAX_BID - MIN_BID) / 130);
+  const nextBid = state.bid === 0 ? MIN_BID : state.bid + BID_STEP;
+
+  if(nextBid <= ceiling && nextBid <= MAX_BID){
+    placeBid(seat, nextBid);
+  } else {
+    placePass(seat);
+  }
+}
+
+function estimateHandStrength(hand){
+  // Quick-and-dirty scorer used only for AI bidding decisions: counts
+  // aces/tens heavily, gives credit for any suit that could be trump
+  // (i.e. where this hand has real length/strength), and adds a taste
+  // of likely meld by checking every suit as a hypothetical trump.
+  let best = 0;
+  SUITS.forEach(suit=>{
+    let score = 0;
+    hand.forEach(c=>{
+      if(c.suit === suit){
+        if(c.rank==='A') score += 8;
+        else if(c.rank==='10') score += 6;
+        else if(c.rank==='K') score += 4;
+        else if(c.rank==='Q') score += 3;
+        else if(c.rank==='J') score += 2;
+      } else {
+        if(c.rank==='A') score += 3; // off-suit aces are still worth something
+      }
+    });
+    const meld = calcMeld(hand, suit).total;
+    score += meld * 0.12;
+    if(score > best) best = score;
+  });
+  return best;
+}
+
+function bestTrumpFor(hand){
+  let best = SUITS[0], bestScore = -1;
+  SUITS.forEach(suit=>{
+    const meld = calcMeld(hand, suit).total;
+    const length = hand.filter(c=>c.suit===suit).length;
+    const score = meld + length*8;
+    if(score > bestScore){ bestScore = score; best = suit; }
+  });
+  return best;
+}
+
+function placeBid(seat, amount){
+  state.bid = amount;
+  state.bidWinner = seat;
+  state.passesInRow = 0;
+  state.bidHistory.push(`${SEAT_NAME[seat]}: ${amount}`);
+  state.teamBidInfo[TEAM[seat]] = { amount, bidder: SEAT_NAME[seat] };
+  addLog(`${SEAT_NAME[seat]} bids ${amount}.`);
+  showBubble(seat, `I bid ${amount}`, true);
+  state.biddingTurn++;
+  render();
+  pausableTimeout(processBiddingTurn, 350);
+}
+
+function placePass(seat){
+  state.passesInRow++;
+  state.passedSeats.add(seat);
+  state.bidHistory.push(`${SEAT_NAME[seat]}: Pass`);
+  addLog(`${SEAT_NAME[seat]} passes.`);
+  showBubble(seat, 'Pass', true);
+  state.biddingTurn++;
+  render();
+  pausableTimeout(processBiddingTurn, 350);
+}
+
+function renderBidPanel(){
+  const panel = document.getElementById('bidPanel');
+  panel.style.display = 'flex';
+  const next = state.bid === 0 ? MIN_BID : state.bid + BID_STEP;
+
+  let html = `<h3>What is your bid?</h3>`;
+  if(state.bid > 0){
+    html += `<div class="bidStatus">Current high bid: ${state.bid} (${SEAT_NAME[state.bidWinner]})</div>`;
+  }
+  // offer a small ladder of bid choices rather than a raw number input —
+  // faster to click through, and keeps bidding brisk. Increments scale
+  // with BID_STEP so they still make sense if that constant changes.
+  const options = [next, next + BID_STEP, next + BID_STEP*4, next + BID_STEP*9];
+  options.forEach(v=>{
+    if(v <= MAX_BID + BID_STEP) html += `<button onclick="humanBid(${v})">${v}</button>`;
+  });
+  html += `<button class="pass" onclick="humanPass()">Pass</button>`;
+  panel.innerHTML = html;
+}
+
+function humanBid(amount){
+  document.getElementById('bidPanel').style.display = 'none';
+  placeBid('S', amount);
+}
+function humanPass(){
+  document.getElementById('bidPanel').style.display = 'none';
+  placePass('S');
+}
+
+function finishBidding(){
+  document.getElementById('bidPanel').style.display = 'none';
+  hideAllBubbles();
+  clearActiveSeat();
+  addLog(`Bidding won by ${SEAT_NAME[state.bidWinner]} at ${state.bid}.`);
+  state.phase = 'trump';
+  render(); // refreshes the board immediately (e.g. the score table's Bid column) instead of waiting on whatever happens next
+
+  if(state.bidWinner === 'S'){
+    promptHumanTrumpChoice();
+  } else {
+    const trump = bestTrumpFor(state.hands[state.bidWinner]);
+    setTrump(trump);
+  }
+}
+
+function promptHumanTrumpChoice(){
+  const panel = document.getElementById('trumpPanel');
+  panel.style.display = 'flex';
+  const btns = SUITS.map(s=>`<button onclick="chooseTrump('${s}')">${s} ${suitName(s)}</button>`).join('');
+  panel.innerHTML = `<h3>You won the bid at ${state.bid}! Choose your trump suit:</h3>${btns}`;
+}
+function chooseTrump(suit){
+  document.getElementById('trumpPanel').style.display = 'none';
+  setTrump(suit);
+}
+function suitName(s){ return {'♠':'Spades','♥':'Hearts','♦':'Diamonds','♣':'Clubs'}[s]; }
+
+function setTrump(suit){
+  state.trump = suit;
+  addLog(`Trump is ${suit} ${suitName(suit)}.`);
+  const isRed = RED_SUITS.includes(suit);
+  const color = isRed ? '#b3261e' : '#000000';
+  document.getElementById('trumpBadge').innerHTML = `<span style="font-weight:400;">Trump:</span> <span style="color:${color}">${suit} ${suitName(suit)}</span>`;
+  startPassingPhase();
+}
+
+// ---------------------------------------------------------------------
+// CARD PASSING — sequential declarer/partner exchange
+// House-rule addition: right after trump is named, the declarer's
+// partner passes PASS_COUNT cards to the declarer FIRST. The declarer
+// then reviews their now-larger hand and passes PASS_COUNT cards back.
+// This works the same regardless of which of the four seats ended up
+// declarer — "partner" and "declarer" are roles computed from
+// state.bidWinner, not hardcoded to any particular seat.
+// ---------------------------------------------------------------------
+function aiChoosePassCards(seat, trump, favorHigh=false){
+  // Lower score = safer to give away: avoid trump, avoid aces/tens,
+  // prefer low card-point junk. favorHigh flips that — used when a
+  // partner is helping their declarer (trump/high cards first), while
+  // the declarer discarding back to their partner always favors keeping
+  // their own strength (favorHigh=false), regardless of who's declarer.
+  const scored = state.hands[seat].map(c=>({
+    c,
+    score: (c.suit===trump ? 1000:0) + (c.rank==='A' ? 300:0) + (c.rank==='10' ? 100:0) + RANK_POINTS[c.rank]*5
+  }));
+  scored.sort((a,b)=> favorHigh ? (b.score-a.score) : (a.score-b.score));
+  return scored.slice(0, PASS_COUNT).map(x=>x.c);
+}
+
+function startPassingPhase(){
+  state.phase = 'passing';
+  state.passSelection = [];
+  state.passDeclarer = state.bidWinner;
+  state.passPartner = PARTNER[state.passDeclarer];
+  state.passStage = 'toDeclarer';
+  state.passStageOneCards = [];
+  state.passStageTwoCards = [];
+
+  addLog(`${SEAT_NAME[state.passPartner]} will pass ${PASS_COUNT} cards to ${SEAT_NAME[state.passDeclarer]} (the declarer), who will review their hand and pass ${PASS_COUNT} back.`);
+  render();
+  setHandMsg('');
+
+  if(state.passPartner === 'S'){
+    // You're the partner — choose what to send to the declarer
+    renderPassPanel();
+  } else {
+    // AI partner always favors helping the declarer with trump/high cards
+    const cards = aiChoosePassCards(state.passPartner, state.trump, true);
+    givePartnerCardsToDeclarer(cards);
+  }
+}
+
+function givePartnerCardsToDeclarer(cards){
+  const { passPartner, passDeclarer } = state;
+  const ids = cards.map(c=>c.id);
+  state.hands[passPartner] = state.hands[passPartner].filter(c=>!ids.includes(c.id));
+  state.hands[passDeclarer] = sortHand(state.hands[passDeclarer].concat(cards));
+  state.passStageOneCards = cards;
+  addLog(`${SEAT_NAME[passPartner]} passes ${cards.map(c=>c.rank+c.suit).join(', ')} to ${SEAT_NAME[passDeclarer]}.`);
+  showBubble(passPartner, 'Here you go!');
+
+  state.passStage = 'toPartner';
+  state.passSelection = [];
+  render();
+
+  if(passDeclarer === 'S'){
+    // You're the declarer — review your (now bigger) hand and choose
+    // what to send back
+    renderPassPanel();
+  } else {
+    // AI declarer discards its own weakest PASS_COUNT cards from the
+    // full hand it's now holding (reusing aiChoosePassCards works fine
+    // here since it just operates on whatever's currently in the hand)
+    const cards = aiChoosePassCards(passDeclarer, state.trump, false);
+    giveDeclarerCardsToPartner(cards);
+  }
+}
+
+function giveDeclarerCardsToPartner(cards){
+  const { passDeclarer, passPartner } = state;
+  const ids = cards.map(c=>c.id);
+  state.hands[passDeclarer] = state.hands[passDeclarer].filter(c=>!ids.includes(c.id));
+  state.hands[passPartner] = sortHand(state.hands[passPartner].concat(cards));
+  state.passStageTwoCards = cards;
+  addLog(`${SEAT_NAME[passDeclarer]} passes ${cards.map(c=>c.rank+c.suit).join(', ')} back to ${SEAT_NAME[passPartner]}.`);
+  showBubble(passDeclarer, 'Here you go!');
+
+  document.getElementById('passPanel').style.display = 'none';
+  render();
+
+  // Only South cares about a written recap — if neither the declarer nor
+  // the partner is South (the other team won the bid), just move on.
+  if(state.passDeclarer === 'S' || state.passPartner === 'S'){
+    const sentText = state.passStageOneCards.map(c=>c.rank+c.suit).join(', ');
+    const backText = state.passStageTwoCards.map(c=>c.rank+c.suit).join(', ');
+    showModal('Cards Exchanged', `
+      <p>${SEAT_NAME[state.passPartner]} passed <b>${sentText}</b> to ${SEAT_NAME[state.passDeclarer]}.</p>
+      <p>${SEAT_NAME[state.passDeclarer]} passed <b>${backText}</b> back to ${SEAT_NAME[state.passPartner]}.</p>
+    `, `<button onclick="closeModal(); startHumanMelding();">Continue To Melding</button>`, false);
+  } else {
+    startHumanMelding();
+  }
+}
+
+function togglePassSelection(cardId){
+  const idx = state.passSelection.indexOf(cardId);
+  if(idx >= 0){
+    state.passSelection.splice(idx,1);
+  } else {
+    if(state.passSelection.length >= PASS_COUNT) return; // must deselect one before adding another
+    state.passSelection.push(cardId);
+  }
+  render();
+  renderPassPanel();
+}
+
+function renderPassPanel(){
+  const panel = document.getElementById('passPanel');
+  panel.style.display = 'flex';
+  const n = state.passSelection.length;
+  const isReviewStage = state.passStage === 'toPartner';
+  const targetSeat = isReviewStage ? state.passPartner : state.passDeclarer;
+  const verb = isReviewStage ? 'pass back' : 'pass';
+  panel.innerHTML = `
+    <div class="bidStatus">Select ${PASS_COUNT} cards to ${verb} to ${SEAT_NAME[targetSeat]} (${n}/${PASS_COUNT} selected)</div>
+    <button ${n !== PASS_COUNT ? 'disabled' : ''} onclick="confirmHumanPassSelection()">Pass Selected Cards</button>
+  `;
+}
+
+function confirmHumanPassSelection(){
+  const actingSeat = state.passStage === 'toPartner' ? state.passDeclarer : state.passPartner;
+  const chosen = state.hands[actingSeat].filter(c => state.passSelection.includes(c.id));
+  state.passSelection = [];
+  document.getElementById('passPanel').style.display = 'none';
+
+  if(state.passStage === 'toPartner'){
+    giveDeclarerCardsToPartner(chosen);
+  } else {
+    givePartnerCardsToDeclarer(chosen);
+  }
+}
+
+// ---------------------------------------------------------------------
+// MELD PHASE
+// South melds manually: select cards from your hand and declare them
+// as a group; the group only scores if it exactly matches a real combo
+// (see validateMeldSelection). North/East/West still meld automatically
+// since they're AI and there's nothing to click for them.
+// ---------------------------------------------------------------------
+function startHumanMelding(){
+  state.phase = 'humanMeld';
+  state.humanMeldSelection = [];
+  state.humanMeldUsed = new Set();
+  state.humanMeldGroups = [];
+  state.humanMeldTotal = 0;
+  state.meldError = '';
+
+  if(state.aiCreatesMelds){
+    // Options setting: let the AI declare your meld automatically instead
+    // of melding by hand, using the same calcMeld() logic as Bill/Mike/Lisa.
+    const { total, detail } = calcMeld(state.hands.S, state.trump);
+    state.melds.S = total;
+    state.meldDetail.S = detail;
+    state.humanMeldTotal = total;
+    addLog(`AI declares your meld: ${total} points.`);
+    render();
+    finalizeMeldPhase();
+    return;
+  }
+
+  render();
+  setHandMsg('');
+  renderMeldPanel();
+}
+
+function toggleMeldSelection(cardId){
+  const idx = state.humanMeldSelection.indexOf(cardId);
+  if(idx >= 0) state.humanMeldSelection.splice(idx,1);
+  else state.humanMeldSelection.push(cardId);
+  state.meldError = '';
+  render();
+  renderMeldPanel();
+}
+
+// Groups a meld label into its broader "family" for reuse checking — e.g.
+// "Marriage (♣)", "Royal marriage (♠)", and "Double marriage (♦)" are all
+// family "marriage". Cards ARE allowed to be reused across DIFFERENT
+// families (a king counts toward both a marriage and kings-around), but
+// not reused within the SAME family — that's what let one King of Clubs
+// pair with two different Queens of Clubs and get declared as two
+// separate marriages, when only one King actually exists to marry.
+function meldFamily(label){
+  return label.toLowerCase()
+    .replace(/^double\s+/, '')
+    .replace(/^royal\s+/, '')
+    .replace(/\s*\([^)]*\)\s*$/, '')
+    .trim();
+}
+
+// Returns the conflicting already-declared group if any of `cardIds`
+// is already used in a group of the same meld family, else null.
+function findMeldFamilyConflict(label, cardIds, groups){
+  const family = meldFamily(label);
+  return groups.find(g => meldFamily(g.label) === family && g.cardIds.some(id => cardIds.includes(id))) || null;
+}
+
+function declareMeldGroup(){
+  const cards = state.hands.S.filter(c => state.humanMeldSelection.includes(c.id));
+  const result = validateMeldSelection(cards, state.trump);
+  if(!result.valid){
+    // Shown INSIDE the panel itself now, not via handMsg — handMsg sits
+    // below the panel in the felt's flex column, and with the panel this
+    // size there usually wasn't room left to actually see it (felt clips
+    // overflow rather than scrolling), so the feedback was invisible.
+    state.meldError = "That's not a valid meld — check the suits/ranks and try again.";
+    renderMeldPanel();
+    return;
+  }
+  // Card reuse across DIFFERENT meld families is allowed (e.g. a king in
+  // a marriage can also count toward kings-around), but reusing a card
+  // within the SAME family isn't a real second meld — that was the gap
+  // letting one King of Clubs pair with two different Queens of Clubs and
+  // score as two separate marriages, or a single J♦+Q♠ pair score as
+  // "Pinochle" twice.
+  const newIds = cards.map(c=>c.id);
+  const conflict = findMeldFamilyConflict(result.label, newIds, state.humanMeldGroups);
+  if(conflict){
+    state.meldError = `Those cards are already counted in your "${conflict.label}" declaration — a card can't be reused for a second ${meldFamily(result.label)}.`;
+    renderMeldPanel();
+    return;
+  }
+  state.meldError = '';
+  cards.forEach(c => state.humanMeldUsed.add(c.id));
+  state.humanMeldGroups.push({ label: result.label, points: result.points, cardIds: cards.map(c=>c.id) });
+  state.humanMeldTotal += result.points;
+  state.humanMeldSelection = [];
+  addLog(`You declared ${result.label} for ${result.points} points.`);
+  render();
+  renderMeldPanel();
+}
+
+function clearMeldSelection(){
+  state.humanMeldSelection = [];
+  state.meldError = '';
+  render();
+  renderMeldPanel();
+}
+
+function finishHumanMelding(){
+  // If cards are still selected but never explicitly Declared, try to
+  // save them automatically rather than silently losing the points —
+  // Declare is for confirming multiple separate groups in one turn, it
+  // shouldn't be a trap if you forget it on the last one.
+  if(state.humanMeldSelection.length){
+    const cards = state.hands.S.filter(c => state.humanMeldSelection.includes(c.id));
+    const result = validateMeldSelection(cards, state.trump);
+    const conflict = findMeldFamilyConflict(result.label, cards.map(c=>c.id), state.humanMeldGroups);
+    if(result.valid && !conflict){
+      cards.forEach(c => state.humanMeldUsed.add(c.id));
+      state.humanMeldGroups.push({ label: result.label, points: result.points, cardIds: cards.map(c=>c.id) });
+      state.humanMeldTotal += result.points;
+      addLog(`You declared ${result.label} for ${result.points} points.`);
+    }
+    state.humanMeldSelection = [];
+  }
+  state.melds.S = state.humanMeldTotal;
+  state.meldDetail.S = state.humanMeldGroups.length
+    ? state.humanMeldGroups.map(g => ({ label: g.label, points: g.points }))
+    : [];
+  document.getElementById('meldPanel').style.display = 'none';
+  finalizeMeldPhase();
+}
+
+function renderMeldPanel(){
+  const panel = document.getElementById('meldPanel');
+  panel.style.display = 'flex';
+  const groupsHtml = state.humanMeldGroups.length
+    ? state.humanMeldGroups.map(g => `<div>${g.label}: +${g.points}</div>`).join('')
+    : '<div><i>No melds declared yet</i></div>';
+  const selCount = state.humanMeldSelection.length;
+  const errorHtml = state.meldError ? `<div style="color:var(--red);font-weight:600;width:100%;text-align:center;margin-bottom:4px;">${state.meldError}</div>` : '';
+  panel.innerHTML = `
+    <div class="meldHelp">Select one meld and click Declare Selected.<br>Click Done Melding when no more selections are available.</div>
+    <div class="bidStatus">Running meld total: <b>${state.humanMeldTotal}</b></div>
+    ${errorHtml}
+    <div class="meldGroupList">${groupsHtml}</div>
+    <div style="width:100%; display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+      <button onclick="declareMeldGroup()" ${selCount===0 ? 'disabled' : ''}>Declare Selected (${selCount})</button>
+      <button onclick="clearMeldSelection()" ${selCount===0 ? 'disabled' : ''}>Clear Selection</button>
+      <button onclick="finishHumanMelding()">Done Melding</button>
+    </div>
+  `;
+}
+
+function finalizeMeldPhase(){
+  state.phase = 'meld';
+  // South's meld was already set by finishHumanMelding(); the other
+  // three seats are computer players, so their melds are just calculated.
+  ['N','E','W'].forEach(seat=>{
+    const { total, detail } = calcMeld(state.hands[seat], state.trump);
+    state.melds[seat] = total;
+    state.meldDetail[seat] = detail;
+  });
+
+  render();
+  addLog(`Melds — Your Team: ${state.melds.N + state.melds.S}, Opponents: ${state.melds.E + state.melds.W}.`);
+  showMeldSummary('NS');
+}
+
+// Builds the Type/Player/Points breakdown for one team and shows it, with
+// a button to flip to the other team's — matches the two-screen layout
+// from the reference (a "your melds" view and an "opponent melds" view
+// rather than one combined table).
+// Wraps any suit symbols in a string with colored spans, matching the
+// cards' red/black scheme — used for meld labels like "Marriage (♥)" or
+// "Pinochle (J♦+Q♣)" which otherwise show as plain uncolored text.
+function colorizeSuits(text){
+  return text
+    .replace(/♥/g, '<span style="color:#b3261e">♥</span>')
+    .replace(/♦/g, '<span style="color:#b3261e">♦</span>')
+    .replace(/♠/g, '<span style="color:#000">♠</span>')
+    .replace(/♣/g, '<span style="color:#000">♣</span>');
+}
+
+function showMeldSummary(team){
+  const seatsInTeam = team === 'NS' ? ['S','N'] : ['W','E'];
+  let rows = '';
+  let total = 0;
+  seatsInTeam.forEach(seat=>{
+    (state.meldDetail[seat] || []).forEach(d=>{
+      rows += `<tr><td>${colorizeSuits(d.label)}</td><td style="text-align:center;">${SEAT_NAME[seat]}</td><td style="text-align:center;">${d.points}</td></tr>`;
+      total += d.points;
+    });
+  });
+  if(!rows) rows = `<tr><td colspan="3" style="text-align:center;"><i>No melds</i></td></tr>`;
+
+  const body = `
+    <table style="width:100%;border-collapse:collapse;">
+      <tr><th style="border:1px solid #999;">Type</th><th style="border:1px solid #999;">Player</th><th style="border:1px solid #999;">Points</th></tr>
+      ${rows.replace(/<td>/g,'<td style="border:1px solid #999;">')}
+      <tr><td colspan="2" style="font-weight:700;text-align:center;border:1px solid #999;padding-top:8px;">Total points this round</td><td style="text-align:center;font-weight:700;border:1px solid #999;">${total}</td></tr>
+    </table>
+  `;
+  const otherTeam = team === 'NS' ? 'EW' : 'NS';
+  const toggleLabel = team === 'NS' ? 'Opponent Melds »' : '« Your Team Melds';
+  const title = team === 'NS' ? 'Your Team Melds' : 'Opponent Melds';
+  showModal(title, body, `
+    <button onclick="showMeldSummary('${otherTeam}')">${toggleLabel}</button>
+    <button onclick="closeModal(); startPlay();">Start Play</button>
+  `, false);
+}
+
+// ---------------------------------------------------------------------
+// TRICK PLAY
+// Simplified follow-rule: must follow suit if able; if void in the led
+// suit, must play trump if holding any; otherwise anything goes. (Full
+// "must head the trick when possible" over-trumping rules exist in some
+// house variants — left out here to keep the AI's decisions legible.)
+// ---------------------------------------------------------------------
+function startPlay(){
+  state.phase = 'play';
+  state.trick = {};
+  state.trickLeader = state.bidWinner; // bid winner leads the first trick
+  addLog(`${SEAT_NAME[state.trickLeader]} leads the first trick.`);
+  render();
+  advanceTrick();
+}
+
+function legalPlays(seat, leadSuit){
+  const hand = state.hands[seat];
+  if(!leadSuit) return hand.slice();
+  const followers = hand.filter(c=>c.suit === leadSuit);
+  if(followers.length) return followers;
+  const trumps = hand.filter(c=>c.suit === state.trump);
+  if(trumps.length){
+    // Relaxed per request: if EVERY trump card happens to be a counter
+    // (A/10/K), don't force one to be given up — open up the whole hand
+    // instead. If there's at least one non-counter trump available, the
+    // normal must-trump rule still applies (returning all trump options
+    // still lets the player freely pick the non-counter one).
+    const hasNonCounterTrump = trumps.some(c => !COUNTER_RANKS.includes(c.rank));
+    if(hasNonCounterTrump) return trumps;
+    return hand.slice();
+  }
+  return hand.slice();
+}
+
+function advanceTrick(){
+  const playedSeats = Object.keys(state.trick);
+  if(playedSeats.length === 4){
+    resolveTrick();
+    return;
+  }
+  // seat order for this trick starts at the leader
+  const order = rotateFrom(state.trickLeader);
+  const seat = order.find(s => !state.trick[s]);
+  highlightActiveSeat(seat);
+
+  if(seat === 'S'){
+    render(); // enables clickable cards for the human
+  } else {
+    // Guarded: if this seat somehow already has a card in the trick by
+    // the time this fires (a stale duplicate schedule), skip it rather
+    // than call aiPlay again — that was the actual cause of the freeze
+    // reported after the first full hand: a second call landing on an
+    // already-empty hand crashed deep inside the AI's card-choice logic,
+    // which silently killed the setTimeout chain that drives trick play.
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 650);
+  }
+}
+
+function rotateFrom(seat){
+  const i = SEATS.indexOf(seat);
+  return [0,1,2,3].map(k => SEATS[(i+k)%4]);
+}
+
+function leadSuitOfTrick(){
+  if(!state.trickLeader || !state.trick[state.trickLeader]) return null;
+  return state.trick[state.trickLeader].suit;
+}
+
+function aiPlay(seat){
+  const leadSuit = leadSuitOfTrick();
+  const options = legalPlays(seat, leadSuit);
+  const card = chooseAiCard(seat, options, leadSuit);
+  playCard(seat, card);
+}
+
+function chooseAiCard(seat, options, leadSuit){
+  // Basic but sensible trick-play heuristic:
+  //  - if leading: lead a strong card in a suit we're long/strong in
+  //  - if following and can win cheaply: win as cheaply as possible
+  //  - if can't/shouldn't win: throw the lowest-value card
+  const trump = state.trump;
+  const trickCardsSoFar = Object.values(state.trick);
+
+  if(!leadSuit){
+    // Leading: prefer trump if we have strong trump length, else our
+    // best off-suit ace, else just the highest card we hold.
+    const trumps = options.filter(c=>c.suit===trump);
+    if(trumps.length >= 3){
+      return trumps.sort((a,b)=>RANK_STRENGTH[b.rank]-RANK_STRENGTH[a.rank])[0];
+    }
+    const aces = options.filter(c=>c.rank==='A');
+    if(aces.length) return aces[0];
+    return [...options].sort((a,b)=>RANK_STRENGTH[b.rank]-RANK_STRENGTH[a.rank])[0];
+  }
+
+  // Following: figure out what's currently winning the trick
+  const currentWinner = currentTrickWinner();
+  const partnerSeat = PARTNER[seat];
+  const partnerWinning = currentWinner === partnerSeat;
+
+  const winningCandidates = options.filter(c => beatsCurrentTrick(c, leadSuit));
+  // True only if this player is the last of the four to act this trick —
+  // otherwise whoever's "currently winning" could still get overtaken by
+  // someone yet to play, and a counter thrown now could end up captured
+  // by whichever team actually wins, not necessarily the declarer's.
+  const isLastToAct = Object.keys(state.trick).length === 3;
+
+  // NOTE: there used to be a special-case rule here that deliberately threw
+  // a counter whenever this seat was void in both the led suit and trump,
+  // the trick's current winner was the bid winner, and this was the last
+  // play of the trick. The intent (per the original comment) was to feed
+  // a counter to OUR OWN PARTNER when their win was already locked in —
+  // but the condition checked "is the bid winner" rather than "is our
+  // partner", so it also fired whenever an OPPONENT happened to be the
+  // declarer, handing them a free counter for no reason even when a
+  // harmless card was available. Removed: the partnerWinning branch right
+  // below already covers the intended case (throwing our best counter
+  // when partner has the trick locked up), and when an opponent is
+  // winning instead, falling through to the normal "can't win — dump the
+  // lowest-value card" logic further down is the correct play.
+
+  if(partnerWinning){
+    // Partner's already winning the trick — the right move is to unload
+    // counters (A/10/K) onto it, not dump our worst card. How aggressively
+    // depends on whether anyone left to act could still steal the trick:
+    //  - last to act: the win is locked in, so throw our BEST counter.
+    //  - still players behind us: some risk of being overtaken, so throw
+    //    a counter if we have one (banking points is still usually right)
+    //    but favor a lower-ranked counter over our single best one.
+    const counters = options.filter(c => COUNTER_RANKS.includes(c.rank));
+    if(counters.length){
+      const byStrengthDesc = [...counters].sort((a,b)=>RANK_STRENGTH[b.rank]-RANK_STRENGTH[a.rank]);
+      const byStrengthAsc = [...counters].sort((a,b)=>RANK_STRENGTH[a.rank]-RANK_STRENGTH[b.rank]);
+      return isLastToAct ? byStrengthDesc[0] : byStrengthAsc[0];
+    }
+    // no counters available — just throw our lowest-value card
+    return [...options].sort((a,b)=>RANK_POINTS[a.rank]-RANK_POINTS[b.rank])[0];
+  }
+  if(winningCandidates.length){
+    // win as cheaply as possible
+    return winningCandidates.sort((a,b)=>{
+      if(a.suit===trump && b.suit!==trump) return -1; // prefer non-trump win when tied
+      return RANK_STRENGTH[a.rank]-RANK_STRENGTH[b.rank];
+    })[0];
+  }
+  // can't win — dump the lowest point card, preferably off-suit if we
+  // couldn't follow anyway
+  return [...options].sort((a,b)=>RANK_POINTS[a.rank]-RANK_POINTS[b.rank])[0];
+}
+
+function beatsCurrentTrick(card, leadSuit){
+  const trump = state.trump;
+  const played = Object.values(state.trick);
+  if(played.length === 0) return true;
+  let bestSoFar = null;
+  Object.keys(state.trick).forEach(s=>{
+    const c = state.trick[s];
+    if(!bestSoFar) { bestSoFar = c; return; }
+    if(cardBeats(c, bestSoFar, leadSuit, trump)) bestSoFar = c;
+  });
+  return cardBeats(card, bestSoFar, leadSuit, trump);
+}
+
+function cardBeats(c, current, leadSuit, trump){
+  const cTrump = c.suit === trump, curTrump = current.suit === trump;
+  if(cTrump && !curTrump) return true;
+  if(!cTrump && curTrump) return false;
+  if(cTrump && curTrump) return RANK_STRENGTH[c.rank] > RANK_STRENGTH[current.rank];
+  // neither is trump
+  if(c.suit === leadSuit && current.suit === leadSuit) return RANK_STRENGTH[c.rank] > RANK_STRENGTH[current.rank];
+  if(c.suit === leadSuit) return true;
+  return false;
+}
+
+function currentTrickWinner(){
+  const leadSuit = leadSuitOfTrick();
+  const seats = Object.keys(state.trick);
+  if(!seats.length) return null;
+  let winner = seats[0];
+  seats.forEach(s=>{
+    if(cardBeats(state.trick[s], state.trick[winner], leadSuit, state.trump)) winner = s;
+  });
+  return winner;
+}
+
+function playCard(seat, card){
+  // Defensive guard: a missing card or a seat that's already played this
+  // trick means something upstream scheduled a duplicate/stale call —
+  // bail out quietly instead of crashing deep in the trick-resolution
+  // logic (this pairs with the guard in advanceTrick's AI scheduling).
+  if(!card || state.trick[seat]) return;
+  state.hands[seat] = state.hands[seat].filter(c=>c.id !== card.id);
+  state.trick[seat] = card;
+  state.cardsPlayedCount++;
+  addLog(`${SEAT_NAME[seat]} plays ${card.rank}${card.suit}.`);
+  render();
+  pausableTimeout(advanceTrick, 500);
+}
+
+function resolveTrick(){
+  const winner = currentTrickWinner();
+  let pts = 0;
+  Object.values(state.trick).forEach(c => pts += RANK_POINTS[c.rank]);
+  const isLastTrick = state.cardsPlayedCount === 48;
+  if(isLastTrick) pts += 10; // last trick bonus
+
+  const team = TEAM[winner];
+  state.pointsThisHand[team] += pts;
+  state.tricksTaken[winner]++;
+
+  // House rule tracking: did the NON-declaring team just win a trick with
+  // a counter (A/10/K) in it? Only matters once per hand — no need to
+  // keep checking after it's already true.
+  const nonDeclarerTeam = TEAM[state.bidWinner] === 'NS' ? 'EW' : 'NS';
+  if(team === nonDeclarerTeam && !state.nonDeclarerWonCounterTrick){
+    const hasCounter = Object.values(state.trick).some(c => COUNTER_RANKS.includes(c.rank));
+    if(hasCounter) state.nonDeclarerWonCounterTrick = true;
+  }
+
+  addLog(`${SEAT_NAME[winner]} wins the trick (+${pts} pts)${isLastTrick ? ' — last trick bonus included' : ''}.`);
+
+  setHandMsg(`${SEAT_NAME[winner]} takes the trick (+${pts}).`);
+  render();
+
+  pausableTimeout(()=>{
+    state.trick = {};
+    state.trickLeader = winner;
+    clearTrickArea();
+    if(isLastTrick){
+      finishHand();
+    } else {
+      advanceTrick();
+    }
+  }, 900);
+}
+
+// ---------------------------------------------------------------------
+// SCORING / HAND END
+// ---------------------------------------------------------------------
+function finishHand(){
+  state.phase = 'scoring';
+  const bidTeam = TEAM[state.bidWinner];
+  const otherTeam = bidTeam === 'NS' ? 'EW' : 'NS';
+
+  const meldByTeam = { NS: state.melds.N + state.melds.S, EW: state.melds.E + state.melds.W };
+  const trickByTeam = { NS: state.pointsThisHand.NS, EW: state.pointsThisHand.EW };
+
+  // House rule: the non-declaring team forfeits their meld for the hand
+  // if they never won a trick containing a counter (A/10/K). The raw
+  // meldByTeam value still gets DISPLAYED (so it's clear what they
+  // actually melded), but the forfeited amount is what counts toward
+  // the round score.
+  const meldForfeited = !state.nonDeclarerWonCounterTrick;
+  const effectiveMeldByTeam = { ...meldByTeam };
+  if(meldForfeited) effectiveMeldByTeam[otherTeam] = 0;
+
+  // "Round Score" here is the raw meld+trick total, regardless of whether
+  // the bidding team actually made their contract — that's what the
+  // reference layout shows in the This Round table (previously labeled
+  // "Total Score", renamed per request).
+  const roundRawByTeam = { NS: effectiveMeldByTeam.NS + trickByTeam.NS, EW: effectiveMeldByTeam.EW + trickByTeam.EW };
+  const bidByTeam = { NS: 0, EW: 0 };
+  bidByTeam[bidTeam] = state.bid;
+
+  const madeIt = roundRawByTeam[bidTeam] >= state.bid;
+
+  const previousScores = { NS: state.scores.NS, EW: state.scores.EW };
+  // This is the actual signed change applied to cumulative score — differs
+  // from roundRawByTeam for the bidding team when they're set (they lose
+  // the bid amount instead of scoring their raw meld+tricks).
+  const netChangeByTeam = { NS: 0, EW: 0 };
+  netChangeByTeam[bidTeam] = madeIt ? roundRawByTeam[bidTeam] : -state.bid;
+  netChangeByTeam[otherTeam] = roundRawByTeam[otherTeam];
+
+  state.scores.NS += netChangeByTeam.NS;
+  state.scores.EW += netChangeByTeam.EW;
+
+  if(meldForfeited && meldByTeam[otherTeam] > 0){
+    addLog(`${getTeamLabel(otherTeam)} forfeited their meld (${meldByTeam[otherTeam]} pts) — they never won a trick with a counter (A/10/K).`);
+  }
+  addLog(`Hand result — Your Team: ${state.scores.NS}, Opponents: ${state.scores.EW}.`);
+  render();
+
+  const gameOver = state.scores.NS >= GAME_TARGET || state.scores.EW >= GAME_TARGET;
+  const winnerTeam = state.scores.NS > state.scores.EW ? 'NS' : 'EW';
+  const heading = gameOver
+    ? `*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`
+    : 'Round Complete';
+  const btnLabel = gameOver ? 'Start a new game' : 'Deal The Next Round';
+
+  const row = (label, ns, ew) =>
+    `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
+  const forfeitNote = (meldForfeited && meldByTeam[otherTeam] > 0)
+    ? `<div style="text-align:center;font-size:.78rem;color:#7a1010;margin-bottom:4px;">${getTeamLabel(otherTeam)} forfeited their meld (${meldByTeam[otherTeam]} pts) — no trick with a counter (A/10/K) won.</div>`
+    : '';
+
+  const panel = document.getElementById('roundPanel');
+  panel.style.display = 'flex';
+  panel.innerHTML = `
+    <h3 style="${gameOver ? 'color:red;font-size:1.1rem;' : ''}" class="${gameOver ? 'win-blink' : ''}">${heading}</h3>
+    ${forfeitNote}
+    <table>
+      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+      ${row('Bid', bidByTeam.NS, bidByTeam.EW)}
+      ${row('Meld Score', meldByTeam.NS, meldByTeam.EW)}
+      ${row('Trick Score', trickByTeam.NS, trickByTeam.EW)}
+      ${row('Round Score', roundRawByTeam.NS, roundRawByTeam.EW)}
+    </table>
+    <table>
+      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+      ${row('Round Score', netChangeByTeam.NS, netChangeByTeam.EW)}
+      ${row('Previous Score', previousScores.NS, previousScores.EW)}
+      ${row('Total Score', state.scores.NS, state.scores.EW)}
+    </table>
+    <button onclick="document.getElementById('roundPanel').style.display='none'; ${gameOver ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>
+  `;
+}
+
+function nextHand(){
+  // Defensive check: finishHand() already checks for game-over using the
+  // scores it just computed, but this is a backstop that guarantees a
+  // new hand can never get dealt once a team has actually reached
+  // GAME_TARGET, no matter how that state came about.
+  if(state.scores.NS >= GAME_TARGET || state.scores.EW >= GAME_TARGET){
+    showGameOverPanel();
+    return;
+  }
+  state.dealerIdx = (state.dealerIdx + 1) % 4;
+  dealNewHand();
+}
+
+function showGameOverPanel(){
+  const winnerTeam = state.scores.NS > state.scores.EW ? 'NS' : 'EW';
+  const panel = document.getElementById('roundPanel');
+  panel.style.display = 'flex';
+  panel.innerHTML = `
+    <h3 style="color:red;font-size:1.1rem;" class="win-blink">*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***</h3>
+    <table>
+      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+      <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
+    </table>
+    <button onclick="document.getElementById('roundPanel').style.display='none'; newGame();">Start a new game</button>
+  `;
+}
+
+function newGame(){
+  state.scores = { NS:0, EW:0 };
+  state.dealerIdx = 0;
+  log = [];
+  document.getElementById('logPanel').innerHTML = '';
+  dealNewHand();
+}
+
+// ---------------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------------
+function cardHtml(card, mini){
+  const isRed = RED_SUITS.includes(card.suit);
+  return `<div class="card ${isRed?'red':''} ${mini?'mini':''}">
+    <div class="corner">${card.rank}${card.suit}</div>
+    <div class="center-suit">${card.suit}</div>
+    <div class="corner corner-bottom" style="align-self:flex-end;">${card.rank}${card.suit}</div>
+  </div>`;
+}
+
+// Compact "rank+suit as colored text" display for the View All Cards
+// testing option — not the full card graphic, just enough to identify
+// each card at a glance, packed into a fixed-column grid (so a whole
+// 12-card hand fits in a handful of rows instead of one long column).
+function cardTextGridHtml(hand, columns){
+  const cells = hand.map(c=>{
+    const isRed = RED_SUITS.includes(c.suit);
+    return `<span style="color:${isRed ? '#b3261e' : '#000'};">${c.rank}${c.suit}</span>`;
+  }).join('');
+  return `<div style="display:grid; grid-template-columns:repeat(${columns},1fr); gap:5px 8px; font-size:1.15rem; font-weight:700; text-align:center; background:#fffdf8; border:1px solid #999; border-radius:6px; padding:6px; width:100%;">${cells}</div>`;
+}
+
+function render(){
+  updateScoreTable();
+
+  // Combined Declarer/Dealer + Tricks line — one line per seat instead of
+  // two, which is what actually fixed "Declarer" getting clipped: it cut
+  // the vertical space each seat needs rather than just hoping the row
+  // was tall enough.
+  const declarerPhases = ['trump','passing','humanMeld','meld','play','scoring'];
+  const showDeclarer = declarerPhases.includes(state.phase);
+  const showTricks = state.phase==='play' || state.phase==='scoring';
+  const dealerSeat = SEATS[state.dealerIdx];
+  SEATS.forEach(seat=>{
+    let tag = '';
+    if(showDeclarer && state.bidWinner === seat) tag = 'Declarer';
+    else if(seat === dealerSeat) tag = 'Dealer';
+    const tagHtml = tag ? `<span class="tag">${tag}</span>` : '';
+    const tricksHtml = showTricks ? `<span class="tricks">Tricks: ${state.tricksTaken[seat]}</span>` : '';
+    const sep = (tagHtml && tricksHtml) ? `<span class="sep">•</span>` : '';
+    document.getElementById(`meta-${seat}`).innerHTML = tagHtml + sep + tricksHtml;
+  });
+
+  // The trick-in-progress grid only has content during play — outside that
+  // phase it was just an empty placeholder still claiming its full height,
+  // which is exactly what was squeezing/clipping the bid panel during
+  // bidding. Hide it whenever there's nothing to show.
+  document.getElementById('trickArea').style.display = (state.phase === 'play') ? 'grid' : 'none';
+
+  // Default these to hidden — renderPassPanel()/renderMeldPanel() re-show
+  // them explicitly whenever those phases are actually active, so a
+  // leftover panel from an earlier phase never lingers on screen.
+  document.getElementById('passPanel').style.display = 'none';
+  document.getElementById('meldPanel').style.display = 'none';
+  document.getElementById('trumpPanel').style.display = 'none';
+  document.getElementById('roundPanel').style.display = 'none';
+
+  // AI seats: show a card-back per remaining card, or — with View All
+  // Cards enabled — a compact colored text grid of their actual hand
+  // for testing. Bill gets more columns (he has much more horizontal
+  // room); Mike/Lisa get 3 columns, which spreads 12 cards into 4 rows
+  // to fit their narrow side columns.
+  ['N','E','W'].forEach(seat=>{
+    const el = document.getElementById(`cards-${seat}`);
+    if(state.viewAllCards){
+      el.innerHTML = cardTextGridHtml(state.hands[seat], seat === 'N' ? 4 : 2);
+    } else {
+      el.innerHTML = state.hands[seat].map(()=>'<div class="cardback"></div>').join('');
+    }
+  });
+
+  // South hand: real, clickable cards. What clicking a card does depends
+  // on the current phase — dispatched through onSouthCardClick below.
+  const southEl = document.getElementById('south-hand');
+  southEl.classList.toggle('crowded', state.hands.S.length > 12);
+  const leadSuit = state.phase==='play' ? leadSuitOfTrick() : null;
+  const legal = state.phase==='play' ? legalPlays('S', leadSuit).map(c=>c.id) : null;
+  const southHtml = state.hands.S.map(card=>{
+    let clickable = false, dimmed = false, extraClass = '';
+
+    if(state.phase==='play'){
+      const isLegal = !legal || legal.includes(card.id);
+      clickable = isLegal && !state.trick['S'] && isSouthsTurn();
+      // Deliberately no dimming here — the follow-suit rule is still
+      // enforced (illegal cards just won't respond to a click), but the
+      // greyed-out look wasn't wanted.
+    } else if(state.phase==='passing'){
+      clickable = true;
+      if(state.passSelection.includes(card.id)) extraClass = 'selected';
+    } else if(state.phase==='humanMeld'){
+      clickable = true;
+      if(state.humanMeldSelection.includes(card.id)) extraClass = 'selected';
+      // No visual marker for "already used in a declared meld" anymore —
+      // it was reading as a persistent selection outline rather than a
+      // helpful note, which is confusing since it isn't actually
+      // selected. state.humanMeldUsed is still tracked internally, just
+      // not shown.
+    }
+
+    return `<div class="cardWrap ${extraClass}" ${clickable ? `onclick="onSouthCardClick('${card.id}')"` : ''}>
+      <div style="${dimmed ? 'opacity:.35;' : ''}">
+        ${cardHtml(card, false)}
+      </div>
+    </div>`;
+  }).join('');
+  // Only actually touch the DOM if something about it changed — rebuilding
+  // innerHTML unconditionally recreates every card element every time
+  // ANY player plays, which re-triggers :hover (and its lift animation)
+  // on whatever card your mouse happens to be sitting over.
+  if(southHtml !== _lastSouthHandHtml){
+    // A rebuild right as it becomes your turn (e.g. right after Lisa
+    // plays, since she's the seat before you in rotation) is genuinely
+    // necessary — your cards' clickability actually changes. But if your
+    // mouse is already resting on a card when that happens, recreating
+    // the element re-triggers :hover from scratch, and the transition
+    // animates the lift as if you'd just moved your mouse there — a
+    // "bounce" you didn't cause. Suppressing the transition for one
+    // frame around the rebuild makes that instant instead of animated.
+    southEl.classList.add('no-transition');
+    southEl.innerHTML = southHtml;
+    _lastSouthHandHtml = southHtml;
+    requestAnimationFrame(()=> requestAnimationFrame(()=>{
+      southEl.classList.remove('no-transition');
+    }));
+  }
+
+  // Trick area
+  ['N','E','S','W'].forEach(seat=>{
+    const slot = document.getElementById(`tc-${seat}`);
+    slot.innerHTML = state.trick[seat] ? cardHtml(state.trick[seat], true) : '';
+  });
+}
+
+function isSouthsTurn(){
+  const order = rotateFrom(state.trickLeader);
+  const nextToPlay = order.find(s => !state.trick[s]);
+  return nextToPlay === 'S';
+}
+
+function onSouthCardClick(cardId){
+  if(state.phase === 'play') humanPlay(cardId);
+  else if(state.phase === 'passing') togglePassSelection(cardId);
+  else if(state.phase === 'humanMeld') toggleMeldSelection(cardId);
+}
+
+function humanPlay(cardId){
+  if(state.phase !== 'play' || !isSouthsTurn()) return;
+  const leadSuit = leadSuitOfTrick();
+  const legal = legalPlays('S', leadSuit);
+  const card = state.hands.S.find(c=>c.id===cardId);
+  if(!card || !legal.some(c=>c.id===cardId)) return;
+  playCard('S', card);
+}
+
+function highlightActiveSeat(seat){
+  ['N','E','S','W'].forEach(s=>{
+    document.getElementById(`seat-${s}`).classList.toggle('active', s===seat);
+  });
+}
+function clearActiveSeat(){
+  ['N','E','S','W'].forEach(s=> document.getElementById(`seat-${s}`).classList.remove('active'));
+}
+function clearTrickArea(){
+  ['N','E','S','W'].forEach(seat=>{
+    document.getElementById(`tc-${seat}`).innerHTML = '';
+  });
+}
+function setHandMsg(msg){ /* handMsg UI removed per request — kept as a no-op so existing calls don't need touching; addLog() already captures the same info in the game log */ }
+
+// Speech bubbles: shows a short message next to a seat's avatar, then
+// fades it back out after a few seconds. Re-triggering on the same seat
+// before it fades just resets the timer with the new text. persist=true
+// (used during bidding) skips the auto-hide entirely — those bubbles stay
+// up until hideAllBubbles() is called when bidding actually ends.
+function showBubble(seat, text, persist=false){
+  const el = document.getElementById(`bubble-${seat}`);
+  if(!el) return;
+  el.textContent = text;
+  el.classList.add('visible');
+  clearTimeout(el._hideTimer);
+  if(!persist){
+    el._hideTimer = setTimeout(()=> el.classList.remove('visible'), 2800);
+  }
+}
+
+function hideAllBubbles(){
+  ['N','E','S','W'].forEach(seat=>{
+    const el = document.getElementById(`bubble-${seat}`);
+    if(!el) return;
+    clearTimeout(el._hideTimer);
+    el.classList.remove('visible');
+  });
+}
+
+// Score table (top-left corner): Team / Bid / Score. The Bid column stays
+// blank while bidding is still live — it only shows the final winning
+// bid once the auction has actually concluded (phase moves past bidding).
+function updateScoreTable(){
+  document.getElementById('team-ns-label').textContent = getTeamLabel('NS');
+  document.getElementById('team-ew-label').textContent = getTeamLabel('EW');
+  const biddingSettled = state.phase !== 'bidding' && state.bid > 0;
+  const winningTeam = biddingSettled ? TEAM[state.bidWinner] : null;
+  document.getElementById('ns-bid').textContent = winningTeam === 'NS' ? state.bid : '—';
+  document.getElementById('ew-bid').textContent = winningTeam === 'EW' ? state.bid : '—';
+  document.getElementById('ns-score').textContent = state.scores.NS;
+  document.getElementById('ew-score').textContent = state.scores.EW;
+
+  // Match the trump badge's width to the score table's — min-width only,
+  // so a long trump name (e.g. "Diamonds") can still push it wider on
+  // its own without being clipped.
+  const scoreWidth = document.getElementById('scoreTable').offsetWidth;
+  document.getElementById('trumpBadge').style.minWidth = scoreWidth + 'px';
+}
+
+function addLog(msg){
+  log.push(msg);
+  const panel = document.getElementById('logPanel');
+  const div = document.createElement('div');
+  div.textContent = msg;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ---------------------------------------------------------------------
+// MODAL SYSTEM (matches the #universalModal / showModal() pattern used
+// across the Game Hub, so Notepad++ diffs stay familiar between files)
+// ---------------------------------------------------------------------
+function showModal(title, bodyHtml, btnHtml, dismissable){
+  const titleEl = document.getElementById('modalTitle');
+  titleEl.textContent = title;
+  titleEl.style.textAlign = '';
+  titleEl.style.color = '';
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+  document.getElementById('modalBtns').style.justifyContent = '';
+  const modal = document.getElementById('universalModal');
+  modal.style.display = 'flex';
+  modal.dataset.dismissable = dismissable ? '1' : '0';
+}
+function closeModal(){
+  document.getElementById('universalModal').style.display = 'none';
+}
+document.getElementById('universalModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+});
+
+// ---------------------------------------------------------------------
+// RULES / MELD TABLE MODAL
+// ---------------------------------------------------------------------
+function showRules(){
+  const body = `
+    <p><b>Goal:</b> First team to ${GAME_TARGET} points wins.</p>
+    <p><b>Bidding:</b> Starts at ${MIN_BID}, goes up by ${BID_STEP}+ each round. High bidder names trump.
+    If the bidding team's meld + tricks don't reach their bid, they're <b>set</b> and lose that many points.
+    If all four players pass, the dealer takes the default bid of ${MIN_BID} and automatically wins the round.</p>
+    <p><b>Passing:</b> Right after trump is named, the declarer's partner passes ${PASS_COUNT} cards to the
+    declarer first — favoring trump and high cards, since the declarer needs the strength. The declarer then
+    reviews their bigger hand and passes ${PASS_COUNT} back to their partner. The other team doesn't pass at all.</p>
+    <p><b>Melding:</b> You meld by hand — click cards in your hand to select a combo, then Declare. Only exact,
+    valid combos score; nothing is calculated for you. The same card can count toward more than one different
+    combo, but you can't declare the exact same combo twice with the exact same cards. The non-declaring team
+    must win at least one trick containing a counter (A, 10, or K) during play, or their meld is forfeited.</p>
+    <p><b>Card points (per deck, 240 + 10 for last trick = 250):</b><br>
+    A = 10, 10 = 10, K = 10, Q = 0, J = 0, 9 = 0</p>
+    <p><b>Meld table (per player hand):</b></p>
+    <table>
+      <tr><th>Combo</th><th>Points</th></tr>
+      <tr><td>Run (A-10-K-Q-J of trump)</td><td>150 (1500 if doubled)</td></tr>
+      <tr><td>Royal marriage (K+Q trump)</td><td>40 (80 doubled)</td></tr>
+      <tr><td>Marriage (K+Q off-suit)</td><td>20 (40 doubled)</td></tr>
+      <tr><td>Pinochle (J♦+Q♠)</td><td>40 (300 if doubled)</td></tr>
+      <tr><td>Dix (9 of trump)</td><td>10 (20 doubled)</td></tr>
+      <tr><td>Aces around (all 4 suits)</td><td>100 (1000 doubled)</td></tr>
+      <tr><td>Kings around</td><td>80 (900 doubled)</td></tr>
+      <tr><td>Queens around</td><td>60 (600 doubled)</td></tr>
+      <tr><td>Jacks around</td><td>40 (400 doubled)</td></tr>
+    </table>
+    <p style="margin-top:8px;font-size:.8rem;color:var(--text-muted);">
+    Play rule: must follow the suit led if able; if void, must play trump if you hold any; otherwise anything goes.
+    </p>
+  `;
+  showModal('Rules & Meld Table', body, `<button onclick="closeModal()">Close</button>`, true);
+}
+
+// ---------------------------------------------------------------------
+// EVENT WIRING / INIT
+// ---------------------------------------------------------------------
+document.getElementById('rulesBtn').addEventListener('click', showRules);
+document.getElementById('exitBtn').addEventListener('click', ()=>{
+  showModal('Exit Pinochle?', 'Are you sure you want to exit?', `
+    <button onclick="location.href='index.html';">Exit</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, false);
+});
+document.getElementById('optionsBtn').addEventListener('click', ()=>{
+  const isDefaultName = SEAT_NAME.S === 'You';
+  showModal('Options', `
+    <div style="display:grid; grid-template-columns: auto 130px; row-gap:18px; column-gap:16px; align-items:center;">
+      <label for="playerNameInput" style="font-weight:600; text-align:left;">Change the Name:</label>
+      <input type="text" id="playerNameInput" maxlength="16"
+        value="${isDefaultName ? '' : SEAT_NAME.S}" placeholder="${isDefaultName ? 'You' : SEAT_NAME.S}"
+        style="padding:6px 10px;font-size:1rem;border:2px solid #333;border-radius:6px;width:100%;">
+
+      <label for="aiMeldsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">AI Creates the Melds:</label>
+      <input type="checkbox" id="aiMeldsCheckbox" ${state.aiCreatesMelds ? 'checked' : ''}
+        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+
+      <label for="viewAllCardsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">View All Cards:</label>
+      <input type="checkbox" id="viewAllCardsCheckbox" ${state.viewAllCards ? 'checked' : ''}
+        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+
+      <label for="spacebarPauseCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">Use Spacebar to Pause:</label>
+      <input type="checkbox" id="spacebarPauseCheckbox" ${state.spacebarPauseEnabled ? 'checked' : ''}
+        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+    </div>
+  `, `
+    <button onclick="saveOptions()">Save</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, true);
+  document.getElementById('playerNameInput').focus();
+});
+
+function saveOptions(){
+  const input = document.getElementById('playerNameInput');
+  const newName = input.value.trim();
+  if(newName){
+    SEAT_NAME.S = newName;
+    document.getElementById('south-name').textContent = newName;
+  }
+  state.aiCreatesMelds = document.getElementById('aiMeldsCheckbox').checked;
+  state.viewAllCards = document.getElementById('viewAllCardsCheckbox').checked;
+  state.spacebarPauseEnabled = document.getElementById('spacebarPauseCheckbox').checked;
+  // If the player just disabled spacebar-pause while already paused,
+  // don't leave the game stuck paused with no way to resume it.
+  if(!state.spacebarPauseEnabled && state.paused) togglePause();
+  render(); // refreshes the score table, bubbles, and anywhere else that reads SEAT_NAME.S
+  closeModal();
+}
+
+function togglePause(){
+  state.paused = !state.paused;
+  document.getElementById('pauseOverlay').style.display = state.paused ? 'flex' : 'none';
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.code !== 'Space') return;
+  if(!state.spacebarPauseEnabled) return;
+  // Don't hijack spacebar while typing in a text field (e.g. the name
+  // input in Options)
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+  e.preventDefault();
+  togglePause();
+});
+
+document.getElementById('newHandBtn').addEventListener('click', ()=>{
+  showModal('Start New Game?', 'This resets both scores to 0.', `
+    <button onclick="closeModal(); newGame();">Start New Game</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, false);
+});
+document.getElementById('logToggle').addEventListener('click', ()=>{
+  const p = document.getElementById('logPanel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+
+dealNewHand();
+</script>
+</body>
+</html>
