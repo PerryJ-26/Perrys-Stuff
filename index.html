@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,6 +46,13 @@
   }
 
   /* ---- Header ---- */
+  /* Keeps the header and nav visible at the top while the page scrolls */
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
   header {
     background: var(--header-bg);
     color: var(--header-text);
@@ -169,14 +177,16 @@
 </head>
 <body>
 
-  <header>
-    <h1>Game Hub</h1>
-  </header>
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
 
-  <nav>
-    <a href="about.html">About</a>
-    <a href="contact.html">Contact</a>
-  </nav>
+    <nav>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
 
   <main>
     <div class="game-list">
