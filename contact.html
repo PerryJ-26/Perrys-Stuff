@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,6 +34,13 @@
     height: 100%;
     background: var(--bg);
     font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Keeps the header and nav visible at the top while the page scrolls */
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
   }
 
   header {
@@ -121,20 +129,23 @@
 </head>
 <body>
 
-  <header>
-    <h1>Perry's Stuff</h1>
-  </header>
+  <div class="site-header-wrap">
+    <header>
+      <h1>Perry's Stuff</h1>
+    </header>
 
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="about.html">About</a>
-  </nav>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+    </nav>
+  </div>
 
   <main>
     <h2 class="page-title">Contact</h2>
     <div class="contact-card">
       <p>I encourage comments and suggestions.</p>
       <p>If you have a hankering, shoot me an email.</p>
+      <p>Perry Johnson</p>
       <a class="email-link" href="mailto:PerryJ26@Noblewood.com">PerryJ26 [at] Noblewood [dot] com</a>
     </div>
   </main>
