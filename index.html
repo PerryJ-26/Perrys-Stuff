@@ -45,6 +45,12 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
+  /* Always reserve space for a vertical scrollbar, even on short pages,
+     so the header doesn't shift left/right between pages */
+  html {
+    overflow-y: scroll;
+  }
+
   /* ---- Header ---- */
   /* Keeps the header and nav visible at the top while the page scrolls */
   .site-header-wrap {
