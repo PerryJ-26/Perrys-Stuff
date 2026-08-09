@@ -2262,7 +2262,9 @@ function showRules(){
 // ---------------------------------------------------------------------
 // EVENT WIRING / INIT
 // ---------------------------------------------------------------------
-document.getElementById('rulesBtn').addEventListener('click', showRules);
+document.getElementById('rulesBtn').addEventListener('click', ()=>{
+  window.open('../instructions.html', '_blank');
+});
 document.getElementById('exitBtn').addEventListener('click', ()=>{
   showModal('Exit Pinochle?', 'Are you sure you want to exit?', `
     <button onclick="location.href='../index.html';">Exit</button>
