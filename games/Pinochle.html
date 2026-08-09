@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1219,7 +1220,7 @@ function renderBidPanel(){
   // offer a small ladder of bid choices rather than a raw number input —
   // faster to click through, and keeps bidding brisk. Increments scale
   // with BID_STEP so they still make sense if that constant changes.
-  const options = [next, next + BID_STEP, next + BID_STEP*4, next + BID_STEP*9];
+  const options = [next, next + BID_STEP];
   options.forEach(v=>{
     if(v <= MAX_BID + BID_STEP) html += `<button onclick="humanBid(${v})">${v}</button>`;
   });
