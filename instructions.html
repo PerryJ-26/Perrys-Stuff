@@ -1,0 +1,314 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinochle Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .meld-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meld-table th, .meld-table td {
+    border: 1px solid var(--table-border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .meld-table th {
+    background: var(--table-header-bg);
+    color: var(--heading-text);
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @media print {
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      background: none;
+      color: #000000;
+      padding: 0 0 10px;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/Pinochle.html">Back to Pinochle</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Pinochle Instructions</h2>
+    <div class="instructions-card">
+
+      <p>Pinochle is a trick-taking and melding game popular in the United States. The game is derived from a variation of Bezique and was brought to America by German immigrants. The name "Pinochle" is a misspelling of the French word "binocle," which means "eyeglasses" or "two eyes," referring to the meld "Pinochle," which consists of a queen and a jack. Allegedly, this refers to the fact that the game was originally played with a deck of cards where the queen of spades and jack of diamonds were depicted in profile, together showing two eyes.</p>
+
+      <p>There are multiple variations of Pinochle in existence, each with differing rules and traditions. These are the instructions for the version implemented on this site.</p>
+
+      <h2>The Basics</h2>
+      <p>Pinochle is played in partnerships, with partners sitting opposite each other at the table. The game is played with 4 players and a deck of 48 cards. The deck contains two copies each of: A (highest), 10, K, Q, J, and 9, in ranking order.</p>
+      <p class="note">Note: The 10 outranks the K, Q, J, and 9.</p>
+
+      <p>A single round in Pinochle consists of six phases:</p>
+      <ol>
+        <li>Dealing</li>
+        <li>Bidding</li>
+        <li>Exchanging</li>
+        <li>Melding</li>
+        <li>Trick-taking</li>
+        <li>Scoring</li>
+      </ol>
+
+      <h2>Dealing</h2>
+      <p class="note">Before dealing, a scorekeeper must be selected.</p>
+      <p>The dealer is chosen by each player drawing a card; the highest card wins the deal. At the end of each round, the dealership passes clockwise around the table.</p>
+      <p>After shuffling, the dealer offers the player on their right a chance to cut the deck. The cut is not mandatory. Each player receives 12 cards, dealt 3 at a time in a clockwise direction, starting with the player to the dealer's left.</p>
+
+      <h2>Bidding</h2>
+      <p>The player to the left of the dealer bids first, and bidding continues clockwise. Bidding begins at 250 points, and a player can either bid 10 or more points over the current bid, or pass. Once a player passes, they can no longer bid during that round.</p>
+      <p>When three players pass, the fourth player wins the bid at the amount they last bid. If all players pass without bidding, the dealer wins the default bid of 250 points and the round is over. The winner of the bidding declares trump for that round — we'll call this player the <strong>declarer</strong>.</p>
+
+      <h2>Exchanging</h2>
+      <p>Next, the declarer's partner selects 4 cards from their hand and passes them to the declarer. The declarer then passes 4 cards back to their partner. The team that lost the bidding does not exchange any cards that round.</p>
+
+      <h2>Melding</h2>
+      <p>Players attempt to generate points by creating melds from their individual hands. A single card can be part of multiple melds — for example, a queen of hearts can belong to both a "Marriage" and "Queens Around," but it cannot count toward a "Run of Hearts" and a "Marriage" at the same time. Melded cards are laid face up on the table, and their point value is combined with your partner's and added to your team's score.</p>
+
+      <table class="meld-table">
+        <tr><th>Combo</th><th>Points (doubled)</th></tr>
+        <tr><td>Run (A-10-K-Q-J of trump)</td><td>150 (1500)</td></tr>
+        <tr><td>Royal marriage (K+Q of trump)</td><td>40 (80)</td></tr>
+        <tr><td>Marriage (K+Q off-suit)</td><td>20 (40)</td></tr>
+        <tr><td>Pinochle (J♦+Q♠)</td><td>40 (300)</td></tr>
+        <tr><td>Aces around (all 4 suits)</td><td>100 (1000)</td></tr>
+        <tr><td>Kings around</td><td>80 (900)</td></tr>
+        <tr><td>Queens around</td><td>60 (600)</td></tr>
+        <tr><td>Jacks around</td><td>40 (400)</td></tr>
+        <tr><td>Dix (9 of trump)</td><td>10 (20)</td></tr>
+      </table>
+
+      <h2>Trick-Taking</h2>
+      <p>Once melding concludes, trick-taking begins. The declarer leads the first trick, and the winner of each trick leads the next. The player leading a trick may play any card, but everyone else must follow these rules, in order:</p>
+      <ul>
+        <li>You must play a card in the same suit as the lead card, if you have one.</li>
+        <li>If following suit, you must play a card higher than the highest card currently played in that suit.</li>
+        <li>If you cannot follow suit, you must play a trump card.</li>
+        <li>If you can neither follow suit nor play a trump card, you may play any card you wish.</li>
+      </ul>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the queen of hearts (♥Q). Lisa has neither hearts nor spades, so she may play any card from her hand. You hold the nine, ten, and ace of hearts (♥9 ♥10 ♥A) — you must play either the ten or the ace, since both are in suit and can beat the queen. You must take the trick if you're able to, even if your partner is currently winning it. Mike has no hearts but holds the queen of spades (♠Q) — since he can't follow suit, he must trump, and takes the trick with his queen.</p>
+      </div>
+
+      <p>The round ends once all 12 tricks have been played.</p>
+
+      <h2>Scoring</h2>
+      <p>At the end of the round, players tally their scores. Each A, 10, and K taken in tricks is worth 10 points, and the last trick of the round is also worth 10 points — so a team can earn a maximum of 250 points during trick-taking by capturing all eight Aces, all eight 10s, all eight Kings, and the last trick.</p>
+      <p>If the non-declaring team wins at least one trick containing a counter (an A, 10, or K) or the last trick, their meld points and trick points are added to their running total. If they fail to win any such trick, they forfeit their meld entirely and score 0 for the round.</p>
+      <p>If the declaring team's meld and trick points together match or exceed their bid, all their points are added to their total score. If they fall short, they have "gone set" and score nothing for the round — worse, their bid amount is subtracted from their total score.</p>
+
+      <h2>Winning the Game</h2>
+      <p>The game is won when either team reaches a total score of 1500 or more at the end of a round. If both teams cross 1500 in the same round, the declaring team wins regardless of the actual point totals.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
