@@ -186,7 +186,20 @@
   }
 
   /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 1in;
+  }
+
   @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
     body {
       background: #ffffff;
     }
@@ -197,9 +210,7 @@
       display: none;
     }
     header {
-      background: none;
-      color: #000000;
-      padding: 0 0 10px;
+      display: none;
     }
     main {
       max-width: 100%;
@@ -238,15 +249,19 @@
     <h2 class="page-title">Pinochle Instructions</h2>
     <div class="instructions-card">
 
-      <p>Pinochle is a trick-taking and melding game popular in the United States. The game is derived from a variation of Bezique and was brought to America by German immigrants. The name "Pinochle" is a misspelling of the French word "binocle," which means "eyeglasses" or "two eyes," referring to the meld "Pinochle," which consists of a queen and a jack. Allegedly, this refers to the fact that the game was originally played with a deck of cards where the queen of spades and jack of diamonds were depicted in profile, together showing two eyes.</p>
+      <p>Pinochle is a trick-taking and melding game popular in the United States. The game developed from a variation of Bezique and was brought to America by German immigrants. The name "Pinochle" is thought to come from the French word "Binochle," meaning "eyeglasses" or "two eyes," a reference to the meld called Pinochle, which consists of a queen and a jack. According to one explanation, the name refers to older card designs in which the queen of spades and jack of diamonds were shown in profile, together showing two eyes.</p>
 
-      <p>There are multiple variations of Pinochle in existence, each with differing rules and traditions. These are the instructions for the version implemented on this site.</p>
+      <p>There are multiple variations of Pinochle in existence, each with differing rules and traditions. These are the instructions and rules selected for this game.</p>
 
-      <h2>The Basics</h2>
-      <p>Pinochle is played in partnerships, with partners sitting opposite each other at the table. The game is played with 4 players and a deck of 48 cards. The deck contains two copies each of: A (highest), 10, K, Q, J, and 9, in ranking order.</p>
-      <p class="note">Note: The 10 outranks the K, Q, J, and 9.</p>
+      <hr style="border: none; border-top: 1px solid var(--card-border); margin: 24px 0;">
 
-      <p>A single round in Pinochle consists of six phases:</p>
+      <p>Pinochle is played in partnerships, with partners sitting opposite of each other at the table. The game is played with 4 players and a deck of 48 cards. The deck contains two copies of the: A (highest), 10, K, Q, J, and 9 in ranking order.</p>
+      <p class="note">Note: The 10s outranks the K, Q, J, and 9.</p>
+
+      <p>A single round in Pinochle consists of 6 phases.</p>
+
+      <p>A round follows the same basic sequence each time: first players receive their cards, then they bid for the right to name trump. The winning bidder and their partner exchange cards, all players reveal and score melds, players take tricks, and the round ends with scoring.</p>
+
       <ol>
         <li>Dealing</li>
         <li>Bidding</li>
@@ -256,56 +271,57 @@
         <li>Scoring</li>
       </ol>
 
-      <h2>Dealing</h2>
-      <p class="note">Before dealing, a scorekeeper must be selected.</p>
-      <p>The dealer is chosen by each player drawing a card; the highest card wins the deal. At the end of each round, the dealership passes clockwise around the table.</p>
-      <p>After shuffling, the dealer offers the player on their right a chance to cut the deck. The cut is not mandatory. Each player receives 12 cards, dealt 3 at a time in a clockwise direction, starting with the player to the dealer's left.</p>
+      <h2 class="print-page-break">Dealing</h2>
+      <p class="note">Note: Before dealing, a scorekeeper must be selected.</p>
+      <p>The dealer is chosen by each player drawing a card. The highest card wins the deal. At the end of each round, the dealership passes clockwise around the table.</p>
+      <p>After shuffling, the dealer offers the player on their right the option to cut the deck. The cut is optional. The dealer then gives each player 12 cards, dealing three at a time in a clockwise direction, starting with the player to the dealer's left.</p>
 
       <h2>Bidding</h2>
-      <p>The player to the left of the dealer bids first, and bidding continues clockwise. Bidding begins at 250 points, and a player can either bid 10 or more points over the current bid, or pass. Once a player passes, they can no longer bid during that round.</p>
-      <p>When three players pass, the fourth player wins the bid at the amount they last bid. If all players pass without bidding, the dealer wins the default bid of 250 points and the round is over. The winner of the bidding declares trump for that round — we'll call this player the <strong>declarer</strong>.</p>
+      <p>The player to the left of the dealer makes the first bid, and bidding continues clockwise. Bidding begins at 250 points. On each turn, a player may either raise the current bid by 10 or 20 points, or pass. Once a player passes, they may not bid again during that round. Bidding ends when three players have passed. The remaining player wins the bid, becomes the declarer, and names trump for the round.</p>
 
       <h2>Exchanging</h2>
-      <p>Next, the declarer's partner selects 4 cards from their hand and passes them to the declarer. The declarer then passes 4 cards back to their partner. The team that lost the bidding does not exchange any cards that round.</p>
+      <p>Next, the declarer's partner chooses four cards from their hand and passes them to the declarer. The declarer then passes four cards back to their partner. The team that lost the bidding does not exchange cards that round.</p>
 
       <h2>Melding</h2>
-      <p>Players attempt to generate points by creating melds from their individual hands. A single card can be part of multiple melds — for example, a queen of hearts can belong to both a "Marriage" and "Queens Around," but it cannot count toward a "Run of Hearts" and a "Marriage" at the same time. Melded cards are laid face up on the table, and their point value is combined with your partner's and added to your team's score.</p>
+      <p><strong>Melds and scoring:</strong> During the melding phase, players score points by showing approved card combinations, called melds, from the cards in their own hands. Some cards may count toward more than one meld, but only when the combinations use the card in different ways. For example, a Q of hearts may count toward both a Marriage and Q Around, but it may not also count as part of a Run of Hearts if that same Q is already being used in the run. After all melds are shown face up, each player totals their meld points. Partners then combine their totals, and the team adds those points to its round score. Use the table below to score each player's melds.</p>
 
+      <p><strong>Meld table for each player's hand</strong></p>
       <table class="meld-table">
-        <tr><th>Combo</th><th>Points (doubled)</th></tr>
-        <tr><td>Run (A-10-K-Q-J of trump)</td><td>150 (1500)</td></tr>
-        <tr><td>Royal marriage (K+Q of trump)</td><td>40 (80)</td></tr>
-        <tr><td>Marriage (K+Q off-suit)</td><td>20 (40)</td></tr>
-        <tr><td>Pinochle (J♦+Q♠)</td><td>40 (300)</td></tr>
-        <tr><td>Aces around (all 4 suits)</td><td>100 (1000)</td></tr>
-        <tr><td>Kings around</td><td>80 (800)</td></tr>
-        <tr><td>Queens around</td><td>60 (600)</td></tr>
-        <tr><td>Jacks around</td><td>40 (400)</td></tr>
-        <tr><td>Dix (9 of trump)</td><td>10 (20)</td></tr>
+        <tr><th>Combo</th><th>Points</th></tr>
+        <tr><td>Run (A-10-K-Q-J of trump)</td><td>150 (1500 doubled)</td></tr>
+        <tr><td>Royal marriage (K+Q trump)</td><td>40 (80 doubled)</td></tr>
+        <tr><td>Marriage (K+Q off-suit)</td><td>20 (40 doubled)</td></tr>
+        <tr><td>Pinochle (J♦+Q♠)</td><td>40 (300 doubled)</td></tr>
+        <tr><td>Aces around (all 4 suits)</td><td>100 (1000 doubled)</td></tr>
+        <tr><td>Kings around</td><td>80 (800 doubled)</td></tr>
+        <tr><td>Queens around</td><td>60 (600 doubled)</td></tr>
+        <tr><td>Jacks around</td><td>40 (400 doubled)</td></tr>
+        <tr><td>Dix (9 of trump)</td><td>10 (20 doubled)</td></tr>
       </table>
 
-      <h2>Trick-Taking</h2>
-      <p>Once melding concludes, trick-taking begins. The declarer leads the first trick, and the winner of each trick leads the next. The player leading a trick may play any card, but everyone else must follow these rules, in order:</p>
+      <h2>Trick taking</h2>
+      <p>Once melding concludes, trick taking starts. The declarer who won the bidding leads the first trick, and then the winner of each trick leads the next play. The player leading the trick can play any card they wish, but other players must follow the restrictions below:</p>
+      <p>Players must follow these restrictions in order:</p>
       <ul>
-        <li>You must play a card in the same suit as the lead card, if you have one.</li>
-        <li>If following suit, you must play a card higher than the highest card currently played in that suit.</li>
-        <li>If you cannot follow suit, you must play a trump card.</li>
-        <li>If you can neither follow suit nor play a trump card, you may play any card you wish.</li>
+        <li>First, play a card in the same suit as the lead card if possible;</li>
+        <li>Second, if following suit, play a card higher than the highest card already played if possible;</li>
+        <li>Third, if unable to follow suit, play a trump card if possible;</li>
+        <li>Fourth, if unable to follow suit or play trump, play any card.</li>
       </ul>
 
       <div class="example-box">
-        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the queen of hearts (♥Q). Lisa has neither hearts nor spades, so she may play any card from her hand. You hold the nine, ten, and ace of hearts (♥9 ♥10 ♥A) — you must play either the ten or the ace, since both are in suit and can beat the queen. You must take the trick if you're able to, even if your partner is currently winning it. Mike has no hearts but holds the queen of spades (♠Q) — since he can't follow suit, he must trump, and takes the trick with his queen.</p>
+        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the Q of hearts. Lisa has neither hearts nor spades, so she may play any card from her hand. You have the 9, 10, and A of hearts, so you must follow suit and play either the 10 or the ace because both beat the Q. You must take the trick if you can, even if your partner is currently winning it. Mike has no hearts but has the Q of spades, so he must play trump and wins the trick with that Q.</p>
       </div>
 
-      <p>The round ends once all 12 tricks have been played.</p>
+      <p>The round ends when all 12 tricks have been taken.</p>
 
       <h2>Scoring</h2>
-      <p>At the end of the round, players tally their scores. Each A, 10, and K taken in tricks is worth 10 points, and the last trick of the round is also worth 10 points — so a team can earn a maximum of 250 points during trick-taking by capturing all eight Aces, all eight 10s, all eight Kings, and the last trick.</p>
-      <p>If the non-declaring team wins at least one trick containing a counter (an A, 10, or K) or the last trick, their meld points and trick points are added to their running total. If they fail to win any such trick, they forfeit their meld entirely and score 0 for the round.</p>
-      <p>If the declaring team's meld and trick points together match or exceed their bid, all their points are added to their total score. If they fall short, they have "gone set" and score nothing for the round — worse, their bid amount is subtracted from their total score.</p>
+      <p>At the end of the round the players tally up their scores. Each A, 10, and K, as well as the last trick of the round is worth 10 points. Thus, a team can get a maximum of 250 points in the trick taking phase by getting all eight As, all eight 10s, all eight Ks, and the last trick of the round.</p>
+      <p>If the non-declaring team takes at least one scoring card or wins the last trick, they add both their meld points and trick points to their total score. If they take no scoring cards and do not win the last trick, they lose their meld points and record 0 points for the round.</p>
+      <p>If the declarer's team earns enough points from their melds and trick taking to match or exceed their bid then all their points are added to the total score. If they fail to meet their bid, then they have "gone set" and earn no points that round. In addition, their bid is subtracted from their total score.</p>
 
-      <h2>Winning the Game</h2>
-      <p>The game is won when either team reaches a total score of 1500 or more at the end of a round. If both teams cross 1500 in the same round, the declaring team wins regardless of the actual point totals.</p>
+      <h2>Winning the game</h2>
+      <p>The game is won when either team has a total score of 1500 or greater at the end of a round. If both teams cross the finish line in the same round, then the declaring team wins regardless of the actual point values.</p>
 
     </div>
   </main>
