@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,23 +60,28 @@
                           sizing notes below for how that's enforced */
   }
 
-  /* ---------- Page title ---------- */
-  /* ---------- Top bar: title left, buttons right, one row ---------- */
-  #topBar{
-    flex-shrink: 0;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    height: 44px; /* fixed, rather than sized by its content — this way
-                      pageTitle's font-size can grow without taking any
-                      space away from table-wrap/felt below it */
-    padding: 0;
-    margin: 0 3.5in; /* matches table-wrap's own side margins so the title
-                       and buttons line up with the board's left/right
-                       edges below, instead of the viewport's edges */
-  }
+  /* ===== TEMPORARY DEBUG OUTLINES - toggled via the "Show Outlines"
+     button, remove entirely once layout work is done. Each major
+     layout box gets its own color so boundaries are easy to tell apart
+     in a screenshot. Uses outline (not border), so nothing shifts or
+     resizes - these are purely visual, drawn on top. ===== */
+  body.debug-on #table-wrap{ outline: 2px solid magenta; outline-offset: -2px; }
+  body.debug-on #seat-N{ outline: 2px solid orange; outline-offset: -2px; }
+  body.debug-on #seat-W{ outline: 2px solid cyan; outline-offset: -2px; }
+  body.debug-on #seat-E{ outline: 2px solid cyan; outline-offset: -2px; }
+  body.debug-on #seat-S{ outline: 2px solid yellow; outline-offset: -2px; }
+  body.debug-on #felt{ outline: 2px solid deeppink; outline-offset: -2px; }
+  body.debug-on #trickArea{ outline: 2px solid lime; outline-offset: -2px; }
+  body.debug-on #scoreTable{ outline: 2px solid blue; outline-offset: -2px; }
+  body.debug-on #trumpBadge{ outline: 2px solid blue; outline-offset: -2px; }
+  /* ===== END TEMPORARY DEBUG OUTLINES ===== */
+
+  /* ---------- Buttons: small vertical stack, fixed to the left edge —
+     replaces the old horizontal header bar, reclaiming its full height
+     for the board itself. No page title anymore either, for the same
+     reason - every bit of vertical space matters on a short window. ---------- */
   #pageTitle{
-    margin: 0;
+    margin: 0 0 10px;
     font-size: 2rem;
     font-weight: 800;
     letter-spacing: 2px;
@@ -83,10 +89,14 @@
     text-shadow: 1px 1px 0 rgba(255,255,255,.5);
   }
   #buttonGroup{
+    position: fixed;
+    top: 10px; left: 10px;
+    z-index: 70;
     display:flex;
-    gap:10px;
+    flex-direction: column;
+    gap:6px;
   }
-  #topBar button{
+  #buttonGroup button{
     background: var(--cream);
     color: var(--ink);
     border: 2px solid var(--board-border);
@@ -95,13 +105,24 @@
     cursor:pointer;
     font-size:.8rem;
     font-weight:700;
+    white-space: nowrap;
   }
-  #topBar button:hover{ background:#fff; }
+  #buttonGroup button:hover{ background:#fff; }
 
   /* ---------- The board ---------- */
   #table-wrap{
     display:grid;
-    grid-template-columns: 150px 1fr 150px;
+    /* West/East columns scale between 110px and 150px based on window
+       width, rather than a flat 150px that could squeeze the center
+       column too hard on a narrower window. */
+    /* Middle column now sized to match the felt's own max-width (320px)
+       plus a 0.5in gap on each side, instead of 1fr - which let the
+       felt sit centered with a large, uneven amount of green space
+       between it and Mike/Lisa's boxes. Grid content is centered within
+       table-wrap (see justify-content below) since the columns no
+       longer necessarily fill the full board width. */
+    grid-template-columns: clamp(105px,10vw,140px) 416px clamp(105px,10vw,140px);
+    justify-content: center;
     /* One static layout for every phase — no more dynamically swapping
        row heights based on game phase. That was meant to free up space
        during bidding/melding, but forcing the whole grid to recompute on
@@ -110,7 +131,22 @@
        Bill's row is tightened here instead (it had real unused space
        below his cards), redirecting that room to South's row, which is
        where the clipping actually happens. */
-    grid-template-rows: minmax(175px,195px) minmax(300px,1fr) minmax(265px,350px);
+    /* Row heights now scale with the window's actual height (vh) rather
+       than fixed pixel floors — on a shorter window (like a smaller
+       resolution or a non-maximized browser), all three rows shrink
+       together proportionally instead of the board silently overflowing
+       and clipping South's row off the bottom. On a tall window, they
+       grow up to the same maximums as before. */
+    /* Calibrated against an actual measured window height of 578px
+       (via the on-screen size readout) rather than guessing - at that
+       height, table-wrap has roughly 524px total to split across all
+       three rows. These floors add up to about 516px, leaving a small
+       safety buffer. South's row gets the most since that's the
+       player's own hand and the top priority to never clip. */
+    grid-template-rows:
+      minmax(clamp(145px,16vh,195px), 195px)
+      minmax(clamp(188px,24vh,300px), 1fr)
+      minmax(clamp(183px,30vh,350px), 350px);
     gap: 6px;
     padding: 10px;
     flex: 1;
@@ -119,10 +155,14 @@
     background: var(--board-green);
     border: 4px solid var(--board-border);
     border-radius: 14px;
-    /* Trimmed further from last pass to free up more room for the board
-       now that cards are bigger — sides stay generous, top/bottom are
-       kept to just what's needed. */
-    margin: 0.05in 3.5in 0.1in;
+    /* Matches topBar's margin above so the title/buttons stay aligned
+       with the board's edges at every window size. */
+    /* Left/right margins no longer need to match, since the buttons
+       are position:fixed (not part of this element's own layout).
+       Left is sized to snugly fit the button stack's own width instead
+       of the wider clamp used before, closing the dead gap between the
+       buttons and the board. Right stays independently responsive. */
+    margin: 0.05in clamp(0.2in, 7vw, 2.0in) 0.1in 165px;
     position: relative;
   }
 
@@ -180,8 +220,8 @@
     margin-top:2px;
   }
   #seat-N .name-row, #seat-S .name-row{ justify-content:center; }
-  #seat-W .name-row{ justify-content:flex-start; }
-  #seat-E .name-row{ justify-content:flex-end; }
+  #seat-W .name-row{ justify-content:center; }
+  #seat-E .name-row{ justify-content:center; }
   /* Combines what used to be two separate lines (Declarer/Dealer tag,
      and tricks-taken count) into one — that alone meaningfully shrinks
      how much height each seat needs, which is what was causing "Declarer"
@@ -219,6 +259,19 @@
     z-index: 10;
   }
   .bubble.visible{ display:block; }
+  /* West/East columns are narrower than North/South's open space, so
+     their bubbles get a smaller font + tighter padding to keep bid
+     text on one line without needing the column itself to be wide. */
+  #bubble-N, #bubble-S, #bubble-W, #bubble-E{
+    font-size: .85rem;
+    padding: 6px 10px;
+  }
+  #bubble-W, #bubble-E{
+    max-width: 130px;
+  }
+  #bubble-N, #bubble-S{
+    margin-left: 12px;
+  }
   .bubble.tail-top::before, .bubble.tail-top::after{
     content:''; position:absolute; left:22px; border:9px solid transparent;
   }
@@ -230,18 +283,19 @@
   .bubble.tail-bottom::before{ bottom:-18px; border-top-color: var(--bubble-border); }
   .bubble.tail-bottom::after{ bottom:-15px; border-top-color: var(--bubble-bg); }
   .bubble.tail-left::before, .bubble.tail-left::after{
-    content:''; position:absolute; top:18px; border:9px solid transparent;
+    content:''; position:absolute; top:50%; transform:translateY(-50%); border:9px solid transparent;
   }
   .bubble.tail-left::before{ left:-18px; border-right-color: var(--bubble-border); }
   .bubble.tail-left::after{ left:-15px; border-right-color: var(--bubble-bg); }
   .bubble.tail-right::before, .bubble.tail-right::after{
-    content:''; position:absolute; top:18px; border:9px solid transparent;
+    content:''; position:absolute; top:50%; transform:translateY(-50%); border:9px solid transparent;
   }
   .bubble.tail-right::before{ right:-18px; border-left-color: var(--bubble-border); }
   .bubble.tail-right::after{ right:-15px; border-left-color: var(--bubble-bg); }
 
   /* Cardback fans: horizontal (North) vs vertical (West/East) */
   .cardback-row{ display:flex; margin-top:6px; }
+  #seat-W .cardback-row, #seat-E .cardback-row{ margin-top:-6px; }
   .cardback-row.vertical{ flex-direction:column; align-items:center; }
   .cardback{
     width:84px; height:118px;
@@ -271,7 +325,12 @@
   #seat-N{ grid-column:2; grid-row:1; }
   #seat-W{ grid-column:1; grid-row:2; }
   #seat-E{ grid-column:3; grid-row:2; }
-  #seat-S{ grid-column:2; grid-row:3; justify-content:flex-start; }
+  /* South spans all 3 columns instead of being confined to the same
+     narrow center column as North — South's hand needs noticeably more
+     horizontal room than North's overlapping cardback row, and this
+     also gives South's name/status line enough room to render instead
+     of being squeezed out by the cramped narrow column. */
+  #seat-S{ grid-column:1 / span 3; grid-row:3; justify-content:flex-start; }
 
   /* ---------- Center area: trick-in-progress AND the bidding UI share
      this space, since only one is ever relevant at a given moment ---------- */
@@ -285,6 +344,13 @@
     position:relative;
     overflow: hidden;
     min-height: 0;
+    /* Hugs the actual trick-card area (3 x 84px cards) instead of
+       stretching to fill the entire middle column, which was making
+       the red-bordered box look far wider than the cards it contains.
+       Centered within the column via margin:auto. */
+    max-width: 320px;
+    width: 100%;
+    margin: 0 auto;
     /* Double red border around the center playing area, with a 2px gap
        between the two lines. Using box-shadow rather than outline —
        #felt has overflow:hidden, and outline rendering next to an
@@ -301,14 +367,54 @@
       ".    n    ."
       "w    c    e"
       ".    s    .";
-    grid-template-columns: 68px 68px 68px;
-    grid-template-rows: 93px 93px 93px;
-    gap:6px;
+    /* Equal-width columns so no played card is narrower than another.
+       Rows scale with viewport height (matching the same approach as
+       the board's own rows) so the whole trick display shrinks on a
+       shorter window instead of poking outside the felt's red border —
+       the top/bottom rows overlap into the middle row rather than each
+       card needing its own full-height row. */
+    /* Columns/rows sized to match the actual scaled card footprint
+       (0.7 scale = ~59x83px), with a ~10px gap between cards - this is
+       the largest gap that fits within the tight vertical budget this
+       board has to work with at a 578px-tall window (see the row2
+       floor comment below); a full 12px (0.125in) gap would push the
+       required space just over that floor and risk clipping South's
+       hand again. */
+    grid-template-columns: 59px 59px 59px;
+    grid-template-rows: 2px 83px 2px;
+    gap: 10px;
+    gap:0;
   }
-  .trick-slot{ display:flex; align-items:center; justify-content:center; }
-  #tc-N{ grid-area:n; } #tc-E{ grid-area:e; } #tc-S{ grid-area:s; } #tc-W{ grid-area:w; }
+  .trick-slot{ display:flex; align-items:center; justify-content:center; overflow:visible; }
+  /* Played cards specifically are scaled down ~20% - this is scoped
+     only to cards inside the trick area (not your hand, not the
+     decks), so it shrinks their real rendered footprint enough to
+     comfortably fit inside the felt at any window size without
+     clipping, without touching card sizing anywhere else on the page. */
+  .trick-slot .card{ transform: scale(0.7); }
+  /* Stacking order for the overlap - keeps a consistent, readable
+     layering every trick regardless of play order. */
+  #tc-N{ grid-area:n; z-index:1; }
+  #tc-W{ grid-area:w; z-index:2; }
+  #tc-S{ grid-area:s; z-index:3; }
+  #tc-E{ grid-area:e; z-index:4; }
+  /* Mike/Lisa's bid bubbles are direct grid items instead of being
+     nested inside their aqua boxes - anchored to the bottom edge of
+     Bill's row (row 1), in the same column as each player. This is
+     what stops them from pushing the card piles down: they no longer
+     contribute to seat-W/seat-E's own layout height at all. Extra
+     margin-bottom keeps the tail from overlapping the name text below. */
+  #bubble-W{ grid-column:1; grid-row:1; justify-self:center; align-self:end; margin-bottom:-2px; z-index:20; }
+  #bubble-E{ grid-column:3; grid-row:1; justify-self:center; align-self:end; margin-bottom:-2px; z-index:20; }
+
   #trumpBadge{
-    position:absolute; top:8px; right:8px; z-index:15;
+    /* Placed directly into North's row, aligned to the left edge of
+       East's column (justify-self:start) - stays exactly flush with
+       Lisa's box regardless of that column's actual width. */
+    grid-column: 3; grid-row: 1;
+    justify-self: start; align-self: start;
+    margin-top: 8px;
+    position:relative; z-index:15;
     background: var(--shadow-soft);
     color:#1b1b1b;
     border: 2px solid rgba(0,0,0,.35);
@@ -457,6 +563,21 @@
   .control-panel .meldGroupList{ width:100%; font-size:calc(.72rem + 3px); max-height:60px; overflow-y:auto; margin-bottom:4px; text-align:center; color:#3a3a10; }
   /* Meld panel needs more room than the other control panels — it now
      carries an extra instructional line plus the running group list. */
+  /* Meld panel floats as its own popup instead of being squeezed inside
+     the felt's limited space — unlike Round Complete, melding needs you
+     to keep clicking cards in your hand while this is open, so it can't
+     use the full-screen modal overlay (that would block those clicks).
+     position:fixed also means it's never subject to felt's overflow
+     clipping, so it can never get truncated. */
+  #meldPanel{
+    position: fixed;
+    top: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    width: 90%;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
   #meldPanel{ min-height: 190px; }
   #meldPanel .meldGroupList{ max-height: 90px; }
   #meldPanel .meldHelp{ width:100%; text-align:center; font-size:calc(.78rem + 3px); color:#3a3a10; margin-bottom:4px; line-height:1.3; }
@@ -465,7 +586,15 @@
      Trump badge's look: same dark-green translucent background, white
      bold text, rounded border, instead of the old small cream table. ---------- */
   #scoreTable{
-    position:absolute; top:8px; left:8px; z-index:15;
+    /* Placed directly into North's row, aligned to the right edge of
+       West's column (justify-self:end) - this keeps it exactly flush
+       with Mike's box regardless of how wide that column ends up being,
+       instead of a fixed pixel position that could drift out of
+       alignment. */
+    grid-column: 1; grid-row: 1;
+    justify-self: end; align-self: start;
+    margin-top: 8px;
+    position:relative; z-index:15;
     background: var(--shadow-soft);
     border: 2px solid rgba(0,0,0,.35);
     border-radius: 10px;
@@ -490,7 +619,17 @@
   #scoreTable tr:not(:last-child) td{ border-bottom: 1px solid rgba(0,0,0,.15); }
 
   /* ---------- Log ---------- */
+  #outlineToggle{
+    position:fixed; bottom:50px; left:10px;
+    background: var(--cream); color:var(--ink);
+    border:2px solid var(--board-border); border-radius:20px;
+    padding:8px 14px; cursor:pointer; font-size:.8rem; z-index:50;
+  }
   #logToggle{
+    /* Invisible but still clickable in its original spot - opacity:0
+       (unlike display:none) keeps it in the page layout and able to
+       receive clicks, it just isn't visually rendered. */
+    opacity:0;
     position:fixed; bottom:10px; left:10px;
     background: var(--cream); color:var(--ink);
     border:2px solid var(--board-border); border-radius:20px;
@@ -537,6 +676,20 @@
   #universalModal button:hover{ background: var(--green-btn-dark); }
   #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
   #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
+  /* Team name headers and their numbers center under each other - only
+     the leftmost row-label column (Bid, Meld Score, etc.) stays
+     left-aligned, since that reads naturally as a label list. */
+  #universalModal th:not(:first-child),
+  #universalModal td:not(:first-child){ text-align:center; }
+  /* The Round Complete / Win popups stack two separate <table>
+     elements. Each table normally sizes its own first column based on
+     its own row labels ("Bid" vs "Previous Score", etc.), so the two
+     tables' columns didn't line up visually even though each one was
+     internally centered. Forcing a shared fixed width for every
+     table's first column keeps both tables' team-name columns aligned
+     with each other. */
+  #universalModal td:first-child,
+  #universalModal th:first-child{ width:150px; }
 
   /* =================================================================
      Border around the whole playing field. Kept deliberately simple —
@@ -568,16 +721,14 @@
   }
 </style>
 </head>
-<body>
+<body class="debug-on">
 
-<div id="topBar">
+<div id="buttonGroup">
   <h1 id="pageTitle">Pinochle</h1>
-  <div id="buttonGroup">
-    <button id="newHandBtn">New Game</button>
-    <button id="rulesBtn">Instructions</button>
-    <button id="optionsBtn">Options</button>
-    <button id="exitBtn">Exit</button>
-  </div>
+  <button id="newHandBtn">New Game</button>
+  <button id="rulesBtn">Instructions</button>
+  <button id="optionsBtn">Options</button>
+  <button id="exitBtn">Exit</button>
 </div>
 
 <div id="table-wrap">
@@ -594,11 +745,12 @@
   <div class="seat" id="seat-W">
     <div class="name-row">
       <div class="name">Mike</div>
-      <div class="bubble tail-left" id="bubble-W"></div>
     </div>
     <div class="meta-line" id="meta-W"></div>
     <div class="cardback-row vertical" id="cards-W"></div>
   </div>
+
+  <div class="bubble tail-bottom" id="bubble-W"></div>
 
   <div id="felt">
     <div id="trickArea">
@@ -615,9 +767,10 @@
     <div id="roundPanel" class="control-panel wide-panel"></div>
   </div>
 
+  <div class="bubble tail-bottom" id="bubble-E"></div>
+
   <div class="seat" id="seat-E">
     <div class="name-row">
-      <div class="bubble tail-right" id="bubble-E"></div>
       <div class="name">Lisa</div>
     </div>
     <div class="meta-line" id="meta-E"></div>
@@ -652,6 +805,7 @@
   <div id="trumpBadge"><span style="font-weight:400;">Trump:</span></div>
 </div>
 
+<button id="outlineToggle">Hide Outlines</button>
 <button id="logToggle">Game Log</button>
 <div id="logPanel"></div>
 
@@ -1077,8 +1231,8 @@ function validateMeldSelection(cards, trump){
 // ---------------------------------------------------------------------
 // BIDDING
 // Simple auction: each player either passes or names a bid strictly
-// higher than the current one. If all four pass, the dealer takes the
-// default MIN_BID and automatically wins the round (house rule).
+// higher than the current one. If all four pass, the hand is redealt
+// with the next dealer rather than forcing anyone to take a bid.
 // ---------------------------------------------------------------------
 function processBiddingTurn(){
   if(state.phase !== 'bidding') return;
@@ -1096,16 +1250,12 @@ function processBiddingTurn(){
     finishBidding();
     return;
   }
-  // Everyone passed with no bid at all — house rule: the dealer takes
-  // the default MIN_BID and automatically wins the round, rather than
-  // redealing.
+  // Everyone passed with no bid at all — redeal with the next dealer,
+  // rather than forcing the dealer to take a default bid they never
+  // actually earned.
   if(activeSeats.length === 0){
-    const dealerSeat = SEATS[state.dealerIdx];
-    state.bid = MIN_BID;
-    state.bidWinner = dealerSeat;
-    state.teamBidInfo[TEAM[dealerSeat]] = { amount: MIN_BID, bidder: SEAT_NAME[dealerSeat] };
-    addLog(`All four players passed. ${SEAT_NAME[dealerSeat]} (the dealer) takes the default bid of ${MIN_BID} and automatically wins the round.`);
-    finishBidding();
+    addLog(`All four players passed. Redealing with the next dealer.`);
+    nextHand();
     return;
   }
 
@@ -1127,14 +1277,14 @@ function processBiddingTurn(){
 
 function aiBid(seat){
   const hand = state.hands[seat];
-  const strength = estimateHandStrength(hand);
-  // Rough heuristic: convert hand strength into a "comfortable ceiling"
-  // bid, then decide whether to top the current bid or pass. strength
-  // tops out around ~130 regardless of the bid economy in play, so it's
-  // mapped proportionally onto the [MIN_BID, MAX_BID] range rather than
-  // added to a hardcoded base — that's what lets this keep working
-  // sensibly if MIN_BID/MAX_BID change.
-  const ceiling = MIN_BID + Math.round(strength * (MAX_BID - MIN_BID) / 130);
+  // ceiling estimates the whole PARTNERSHIP's likely combined score,
+  // not just this seat's own hand — a bid has to be met by both
+  // partners' meld + tricks together. PARTNER_BASELINE is a rough
+  // estimate of an average partner's own contribution (meld + likely
+  // trick points), so a merely-average hand doesn't look artificially
+  // weak just because we can't see the partner's cards.
+  const PARTNER_BASELINE = 125;
+  const ceiling = Math.min(MAX_BID, estimateHandStrength(hand) + PARTNER_BASELINE);
   const nextBid = state.bid === 0 ? MIN_BID : state.bid + BID_STEP;
 
   if(nextBid <= ceiling && nextBid <= MAX_BID){
@@ -1145,26 +1295,26 @@ function aiBid(seat){
 }
 
 function estimateHandStrength(hand){
-  // Quick-and-dirty scorer used only for AI bidding decisions: counts
-  // aces/tens heavily, gives credit for any suit that could be trump
-  // (i.e. where this hand has real length/strength), and adds a taste
-  // of likely meld by checking every suit as a hypothetical trump.
+  // Realistic point estimate used for AI bidding: meld counts at its
+  // full, guaranteed value (once declared, it's added to score
+  // outright), while trick-taking cards count for meaningfully less
+  // than their full 10-point value, since actually winning the trick
+  // they're in is never certain. Off-suit aces count for even less
+  // than trump ones, since a trump lead or a stronger off-suit card
+  // can beat them. This intentionally weights meld far more heavily
+  // than raw card-counting, so a hand with modest meld doesn't get an
+  // inflated bid ceiling just from holding a few strong cards.
   let best = 0;
   SUITS.forEach(suit=>{
-    let score = 0;
-    hand.forEach(c=>{
-      if(c.suit === suit){
-        if(c.rank==='A') score += 8;
-        else if(c.rank==='10') score += 6;
-        else if(c.rank==='K') score += 4;
-        else if(c.rank==='Q') score += 3;
-        else if(c.rank==='J') score += 2;
-      } else {
-        if(c.rank==='A') score += 3; // off-suit aces are still worth something
-      }
-    });
     const meld = calcMeld(hand, suit).total;
-    score += meld * 0.12;
+    let counterEstimate = 0;
+    hand.forEach(c=>{
+      const isTrump = c.suit === suit;
+      if(c.rank==='A') counterEstimate += isTrump ? 7 : 3;
+      else if(c.rank==='10') counterEstimate += isTrump ? 6 : 0;
+      else if(c.rank==='K') counterEstimate += isTrump ? 5 : 0;
+    });
+    const score = meld + counterEstimate;
     if(score > best) best = score;
   });
   return best;
@@ -1914,10 +2064,7 @@ function finishHand(){
     ? `<div style="text-align:center;font-size:.78rem;color:#7a1010;margin-bottom:4px;">${getTeamLabel(otherTeam)} forfeited their meld (${meldByTeam[otherTeam]} pts) — no trick with a counter (A/10/K) won.</div>`
     : '';
 
-  const panel = document.getElementById('roundPanel');
-  panel.style.display = 'flex';
-  panel.innerHTML = `
-    <h3 style="${gameOver ? 'color:red;font-size:1.1rem;' : ''}" class="${gameOver ? 'win-blink' : ''}">${heading}</h3>
+  showModal(heading, `
     ${forfeitNote}
     <table>
       <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
@@ -1932,8 +2079,17 @@ function finishHand(){
       ${row('Previous Score', previousScores.NS, previousScores.EW)}
       ${row('Total Score', state.scores.NS, state.scores.EW)}
     </table>
-    <button onclick="document.getElementById('roundPanel').style.display='none'; ${gameOver ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>
-  `;
+  `, `<button onclick="closeModal(); ${gameOver ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>`, false);
+
+  // Flashing red "you won" emphasis, only for the actual game-winning
+  // popup - must be applied here (after showModal, which resets title
+  // styling every time) since this is the code path that actually runs
+  // when a game ends, not the rarely-used backstop in nextHand().
+  if(gameOver){
+    const titleEl = document.getElementById('modalTitle');
+    titleEl.style.color = 'red';
+    titleEl.classList.add('win-blink');
+  }
 }
 
 function nextHand(){
@@ -1951,16 +2107,17 @@ function nextHand(){
 
 function showGameOverPanel(){
   const winnerTeam = state.scores.NS > state.scores.EW ? 'NS' : 'EW';
-  const panel = document.getElementById('roundPanel');
-  panel.style.display = 'flex';
-  panel.innerHTML = `
-    <h3 style="color:red;font-size:1.1rem;" class="win-blink">*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***</h3>
-    <table>
+  showModal(`*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`, `
+    <table class="score-summary">
       <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
       <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
     </table>
-    <button onclick="document.getElementById('roundPanel').style.display='none'; newGame();">Start a new game</button>
-  `;
+  `, `<button onclick="closeModal(); newGame();">Start a new game</button>`, false);
+  // Restore the flashing red "you won" emphasis that the embedded panel
+  // used to have, on top of showModal's normal (non-styled) title.
+  const titleEl = document.getElementById('modalTitle');
+  titleEl.style.color = 'red';
+  titleEl.classList.add('win-blink');
 }
 
 function newGame(){
@@ -2150,7 +2307,7 @@ function setHandMsg(msg){ /* handMsg UI removed per request — kept as a no-op 
 function showBubble(seat, text, persist=false){
   const el = document.getElementById(`bubble-${seat}`);
   if(!el) return;
-  el.textContent = text;
+  el.innerHTML = text; // safe: text is always an internally-built string, never raw user input
   el.classList.add('visible');
   clearTimeout(el._hideTimer);
   if(!persist){
@@ -2205,6 +2362,7 @@ function showModal(title, bodyHtml, btnHtml, dismissable){
   titleEl.textContent = title;
   titleEl.style.textAlign = '';
   titleEl.style.color = '';
+  titleEl.classList.remove('win-blink');
   document.getElementById('modalBody').innerHTML = bodyHtml;
   document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
   document.getElementById('modalBtns').style.justifyContent = '';
@@ -2227,7 +2385,7 @@ function showRules(){
     <p><b>Goal:</b> First team to ${GAME_TARGET} points wins.</p>
     <p><b>Bidding:</b> Starts at ${MIN_BID}, goes up by ${BID_STEP}+ each round. High bidder names trump.
     If the bidding team's meld + tricks don't reach their bid, they're <b>set</b> and lose that many points.
-    If all four players pass, the dealer takes the default bid of ${MIN_BID} and automatically wins the round.</p>
+    If all four players pass, the hand is redealt with the next dealer.</p>
     <p><b>Passing:</b> Right after trump is named, the declarer's partner passes ${PASS_COUNT} cards to the
     declarer first — favoring trump and high cards, since the declarer needs the strength. The declarer then
     reviews their bigger hand and passes ${PASS_COUNT} back to their partner. The other team doesn't pass at all.</p>
@@ -2340,6 +2498,10 @@ document.getElementById('newHandBtn').addEventListener('click', ()=>{
 document.getElementById('logToggle').addEventListener('click', ()=>{
   const p = document.getElementById('logPanel');
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+document.getElementById('outlineToggle').addEventListener('click', function(){
+  const on = document.body.classList.toggle('debug-on');
+  this.textContent = on ? 'Hide Outlines' : 'Show Outlines';
 });
 
 dealNewHand();
