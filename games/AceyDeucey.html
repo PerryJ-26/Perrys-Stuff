@@ -1,5 +1,4 @@
 
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -92,7 +91,7 @@
   
   .wrap{
     width:100%; 
-    max-width:960px; 
+    max-width:1056px; 
     height:100%; 
     display:flex; 
     flex-direction:column; 
@@ -158,6 +157,13 @@
   
   #setup .panel{margin-bottom:0;}
 
+  .setup-controls{
+    width:calc(100% - 384px);
+    max-width:calc(100% - 384px);
+    margin-left:auto;
+    margin-right:auto;}
+
+
   /* Rules paragraph is 16px (set inline in the HTML) - this heading is 3px
      bigger (19px) and colored to match the Title (h1), per Perry's request */
   #setup .rules-heading{
@@ -185,7 +191,8 @@
     margin-bottom:16px;}
   
   .mode-btn{
-    flex:1 1 200px; 
+    flex:0 1 230px; 
+    max-width:230px;
     background:var(--wood-dark); 
     border:2px solid var(--gold); 
     color:var(--cream);
@@ -206,10 +213,13 @@
     display:flex; 
     gap:12px; 
     flex-wrap:wrap; 
+    justify-content:center;
     margin-bottom:16px;}
     
   .name-inputs label{
-    flex:1 1 200px; 
+    flex:0 1 230px; 
+    max-width:230px;
+    text-align:center;
     font-size:0.75rem; 
     text-transform:uppercase; 
     letter-spacing:0.1em; 
@@ -217,6 +227,7 @@
     
   .name-inputs input{
     width:100%; 
+    text-align:center;
     margin-top:6px; 
     padding:8px 10px; 
     background:var(--cream); 
@@ -251,11 +262,10 @@
      is that same button 1 inch (96px) narrower there. On smaller screens the
      50% keeps it fluid/responsive below that cap. */
   #startBtn{
-    width:50%;
-    max-width:366px;
+    width:fit-content;
     margin:0 auto;
-    padding:7px;
-    font-size:1.875rem;}
+    padding:9px 28px;
+    font-size:1.75rem;}
 
   /* "Play Another Game?" prompt + Yes/No split 
      buttons on the Game Over screen.  These replace 
@@ -275,13 +285,14 @@
   .play-again-row{
     display:flex; 
     gap:10px;
-    max-width:400px;
+    max-width:200px;
     margin:0 auto;}
   
   .play-again-row .go-btn{ 
     width:auto;
     flex:1;
-    font-size:1.6rem;
+    padding:2px 12px;
+    font-size:1.3rem;
     background:var(--gameover-btn-bg);
     color:var(--gameover-btn-text);}
   /* ---- game screen ---- */
@@ -642,7 +653,15 @@
     font-family:'Playfair Display',serif;
     color:var(--gameover-title-color);
     font-size:1.9rem;
-    margin-bottom:6px;}
+    margin-bottom:6px;
+    animation:flash-red 1s step-start infinite;}
+
+  /* Flashes the winner announcement ("<Name> Wins!") between red and its normal gold color.
+     step-start (not ease-in-out) so it's a hard on/off blink, not a smooth fade. */
+  @keyframes flash-red{
+    0%, 49%{color:#ff2b2b;}
+    50%, 100%{color:var(--gameover-title-color);}
+  }
 
   footer{
     text-align:center; 
@@ -756,8 +775,8 @@
     </div>
     <div class="panel setup-controls">
       <div class="mode-choices">
-        <button class="mode-btn" data-mode="human">Two Human Players</button>
-        <button class="mode-btn selected" data-mode="ai">Play Against AI</button>
+        <button class="mode-btn" data-mode="human" data-label="Two Human Players">Two Human Players: OFF</button>
+        <button class="mode-btn selected" data-mode="ai" data-label="Play Against AI">Play Against AI: ON</button>
       </div>
       <div class="name-inputs" id="nameInputs">
         <label>White (Player 1)
@@ -990,8 +1009,12 @@
   // ---------------- setup screen ----------------
   document.querySelectorAll('.mode-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('selected'));
+      document.querySelectorAll('.mode-btn').forEach(b=>{
+        b.classList.remove('selected');
+        b.textContent = b.dataset.label + ': OFF';
+      });
       btn.classList.add('selected');
+      btn.textContent = btn.dataset.label + ': ON';
       mode = btn.dataset.mode;
       const p2Input = document.getElementById('p2Name');
       const p2Label = document.getElementById('p2Label');
@@ -1610,6 +1633,67 @@
   }
 
 })();
+
+/* Makes the app resizable: scales the whole .wrap down (via the zoom property, which actually
+   shrinks layout size, unlike transform:scale which only affects painting) whenever its natural
+   content is taller than the available window height, on whichever screen is currently showing
+   (Setup, the game board, or Game Over) - this is what eliminates the internal scrollbar on the
+   Setup screen's rules/mode panel instead of just tolerating it. Does nothing if content already
+   fits. #setup's own overflow-y:auto stays in place as a safety net for extreme edge cases, but
+   with this active it shouldn't normally be needed. Measures natural (unclamped) height by
+   temporarily removing the height:100%/overflow constraints that #wrap and #setup normally use to
+   contain their content, then restores them before applying the zoom. Re-checks on window resize. */
+function fitAppToViewport(){
+  try {
+    const wrap = document.querySelector('.wrap');
+    const setup = document.getElementById('setup');
+    if(!wrap) return;
+    wrap.style.zoom = 1;
+
+    const prevWrapHeight = wrap.style.height, prevWrapOverflow = wrap.style.overflow;
+    wrap.style.height = 'auto';
+    wrap.style.overflow = 'visible';
+    let prevSetupHeight, prevSetupOverflow;
+    if(setup){
+      prevSetupHeight = setup.style.height;
+      prevSetupOverflow = setup.style.overflow;
+      setup.style.height = 'auto';
+      setup.style.overflow = 'visible';
+    }
+
+    const naturalHeight = wrap.scrollHeight;
+
+    wrap.style.height = prevWrapHeight;
+    wrap.style.overflow = prevWrapOverflow;
+    if(setup){
+      setup.style.height = prevSetupHeight;
+      setup.style.overflow = prevSetupOverflow;
+    }
+
+    const bodyStyle = getComputedStyle(document.body);
+    const available = window.innerHeight - parseFloat(bodyStyle.paddingTop) - parseFloat(bodyStyle.paddingBottom);
+    if(naturalHeight > available && naturalHeight > 0){
+      wrap.style.zoom = available / naturalHeight;
+    }
+  } catch (err) {
+    console.error('fitAppToViewport error', err);
+  }
+}
+fitAppToViewport();
+window.addEventListener('load', fitAppToViewport);
+window.addEventListener('resize', fitAppToViewport);
+
+/* Re-fits whenever the visible screen changes (Setup <-> game board <-> Game Over), since each has
+   very different natural content height and a zoom level computed for one won't be right for
+   another. Watches for the 'show'/'hidden' class toggles those screens use rather than needing a
+   call added at every place in the code that switches screens. */
+(function(){
+  const screens = ['setup', 'game', 'gameOver'].map(id => document.getElementById(id)).filter(Boolean);
+  if(!screens.length) return;
+  const observer = new MutationObserver(() => fitAppToViewport());
+  screens.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['class'] }));
+})();
+
 </script>
 </body>
 </html>
