@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -74,6 +72,10 @@
     background:var(--bg);
     color:var(--text) }
 
+  body{
+    display:flex;
+    flex-direction:column }
+
   #nameInput::placeholder{
     color:rgba(26,26,26,0.5);
     font-weight:600 }
@@ -108,9 +110,14 @@
     opacity:.95 }
   
   main{
-  padding:12px 20px;
+  padding:clamp(4px,1vh,12px) 20px .125in 20px;
   max-width:1200px;
-  margin:0 auto }
+  margin:0 auto;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:0 }
   
   .row{
   display:flex;
@@ -147,8 +154,8 @@
 
   /* Dice */
   .die{
-    width:64px;
-    height:64px;
+    width:48px;
+    height:48px;
     border-radius:12px;
     background: linear-gradient(145deg,var(--die-bg-1),var(--die-bg-2));
     display:flex;
@@ -176,8 +183,8 @@
     justify-content:center; }
     
   .pip{
-    width:12px;
-    height:12px;
+    width:9px;
+    height:9px;
     border-radius:50%;
     background: radial-gradient(circle at 35% 30%, var(--pip-color-1), var(--pip-color-2) 70%);
     box-shadow: inset 0 1px 1px rgba(255,255,255,0.15), 0 1px 1px rgba(0,0,0,0.3);
@@ -226,7 +233,7 @@
     width:100% }
   
   table.score th, table.score td{
-    padding:3.4px 8px;
+    padding:0.975px 8px;
     border-bottom:1px solid var(--table-border);
     text-align:left }
     
@@ -237,7 +244,7 @@
     background:var(--scoreBtn-bg);
     border:0;
     color:#fff;
-    padding:6px 8px;
+    padding:2px 8px;
     border-radius:6px;
     cursor:pointer }
     
@@ -263,7 +270,7 @@
     padding:0;margin:0 }
     
   .highScores li{
-    padding:8px;
+    padding:2px 8px;
     border-bottom:1px solid var(--table-border);
     display:flex;justify-content:space-between;
     align-items:center;
@@ -350,7 +357,7 @@
     #yahtzeeArea{
       flex-direction:row;
       flex-wrap:nowrap;
-      align-items:stretch;
+      align-items:flex-start;
       justify-content:space-between }
     
     .col.left{
@@ -368,31 +375,24 @@
       width:320px;
       min-width:260px }
       
-    .col.right .card{
-      flex:1 }
-      
   }
   @media(max-width:1200px){
-    .die{width:52px;height:52px}
-    .pip{width:9px;height:9px}
   }
 </style>
 </head>
 <body>
 
-<header> Yahtzee</header>
-
-<div  style="margin-top:0;
+<div id="pageWrapper" style="transform-origin:top center; height:100%; display:flex; flex-direction:column;">
+<div style="margin-top:0;
         display:flex;
-        gap:8px;
-        padding: 20px 20px;
+        gap:20px;
+        padding: .125in .125in .125in 20px;
         flex-wrap:wrap;
-        align-items:center;
+        align-items:flex-end;
         background: var(--header-bg);
         border-bottom:2px solid var(--header-border);
         position:relative;
-
-        justify-content:center">
+        justify-content:flex-start">
 
     <!-- Hidden maintenance control: double-click to open the password-gated "Clear High Scores"
          dialog. Deliberately invisible and unlabeled - not meant to be discoverable during normal
@@ -401,67 +401,85 @@
     <div id="secretClearZone" ondblclick="openClearScoresModal()"
       style="position:absolute; bottom:0; left:0; width:48px; height:48px; cursor:default; z-index:2;"></div>
 
-    <div style="display:flex; width:260px; border-radius:6px; overflow:hidden; box-sizing:border-box;">
-      <span style="background:var(--exit-btn-bg);
-        color:var(--exit-btn-text);
-        font-size:20px;
-        font-weight:600;
-        padding:6px 10px;
-        display:flex;
-        align-items:center;
-        white-space:nowrap;">Name:</span>
-      <!-- The actual input is built by JS (buildNameInput), not left here as static markup, so it
-           never exists on the page without the correct value already baked in - see buildNameInput
-           for why. -->
-      <div id="nameInputSlot" style="flex:1; min-width:0;"></div>
-    </div>
+    <div style="font-size:50px; font-weight:bold; line-height:1; white-space:nowrap;">Yahtzee</div>
 
-    <button onclick="resetYahtzee()" 
-      style="background:var(--exit-btn-bg);
-      color:var(--exit-btn-text);
-      font-size:20px;
-      font-weight:600;
-      width:190px;
-      box-sizing:border-box;"
-      class="scoreBtn"> New Game
-    </button>
-    
-    <button id="soundToggleBtn" onclick="toggleSound()" class="scoreBtn"
-      style="background:var(--exit-btn-bg);
-      color:var(--exit-btn-text);
-      font-weight:600;
-      font-size:20px;
-      width:190px;
-      box-sizing:border-box;">🔊 Sound: On"
-    </button>
-      
-    <button id="exitBtn" onclick="handleExitClick()"
-      style="background:var(--exit-btn-bg);
+    <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; margin-left:auto;">
+
+      <div style="display:flex; width:260px; height:40px; border-radius:6px; overflow:hidden; box-sizing:border-box;">
+        <span style="background:var(--exit-btn-bg);
+          color:var(--exit-btn-text);
+          font-size:20px;
+          font-weight:600;
+          padding:6px 10px;
+          display:flex;
+          align-items:center;
+          box-sizing:border-box;
+          white-space:nowrap;">Name:</span>
+        <!-- The actual input is built by JS (buildNameInput), not left here as static markup, so it
+             never exists on the page without the correct value already baked in - see buildNameInput
+             for why. -->
+        <div id="nameInputSlot" style="flex:1; min-width:0; height:100%;"></div>
+      </div>
+
+      <button onclick="resetYahtzee()" 
+        style="background:var(--exit-btn-bg);
         color:var(--exit-btn-text);
-        border:0;
-        padding:6px 8px;
-        border-radius:6px;
-        cursor:pointer;
         font-size:20px;
         font-weight:600;
         width:190px;
-        box-sizing:border-box;">Exit Game
-    </button>
+        height:40px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        box-sizing:border-box;"
+        class="scoreBtn"> New Game
+      </button>
+      
+      <button id="soundToggleBtn" onclick="toggleSound()" class="scoreBtn"
+        style="background:var(--exit-btn-bg);
+        color:var(--exit-btn-text);
+        font-weight:600;
+        font-size:20px;
+        width:190px;
+        height:40px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        box-sizing:border-box;">🔊 Sound: On"
+      </button>
+        
+      <button id="exitBtn" onclick="handleExitClick()"
+        style="background:var(--exit-btn-bg);
+          color:var(--exit-btn-text);
+          border:0;
+          padding:6px 8px;
+          border-radius:6px;
+          cursor:pointer;
+          font-size:20px;
+          font-weight:600;
+          width:190px;
+          height:40px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          box-sizing:border-box;">Exit Game
+      </button>
+    </div>
 </div>
 
 <main>
   <div id="yahtzeeArea" class="row">
     <!-- Left column: dice/controls card, then a separate Totals card -->
-    <div class="col left" style="display:flex;flex-direction:column;gap:0.25in">
-      <div class="card" id="dicePanel" style="text-align:center">
+    <div class="col left" id="leftColumn" style="display:flex;flex-direction:column;gap:clamp(8px,2vh,24px)">
+      <div class="card" id="dicePanel" style="text-align:center; padding-top:.125in; padding-bottom:.125in">
         <h1 style="margin:0 0 0 8px; font-size:24px;">Roll Dice</h1>
         <div class="small">Click dice to hold/unhold. Up to 3 rolls per turn.</div>
-        <div class="diceRow" id="diceContainer" style="margin-top:12px;justify-content:center"></div>
-        <div style="margin-top:12px">
+        <div class="diceRow" id="diceContainer" style="margin-top:clamp(4px,1vh,12px);justify-content:center"></div>
+        <div style="margin-top:clamp(4px,1vh,12px)">
           <button id="rollBtn" onclick="rollDice()" Style="font-size: 20px; color: var(--exit-btn-text)">Roll The Dice</button>
           <div id="rollInfo" class="small">Rolls left: 3</div>
         </div>
-        <div style="margin-top:0.5in;display:flex;
+        <div style="margin-top:clamp(4px,1vh,12px);display:flex;
              gap:8px;
              flex-wrap:wrap;
              align-items:center;
@@ -469,20 +487,20 @@
         </div>
       </div>
 
-      <div class="card" style="text-align:center">
+      <div class="card" style="text-align:center; padding-top:clamp(4px,1vh,12px); padding-bottom:clamp(4px,1vh,12px)">
         <h2 style="margin:0 0 8px">Totals</h2>
         <div class="totals">
           <div><strong>Upper Total:</strong> <span id="upperTotal">0</span></div>
           <div><strong>Upper Bonus:</strong> <span id="upperBonus">0</span></div>
           <div><strong>Lower Total:</strong> <span id="lowerTotal">0</span></div>
           <div><strong>Yahtzee Bonus:</strong> <span id="yahtzeeBonus">0</span></div>
-          <div style="margin-top:12px; margin-bottom:26px"><strong>Grand Total:</strong> <span id="grandTotal">0</span></div>
+          <div style="margin-top:clamp(4px,1vh,12px); margin-bottom:clamp(4px,1vh,12px)"><strong>Grand Total:</strong> <span id="grandTotal">0</span></div>
         </div>
       </div>
     </div>
 
     <!-- Center column: scorecard -->
-    <div class="col center card">
+    <div class="col center card" id="scorecardCard" style="padding-bottom:clamp(4px,1vh,12px)">
       <h2 style="margin:0 0 8px; text-align:center">Scorecard</h2>
       <table class="score" id="scoreTable" aria-label="Yahtzee scorecard">
         <thead>
@@ -494,7 +512,7 @@
 
     <!-- Right column: high scores -->
     <div class="col right">
-      <div class="card">
+      <div class="card" id="highScoresCard">
         <h2 style="margin:0 0 8px; text-align:center">High Scores</h2>
         <div class="highScores" id="highScoresContainer">
           <ul id="highScoresList"></ul>
@@ -503,6 +521,7 @@
     </div>
   </div>
 </main>
+</div>
 
 <div id="errorOverlay" role="alert"></div>
 
@@ -525,7 +544,9 @@
     console.error(msg);
   }
   window.addEventListener('error', function(e){
-    showError('Error: ' + (e && e.message ? e.message : String(e)));
+    const msg = e && e.message ? e.message : String(e);
+    if(msg.includes('ResizeObserver loop')) return; // benign browser warning, not a real error
+    showError('Error: ' + msg);
   });
   window.addEventListener('unhandledrejection', function(e){
     showError('Unhandled promise rejection: ' + (e && e.reason ? (e.reason.message || JSON.stringify(e.reason)) : String(e)));
@@ -1468,6 +1489,67 @@ function initYahtzee(){
 /* Initialize UI */
 initYahtzee();
 
+/* Pins the Scorecard and High Scores cards to the left column's exact height (not just a minimum),
+   so neither can overshoot past Totals' bottom either - min-height alone still let Scorecard's own
+   tall natural content (13 rows) push past it. Scorecard gets overflow-y:auto as a safety net in
+   case its content ever doesn't fit (e.g. a future added category) rather than silently clipping.
+   Root cause of them not matching before was a #yahtzeeArea{align-items:stretch} rule that silently
+   overrode this - all three columns were being stretched to match the tallest one, Scorecard,
+   regardless of what this function set. That rule is gone now. Runs on initial load, again after
+   the window 'load' event (in case late-loading fonts shifted text height), and on resize since the
+   left column's width - and therefore how the dice wrap - can change with viewport. */
+function matchColumnHeightsToLeftColumn(){
+  try {
+    const left = document.getElementById('leftColumn');
+    if(!left) return;
+    const targetHeight = left.offsetHeight + 'px';
+    const scorecard = document.getElementById('scorecardCard');
+    const highScores = document.getElementById('highScoresCard');
+    if(scorecard){
+      scorecard.style.boxSizing = 'border-box';
+      scorecard.style.height = targetHeight;
+      scorecard.style.overflowY = 'hidden';
+    }
+    if(highScores){
+      highScores.style.boxSizing = 'border-box';
+      highScores.style.height = targetHeight;
+      highScores.style.overflowY = 'hidden';
+    }
+  } catch (err) {
+    console.error('matchColumnHeightsToLeftColumn error', err);
+  }
+}
+matchColumnHeightsToLeftColumn();
+window.addEventListener('load', matchColumnHeightsToLeftColumn);
+window.addEventListener('resize', matchColumnHeightsToLeftColumn);
+
+/* Guarantees no page scrollbar, regardless of small rendering differences between browsers/fonts
+   that made manually trimming individual paddings an endless chase: measures the actual rendered
+   height of everything (pageWrapper, which holds the header bar and all three columns), and if it's
+   taller than the window, scales the whole thing down by exactly enough to fit - same proportions,
+   same look, just slightly smaller. Does nothing if it already fits (scale stays at 1). The error
+   overlay and confirmation modal live outside pageWrapper on purpose, so they're never scaled and
+   still cover the true full-size viewport if shown. Re-checks on resize, and after the column
+   height matching above so it scales an already correctly laid-out page. */
+function fitPageToViewport(){
+  try {
+    const wrapper = document.getElementById('pageWrapper');
+    if(!wrapper) return;
+    wrapper.style.zoom = 1;
+    const contentHeight = wrapper.scrollHeight;
+    const available = window.innerHeight;
+    if(contentHeight > available && contentHeight > 0){
+      const scale = available / contentHeight;
+      wrapper.style.zoom = scale;
+    }
+  } catch (err) {
+    console.error('fitPageToViewport error', err);
+  }
+}
+fitPageToViewport();
+window.addEventListener('load', fitPageToViewport);
+window.addEventListener('resize', fitPageToViewport);
+
 (function(){
   const btn = document.getElementById('soundToggleBtn');
   if (btn) btn.textContent = soundEnabled ? '🔊 Sound: On' : '🔇 Sound: Off';
@@ -1491,7 +1573,7 @@ function buildNameInput(){
   input.value = (currentPlayerName === 'Visitor') ? '' : currentPlayerName;
   input.style.cssText =
     'background:var(--name-field-bg); color:var(--name-field-text); font-size:20px; ' +
-    'font-weight:600; text-align:center; border:0; padding:6px 8px; width:100%; box-sizing:border-box;';
+    'font-weight:600; text-align:center; border:0; padding:6px 8px; width:100%; height:100%; box-sizing:border-box;';
   input.addEventListener('input', ()=>updatePlayerName(input.value));
   slot.appendChild(input);
 }
