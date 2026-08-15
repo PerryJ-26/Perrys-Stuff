@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -33,7 +31,7 @@
     --cell-win-bg-1:#bfe0fb;
     --cell-win-bg-2:#93cdf7;
     --cell-win-border:#1e88e5;
-    --status-color:#ff265c; /* #42a5f5; */
+    --status-color:#ffbf00; /* #42a5f5; */
 
     /* Controls row (Reset / AI / Exit) */
     --controls-btn-bg:#e3f0fc;
@@ -60,15 +58,15 @@
   html,body{
     height:100%;
     margin:0;
-    padding:0 96px;
+    padding:0 clamp(16px,5vw,96px);
     box-sizing:border-box;
     display:flex;
     flex-direction:column;
     font-family:Inter,Segoe UI,Arial,sans-serif;
     background:var(--bg);color:var(--text)}
     header{background:var(--header-bg);
-    padding:18px 20px;
-    font-size:50px;
+    padding:clamp(8px,1.5vh,18px) 20px;
+    font-size:clamp(26px,4vw,50px);
     text-align:center;
     border-bottom:1px solid var(--header-border)}
   
@@ -93,7 +91,7 @@
     opacity:.95}
   
   main{
-    padding:12px 20px;
+    padding:clamp(6px,1.5vh,12px) 20px;
     max-width:1200px;
     flex:1;
     width:100%;
@@ -101,7 +99,8 @@
     align-items:center;
     justify-content:center;
     margin:0 auto;
-    box-sizing:border-box}
+    box-sizing:border-box;
+    min-height:0}
    
   .row{
     display:flex;gap:20px;
@@ -111,17 +110,18 @@
    
   .card{
     background:var(--card);
-    padding:24px 288px 96px 288px;
+    padding:clamp(16px,2.5vh,24px) clamp(24px,8vw,96px) clamp(24px,4vh,48px) clamp(24px,8vw,96px);
     border-radius:8px;
     box-shadow:0 2px 6px rgba(0,0,0,.6);
     width:fit-content}
 
-  /* Tic Tac Toe board */
+  /* Tic Tac Toe board - cell size scales with viewport height so the whole board
+     (and page) fits without a vertical scrollbar at any reasonable window size */
   #board{
     display:grid;
-    grid-template-columns:repeat(3,100px);
-    grid-auto-rows:100px;
-    gap:8px;
+    grid-template-columns:repeat(3,clamp(60px,10vh,100px));
+    grid-auto-rows:clamp(60px,10vh,100px);
+    gap:clamp(6px,1vh,8px);
     justify-content:center}
     
   .cell{
@@ -131,7 +131,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:2.6rem;
+    font-size:clamp(1.6rem,5vh,2.6rem);
     font-weight:700;
     cursor:pointer;
     color:var(--cell-text);
@@ -258,12 +258,6 @@
     overflow:auto;
     box-shadow:0 8px 30px rgba(0,0,0,0.6)}
 
-  @media(max-width:1200px){
-    #board{
-    grid-template-columns:repeat(3,80px);
-    grid-auto-rows:80px}
-    .card{padding:48px}}
-    
 </style>
 </head>
 <body>
@@ -279,8 +273,8 @@
         <button onclick="toggleAI()" class="primary">AI Opponent: On</button>
         <button onclick="confirmExitTicTacToe()" class="primary">Exit Game</button>
       </div>
-      <div id="status" class="small" style="font-size:30px;margin-top:48px">Player X's Turn</div>
-      <div id="board" style="margin-top:24px"></div>
+      <div id="status" class="small" style="font-size:clamp(18px,3.5vh,30px);margin-top:clamp(16px,3vh,48px)">Player X's Turn</div>
+      <div id="board" style="margin-top:clamp(12px,2vh,24px)"></div>
     </div>
   </div>
 </main>
