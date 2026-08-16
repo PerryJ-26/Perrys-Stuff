@@ -1,6 +1,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -261,22 +263,18 @@
 
     <div class="contact-card">
 
-      <!-- PERRY: replace YOUR_FORM_ID below with your actual Formspree form ID.
-           Sign up free at https://formspree.io, create a form there, and it will
-           give you a URL like https://formspree.io/f/abcd1234 - copy just the
-           "abcd1234" part (or the whole URL) into the action attribute here.
-           Formspree will also send you a one-time confirmation email the first
-           time someone submits this form - click the link in that email or
-           submissions won't go through. -->
-      <form class="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+      <form class="contact-form" action="https://api.web3forms.com/submit" method="POST">
 
-        <!-- Sets the email subject line and reply-to address Formspree uses -->
-        <input type="hidden" name="_subject" value="New message from Game Hub contact form">
+        <input type="hidden" name="access_key" value="b9a01d40-83f8-40d1-b6e2-443de47688cc">
+
+        <!-- Sets the email subject line Web3Forms uses -->
+        <input type="hidden" name="subject" value="New message from Game Hub contact form">
 
         <!-- Honeypot spam trap: hidden from real visitors via CSS, but bots that
-             auto-fill every field will fill this in too, and Formspree silently
-             discards any submission where it's non-empty. -->
-        <input type="text" name="_gotcha" style="display:none">
+             auto-fill every field will fill this in too, and Web3Forms silently
+             discards any submission where it's non-empty. Web3Forms specifically
+             looks for a field named "botcheck" for this. -->
+        <input type="checkbox" name="botcheck" style="display:none">
 
         <div class="form-field name-row">
           <div>
@@ -302,7 +300,7 @@
 
         <div class="checkbox-field">
           <input type="checkbox" id="announcements" name="announcements" value="yes">
-          <label for="announcements">Yes, I want notices of new verions of Game Hub.</label>
+          <label for="announcements">Yes, I want notices of new versions of Game Hub.</label>
         </div>
 
         <button type="submit" class="submit-btn">Send Message</button>
