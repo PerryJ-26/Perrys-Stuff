@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,7 +89,7 @@
 
   main {
     max-width: 500px;
-    margin: 60px auto;
+    margin: 24px auto 60px auto;
     padding: 0 20px;
   }
 
@@ -106,6 +107,18 @@
     border-radius: 8px;
     padding: 35px;
     text-align: center;
+  }
+
+  .intro-text {
+    text-align: center;
+    margin: 0 0 22px;
+  }
+
+  .intro-text p {
+    color: var(--body-text);
+    font-size: 1.1rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
   }
 
   .contact-card p {
@@ -131,6 +144,97 @@
   .email-link:hover {
     background: var(--email-hover-bg);
   }
+
+  /* ---- Contact form ---- */
+  .contact-form {
+    text-align: left;
+  }
+
+  .form-field {
+    margin-bottom: 20px;
+  }
+
+  .name-row {
+    display: flex;
+    gap: 16px;
+  }
+
+  .name-row > div {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .form-field label {
+    display: block;
+    font-weight: bold;
+    color: var(--nav-text);
+    margin-bottom: 6px;
+    font-size: 0.95rem;
+  }
+
+  .form-field input[type="text"],
+  .form-field input[type="email"],
+  .form-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: var(--body-text);
+  }
+
+  .form-field textarea {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .field-note {
+    margin: 6px 0 0;
+    font-size: 0.82rem;
+    color: var(--nav-text);
+    font-style: italic;
+  }
+
+  .checkbox-field {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+
+  .checkbox-field input[type="checkbox"] {
+    margin-top: 3px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    accent-color: var(--header-bg);
+  }
+
+  .checkbox-field label {
+    color: var(--body-text);
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .submit-btn {
+    display: block;
+    width: 100%;
+    background: var(--header-bg);
+    color: var(--header-text);
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 12px 22px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .submit-btn:hover {
+    background: #3d7aa8;
+  }
 </style>
 </head>
 <body>
@@ -148,11 +252,62 @@
 
   <main>
     <h2 class="page-title">Contact</h2>
-    <div class="contact-card">
+
+    <div class="intro-text">
       <p>I encourage comments and suggestions.</p>
-      <p>If you have a hankering, shoot me an email.</p>
+      <p>If you have a hankering, send me a message.</p>
       <p>Perry Johnson</p>
-      <a class="email-link" href="mailto:PerryJ26@Noblewood.com">PerryJ26 [at] Noblewood [dot] com</a>
+    </div>
+
+    <div class="contact-card">
+
+      <!-- PERRY: replace YOUR_FORM_ID below with your actual Formspree form ID.
+           Sign up free at https://formspree.io, create a form there, and it will
+           give you a URL like https://formspree.io/f/abcd1234 - copy just the
+           "abcd1234" part (or the whole URL) into the action attribute here.
+           Formspree will also send you a one-time confirmation email the first
+           time someone submits this form - click the link in that email or
+           submissions won't go through. -->
+      <form class="contact-form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+
+        <!-- Sets the email subject line and reply-to address Formspree uses -->
+        <input type="hidden" name="_subject" value="New message from Game Hub contact form">
+
+        <!-- Honeypot spam trap: hidden from real visitors via CSS, but bots that
+             auto-fill every field will fill this in too, and Formspree silently
+             discards any submission where it's non-empty. -->
+        <input type="text" name="_gotcha" style="display:none">
+
+        <div class="form-field name-row">
+          <div>
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" name="first_name" required>
+          </div>
+          <div>
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" name="last_name" required>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required>
+          <p class="field-note">Your email address will not be sold or shared</p>
+        </div>
+
+        <div class="form-field">
+          <label for="message">Your Message</label>
+          <textarea id="message" name="message" required></textarea>
+        </div>
+
+        <div class="checkbox-field">
+          <input type="checkbox" id="announcements" name="announcements" value="yes">
+          <label for="announcements">Yes, I want notices of new Game Hub versions.</label>
+        </div>
+
+        <button type="submit" class="submit-btn">Send Message</button>
+      </form>
+
     </div>
   </main>
 
