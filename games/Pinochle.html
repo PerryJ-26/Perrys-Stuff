@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -620,6 +619,10 @@
 
   /* ---------- Log ---------- */
   #outlineToggle{
+    /* Invisible but still clickable in its original spot - opacity:0
+       (unlike display:none) keeps it in the page layout and able to
+       receive clicks, it just isn't visually rendered. Matches logToggle below. */
+    opacity:0;
     position:fixed; bottom:50px; left:10px;
     background: var(--cream); color:var(--ink);
     border:2px solid var(--board-border); border-radius:20px;
@@ -721,7 +724,7 @@
   }
 </style>
 </head>
-<body class="debug-on">
+<body>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Pinochle</h1>
@@ -805,7 +808,7 @@
   <div id="trumpBadge"><span style="font-weight:400;">Trump:</span></div>
 </div>
 
-<button id="outlineToggle">Hide Outlines</button>
+<button id="outlineToggle">Show Outlines</button>
 <button id="logToggle">Game Log</button>
 <div id="logPanel"></div>
 
@@ -2495,11 +2498,11 @@ document.getElementById('newHandBtn').addEventListener('click', ()=>{
     <button onclick="closeModal()">Cancel</button>
   `, false);
 });
-document.getElementById('logToggle').addEventListener('click', ()=>{
+document.getElementById('logToggle').addEventListener('dblclick', ()=>{
   const p = document.getElementById('logPanel');
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 });
-document.getElementById('outlineToggle').addEventListener('click', function(){
+document.getElementById('outlineToggle').addEventListener('dblclick', function(){
   const on = document.body.classList.toggle('debug-on');
   this.textContent = on ? 'Hide Outlines' : 'Show Outlines';
 });
