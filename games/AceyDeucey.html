@@ -534,7 +534,32 @@
     min-height:44px;
     align-items:center; 
     justify-content:center;
-    flex-wrap:nowrap;}
+    flex-wrap:nowrap;
+    position:relative;}
+
+  /* Positioned absolutely (not in normal flow) so it doesn't push the Roll Dice button or
+     anything else around when it appears/disappears - it just overlays .5in below the dice. */
+  .cant-move-msg{
+    position:absolute;
+    top:calc(100% + .5in);
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--wood-dark);
+    color:var(--gold-bright);
+    border:2px solid var(--gold);
+    border-radius:6px;
+    padding:6px 14px;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:0.85rem;
+    white-space:nowrap;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 200ms ease;
+    z-index:20;}
+
+  .cant-move-msg.show{
+    opacity:1;}
   
   /* die visuals duplicated from the Yahtzee app 
      (gradient face, inset/outset shadow, pip grid);
@@ -840,6 +865,7 @@
         <div class="side-controls-inner">
           <button class="action-btn" id="rollBtn">Roll Dice</button>
           <div class="dice-row" id="diceRow"></div>
+          <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
           <div class="double-choice" id="doubleChoice" style="display:none;"></div>
         </div>
       </div>
@@ -1038,6 +1064,35 @@
       }
     }
     return false;
+  }
+
+  // ---------------- "Can't Move" toast ----------------
+  // Shown whenever a player has no legal move available with their current dice (e.g. blocked
+  // by the opponent's checkers). Positioned absolutely below the dice so it doesn't shift any
+  // layout, and stays up for about 2 seconds. If it's triggered again while already showing
+  // (e.g. two forfeits in a row), the 2-second timer restarts rather than stacking timers.
+  let cantMoveTimeout = null;
+  function showCantMoveMessage(){
+    const el = document.getElementById('cantMoveMsg');
+    if(!el) return;
+    el.classList.add('show');
+    if(cantMoveTimeout) clearTimeout(cantMoveTimeout);
+    cantMoveTimeout = setTimeout(()=>{ el.classList.remove('show'); }, 2000);
+  }
+
+  // Used at every point where no legal move is available with the current dice. Shows the
+  // "Can't Move" message while deliberately leaving the `dice` array untouched and re-rendering
+  // immediately, so the dice everyone just rolled stay visible during the message instead of
+  // vanishing the instant the forfeit happens. The actual forfeit (clearing dice, advancing the
+  // turn) is deferred until the message's own 2-second window closes.
+  function forfeitTurnNoMoves(logMsg){
+    log(logMsg, 'info');
+    showCantMoveMessage();
+    render();
+    setTimeout(()=>{
+      dice = [];
+      afterDiceExhausted();
+    }, 2000);
   }
 
   // ---------------- setup screen ----------------
@@ -1334,9 +1389,7 @@
     if(dice.length === 0){
       afterDiceExhausted();
     } else if(!anyLegalMove(player, dice)){
-      log('No further legal moves — remaining dice forfeited.', 'info');
-      dice = [];
-      afterDiceExhausted();
+      forfeitTurnNoMoves('No further legal moves — remaining dice forfeited.');
     } else {
       render();
       if(isAI[current]) setTimeout(aiStep, 500);
@@ -1372,9 +1425,7 @@
     phase = 'moving';
     render();
     if(!anyLegalMove(current, dice)){
-      log('No legal moves for that double — forfeited.', 'info');
-      dice = [];
-      afterDiceExhausted();
+      forfeitTurnNoMoves('No legal moves for that double — forfeited.');
       return;
     }
     if(isAI[current]) setTimeout(aiStep, 500);
@@ -1600,9 +1651,7 @@
     render();
 
     if(!anyLegalMove(current, dice)){
-      log('No legal moves available — dice forfeited.', 'info');
-      dice = [];
-      afterDiceExhausted();
+      forfeitTurnNoMoves('No legal moves available — dice forfeited.');
       return;
     }
     if(isAI[current]) setTimeout(aiStep, 500);
@@ -1720,13 +1769,32 @@
     return [];
   }
 
+  /* Shared cross-device score data from Firebase (see the <script type="module"> block near
+     the end of the file - same Firebase project Yahtzee already uses, just a separate database
+     path so the two games' scores don't mix). null means "haven't heard from Firebase yet" -
+     showScoresModal falls back to the local list in that case so it isn't empty while Firebase
+     is still connecting or if it's unreachable. Once Firebase sends its first update, this
+     becomes the source of truth, same pattern as Yahtzee's sharedScores. */
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    // If the Scores modal happens to already be open when a live update arrives (e.g. someone
+    // on another device just finished a game), refresh what's showing instead of leaving it stale.
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'block' && document.getElementById('universalModalText').classList.contains('scores-list')){
+      showScoresModal();
+    }
+  };
+
   function recordScore(name, margin, opponent){
     try {
+      const entry = { name, margin, opponent, date: new Date().toLocaleDateString() };
       const list = loadScoreHistory();
-      list.push({ name, margin, opponent, date: new Date().toLocaleDateString() });
+      list.push(entry);
       list.sort((a,b)=> b.margin - a.margin);
       const trimmed = list.slice(0, MAX_RECORDED_SCORES);
       localStorage.setItem(SCORE_HISTORY_KEY, JSON.stringify(trimmed));
+      if(window.pushSharedScore) window.pushSharedScore(entry);
     } catch (err) { console.error('recordScore error', err); }
   }
 
@@ -1753,7 +1821,8 @@
   }
 
   function showScoresModal(){
-    const list = loadScoreHistory();
+    const source = sharedScores !== null ? sharedScores : loadScoreHistory();
+    const list = [...source].sort((a,b)=> b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
     let message;
     if(list.length === 0){
       message = 'No scores recorded yet. Play a game to add one!';
@@ -1846,6 +1915,51 @@ window.addEventListener('resize', fitAppToViewport);
   screens.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['class'] }));
 })();
 
+</script>
+
+<!-- -------------------------------------------------------------------------
+     Shared (cross-device) recorded scores via Firebase Realtime Database.
+     Same Firebase project Yahtzee already uses (perrys-stuff) - just a
+     separate database path (aceyDeuceyScores instead of yahtzeeScores) so
+     the two games' scores stay independent. Loaded as a separate
+     <script type="module"> because Firebase's SDK is distributed as native
+     ES modules - this doesn't touch or replace any of the local-storage
+     machinery above, it just adds a second, shared source that the classic
+     script reads from and writes to via a couple of small window.* functions. -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onValue
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'aceyDeuceyScores');
+
+  // Adds one finished game's score to the shared leaderboard. Fire-and-forget - the classic
+  // script calls this but doesn't wait on it, so a slow/offline connection never blocks gameplay.
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+
+  // Live subscription: fires immediately with whatever's currently in the database, then again
+  // every time anyone (on any device) adds a score. Converts Firebase's object-of-objects shape
+  // into a plain array and hands it to the classic script's onSharedScoresUpdate.
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
 </body>
 </html>
