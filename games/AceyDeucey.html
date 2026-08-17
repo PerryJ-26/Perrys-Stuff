@@ -1665,13 +1665,22 @@
   }
 
   // ---------------- session wins scoreboard ----------------
-  // Persisted via localStorage, same approach Yahtzee uses for its saved stats - survives
-  // page reloads instead of resetting to 0/0 every time, unlike a plain in-memory variable.
+  // Uses sessionStorage, NOT localStorage - important distinction: localStorage persists
+  // forever across every future visit, which is wrong for something labeled "This Session's
+  // Wins." sessionStorage survives page reloads within the same tab (so refreshing mid-game
+  // doesn't lose the count) but correctly clears out once the tab/window is closed, matching
+  // what "session" actually means here. (The separate Recorded Scores list below intentionally
+  // stays on localStorage, since that one really is meant to persist across sessions, the way
+  // Yahtzee's all-time High Scores do.)
   const SESSION_WINS_KEY = 'aceyDeuceySessionWins_v1';
+  // One-time cleanup: earlier versions of this feature mistakenly saved to localStorage
+  // instead of sessionStorage, which is exactly the bug being fixed here - remove that
+  // stale leftover entry so it's not just sitting around unused.
+  try { localStorage.removeItem(SESSION_WINS_KEY); } catch (err) {}
 
   function loadSessionWins(){
     try {
-      const raw = localStorage.getItem(SESSION_WINS_KEY);
+      const raw = sessionStorage.getItem(SESSION_WINS_KEY);
       if(raw){
         const parsed = JSON.parse(raw);
         if(typeof parsed.white === 'number' && typeof parsed.black === 'number') return parsed;
@@ -1681,7 +1690,7 @@
   }
 
   function saveSessionWins(){
-    try { localStorage.setItem(SESSION_WINS_KEY, JSON.stringify(sessionWins)); }
+    try { sessionStorage.setItem(SESSION_WINS_KEY, JSON.stringify(sessionWins)); }
     catch (err) { console.error('saveSessionWins error', err); }
   }
 
