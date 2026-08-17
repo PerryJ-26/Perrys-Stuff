@@ -1,7 +1,5 @@
 
-
-
-
+<!-- Revision 1 | Monday, August 17, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -913,6 +911,7 @@
   let board; // points[1..24] = {owner:null|'white'|'black', count:0}
   let bar, off;
   let current;            // 'white' | 'black'
+  let nextStarter = 'white'; // alternates each game - see startGame()
   let dice = [];          // remaining die values this "segment"
   let originalRoll = [];  // for display of used/unused
   let usedCount = 0;
@@ -1069,22 +1068,22 @@
   // ---------------- "Can't Move" toast ----------------
   // Shown whenever a player has no legal move available with their current dice (e.g. blocked
   // by the opponent's checkers). Positioned absolutely below the dice so it doesn't shift any
-  // layout, and stays up for about 2 seconds. If it's triggered again while already showing
-  // (e.g. two forfeits in a row), the 2-second timer restarts rather than stacking timers.
+  // layout, and stays up for about 3 seconds. If it's triggered again while already showing
+  // (e.g. two forfeits in a row), the 3-second timer restarts rather than stacking timers.
   let cantMoveTimeout = null;
   function showCantMoveMessage(){
     const el = document.getElementById('cantMoveMsg');
     if(!el) return;
     el.classList.add('show');
     if(cantMoveTimeout) clearTimeout(cantMoveTimeout);
-    cantMoveTimeout = setTimeout(()=>{ el.classList.remove('show'); }, 2000);
+    cantMoveTimeout = setTimeout(()=>{ el.classList.remove('show'); }, 3000);
   }
 
   // Used at every point where no legal move is available with the current dice. Shows the
   // "Can't Move" message while deliberately leaving the `dice` array untouched and re-rendering
   // immediately, so the dice everyone just rolled stay visible during the message instead of
   // vanishing the instant the forfeit happens. The actual forfeit (clearing dice, advancing the
-  // turn) is deferred until the message's own 2-second window closes.
+  // turn) is deferred until the message's own 3-second window closes.
   function forfeitTurnNoMoves(logMsg){
     log(logMsg, 'info');
     showCantMoveMessage();
@@ -1092,7 +1091,7 @@
     setTimeout(()=>{
       dice = [];
       afterDiceExhausted();
-    }, 2000);
+    }, 3000);
   }
 
   // ---------------- setup screen ----------------
@@ -1145,7 +1144,8 @@
     board = newBoard();
     bar = {white:15, black:15};
     off = {white:0, black:0};
-    current = 'white';
+    current = nextStarter;
+    nextStarter = opp(nextStarter); // whoever didn't start this game starts the next one
     dice = []; originalRoll = []; usedCount = 0;
     phase = 'awaiting-roll';
     awaitingDoubleChoice = false;
@@ -1159,7 +1159,7 @@
     document.getElementById('sessionWinsP1Name').textContent = names.white;
     document.getElementById('sessionWinsP2Name').textContent = names.black;
     updateSessionWinsDisplay();
-    log(`New game. All checkers start on the bar. ${names.white} rolls first.`, 'info');
+    log(`New game. All checkers start on the bar. ${names[current]} rolls first.`, 'info');
 
     buildBoardDOM();
     render();
@@ -1673,8 +1673,19 @@
     if(result.dest !== 'off'){
       const cell = board[result.dest];
       const willBeCount = (cell.owner===player ? cell.count+1 : 1);
-      if(willBeCount === 1) s -= 25; // leaves a blot
-      else s += 15; // makes/keeps a point
+      if(willBeCount === 1){
+        s -= 25; // leaves a blot
+      } else if(willBeCount === 2){
+        // Making (or covering) a point is the single most valuable positional outcome - reward
+        // it the most, whether that's a brand-new point or finally covering the player's own blot.
+        s += 25;
+      } else {
+        // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it has fast-
+        // diminishing value and is exactly what was causing the AI to bunch checkers onto just a
+        // couple of points instead of spreading out to occupy more of the board. Taper the bonus
+        // down instead of giving every stack size the same flat reward.
+        s += Math.max(2, 12 - (willBeCount - 2) * 3);
+      }
     }
     return s;
   }
@@ -1703,12 +1714,18 @@
 
   function aiChooseDouble(){
     if(!isAI[current] || phase !== 'choose-double') return;
-    let bestN = 1, bestCount = -1;
+    let bestN = 1, bestScore = -Infinity;
+    const srcs = sourcesFor(current);
     for(let n=1;n<=6;n++){
-      let count = 0;
-      const srcs = sourcesFor(current);
-      for(const s of srcs){ if(tryMove(current, s, n).legal) count++; }
-      if(count > bestCount || (count === bestCount && n > bestN)){ bestCount = count; bestN = n; }
+      let total = 0, count = 0;
+      for(const s of srcs){
+        const r = tryMove(current, s, n);
+        if(r.legal){ total += scoreMove(current, s, n, r); count++; }
+      }
+      // Only consider doubles that have at least one legal move; among those, pick by total
+      // positional value rather than just how many sources happen to have a move - this is what
+      // was biasing the AI toward low/middle doubles even when a high double was clearly better.
+      if(count > 0 && total > bestScore){ bestScore = total; bestN = n; }
     }
     chooseDouble(bestN);
   }
@@ -1755,26 +1772,18 @@
   // was - the number of checkers the loser had NOT yet borne off (0-15) - so a margin of 15
   // means a total shutout, and 1 means the loser was one checker away from finishing too.
   // That gives every game a natural point value to rank by, unlike a plain win/loss tally.
-  const SCORE_HISTORY_KEY = 'aceyDeuceyScoreHistory_v1';
+  //
+  // Deliberately NOT using localStorage here (unlike an earlier version of this feature) -
+  // Firebase is the sole source of truth for recorded scores now, per request. That means: no
+  // local fallback list, and if Firebase hasn't responded yet or can't be reached, the Scores
+  // button says so explicitly rather than silently showing stale/local data.
   const MAX_RECORDED_SCORES = 15;
-
-  function loadScoreHistory(){
-    try {
-      const raw = localStorage.getItem(SCORE_HISTORY_KEY);
-      if(raw){
-        const parsed = JSON.parse(raw);
-        if(Array.isArray(parsed)) return parsed;
-      }
-    } catch (err) { console.error('loadScoreHistory error', err); }
-    return [];
-  }
 
   /* Shared cross-device score data from Firebase (see the <script type="module"> block near
      the end of the file - same Firebase project Yahtzee already uses, just a separate database
-     path so the two games' scores don't mix). null means "haven't heard from Firebase yet" -
-     showScoresModal falls back to the local list in that case so it isn't empty while Firebase
-     is still connecting or if it's unreachable. Once Firebase sends its first update, this
-     becomes the source of truth, same pattern as Yahtzee's sharedScores. */
+     path so the two games' scores don't mix). null means "haven't heard from Firebase yet (or
+     it's unreachable)" - showScoresModal shows a distinct message for that case rather than an
+     empty/misleading list. */
   let sharedScores = null;
   window.onSharedScoresUpdate = function(list){
     sharedScores = list;
@@ -1789,11 +1798,6 @@
   function recordScore(name, margin, opponent){
     try {
       const entry = { name, margin, opponent, date: new Date().toLocaleDateString() };
-      const list = loadScoreHistory();
-      list.push(entry);
-      list.sort((a,b)=> b.margin - a.margin);
-      const trimmed = list.slice(0, MAX_RECORDED_SCORES);
-      localStorage.setItem(SCORE_HISTORY_KEY, JSON.stringify(trimmed));
       if(window.pushSharedScore) window.pushSharedScore(entry);
     } catch (err) { console.error('recordScore error', err); }
   }
@@ -1821,19 +1825,21 @@
   }
 
   function showScoresModal(){
-    const source = sharedScores !== null ? sharedScores : loadScoreHistory();
-    const list = [...source].sort((a,b)=> b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
     let message;
-    if(list.length === 0){
-      message = 'No scores recorded yet. Play a game to add one!';
+    if(sharedScores === null){
+      message = 'Loading scores\u2026 (or unable to reach the shared scoreboard right now)';
     } else {
-      message = list.map((entry, i) => formatScoreLine(entry, i+1)).join('\n');
+      const list = [...sharedScores].sort((a,b)=> b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
+      message = list.length === 0
+        ? 'No scores recorded yet. Play a game to add one!'
+        : list.map((entry, i) => formatScoreLine(entry, i+1)).join('\n');
     }
+    const hasRows = sharedScores !== null && sharedScores.length > 0;
     showModal({ title: 'Recorded Scores (ranked by margin of victory)', message, buttons: [
       { label:'OK', value:true, primary:true }
     ]});
-    document.getElementById('universalModalText').classList.toggle('scores-list', list.length > 0);
-    document.querySelector('#universalModal .modal-box').classList.toggle('wide', list.length > 0);
+    document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
+    document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
