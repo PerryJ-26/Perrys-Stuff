@@ -2,7 +2,7 @@
 
 
 
-<!-- Revision 2 | Monday, August 17, 2026 -->
+<!-- Revision 3 | Monday, August 17, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1717,7 +1717,7 @@
 
   function aiChooseDouble(){
     if(!isAI[current] || phase !== 'choose-double') return;
-    let bestN = 1, bestScore = -Infinity;
+    let bestN = null, bestScore = -Infinity;
     const srcs = sourcesFor(current);
     for(let n=1;n<=6;n++){
       let bestForThisN = -Infinity, count = 0;
@@ -1734,6 +1734,19 @@
       // could out-score a die with one genuinely excellent move, since the sum buried the good
       // move under a pile of unrelated bad ones that would never actually be played anyway.
       if(count > 0 && bestForThisN > bestScore){ bestScore = bestForThisN; bestN = n; }
+    }
+    if(bestN === null){
+      // Genuinely no legal move exists for ANY of the 6 possible doubles - previously this fell
+      // through to declaring "double 1s" by default (bestN's unchanged initial value) even though
+      // double-1s itself had zero legal moves too, so the log would say the player "declares"
+      // a double it was never actually able to play, immediately followed by a forfeit. Skip
+      // declaring a double at all in this case - go straight to the forfeit, with an accurate
+      // message. (The bonus reroll is still preserved either way, since that's handled downstream
+      // in afterDiceExhausted() regardless of how the double phase ends.)
+      dice = [];
+      phase = 'moving';
+      forfeitTurnNoMoves('No legal double available for any value — bonus forfeited.');
+      return;
     }
     chooseDouble(bestN);
   }
