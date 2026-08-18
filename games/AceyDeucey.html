@@ -1,6 +1,6 @@
 
 
-<!-- Revision 15 | Tuesday, August 18, 2026 -->
+<!-- Revision 16 | Tuesday, August 18, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -528,22 +528,25 @@
   
   /* Dice-row: nowrap so all dice (up to 4 on doubles)
      stay on one line */
+  .dice-row-wrap{
+    position:relative;
+    width:100%;}
+
   .dice-row{
     display:flex;
     gap:6px;
     min-height:44px;
     align-items:center; 
     justify-content:center;
-    flex-wrap:nowrap;
-    position:relative;}
+    flex-wrap:nowrap;}
 
   /* Positioned absolutely (not in normal flow) so it doesn't push the Roll Dice button or
      anything else around when it appears/disappears - it just overlays .5in below the dice. */
   .cant-move-msg{
     position:absolute;
-    top:calc(50% - 1in);
+    top:calc(100% + .125in);
     left:50%;
-    transform:translate(-50%, -50%);
+    transform:translateX(-50%);
     background:var(--wood-dark);
     color:var(--gold-bright);
     border:2px solid var(--gold);
@@ -658,7 +661,7 @@
   /* Visually separates the Roll Dice/dice group above from the 4 smaller buttons below -
      bigger than the standard 8px flex gap between individual buttons. */
   #secondaryButtons{
-    margin-top:20px;
+    margin-top:44px;
     display:flex;
     flex-direction:column;
     gap:8px;
@@ -955,12 +958,14 @@
       </div>
       <div class="board-frame">
         <div class="board-grid" id="boardGrid"></div>
-        <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
       </div>
       <div class="side-controls">
         <div class="side-controls-inner">
           <button class="action-btn" id="rollBtn">Roll Dice</button>
-          <div class="dice-row" id="diceRow"></div>
+          <div class="dice-row-wrap">
+            <div class="dice-row" id="diceRow"></div>
+            <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
+          </div>
           <div class="double-choice" id="doubleChoice" style="display:none;"></div>
 
           <div id="secondaryButtons">
@@ -1687,6 +1692,13 @@
     /* Sends the player back to the Perry's Stuff home page rather than
        trying to close the tab (browsers block window.close() on tabs
        the page itself didn't open, so this is more reliable anyway). */
+    // Deliberately clears "This Session's Wins" here, not just on page load - sessionStorage
+    // is tied to the BROWSER TAB's lifetime, not to this specific page, so simply navigating
+    // to index.html and back (same tab) would otherwise leave the old tally intact. Clearing
+    // it right here, specifically on an intentional Exit, means an accidental page refresh
+    // mid-game still preserves the count (sessionStorage's actual benefit), while deliberately
+    // leaving and returning correctly starts fresh.
+    try { sessionStorage.removeItem('aceyDeuceySessionWins_v1'); } catch (err) {}
     window.location.href = '../index.html';
   }
 
