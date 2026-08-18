@@ -1,6 +1,6 @@
 
 
-<!-- Revision 14 | Tuesday, August 18, 2026 -->
+<!-- Revision 15 | Tuesday, August 18, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -386,7 +386,8 @@
     padding:10px;
     flex:1;
     min-width:0;
-    display:flex;}
+    display:flex;
+    position:relative;}
     
   .board-grid{
     display:grid;
@@ -540,9 +541,9 @@
      anything else around when it appears/disappears - it just overlays .5in below the dice. */
   .cant-move-msg{
     position:absolute;
-    top:calc(100% + .125in);
+    top:calc(50% - 1in);
     left:50%;
-    transform:translateX(-50%);
+    transform:translate(-50%, -50%);
     background:var(--wood-dark);
     color:var(--gold-bright);
     border:2px solid var(--gold);
@@ -954,12 +955,12 @@
       </div>
       <div class="board-frame">
         <div class="board-grid" id="boardGrid"></div>
+        <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
       </div>
       <div class="side-controls">
         <div class="side-controls-inner">
           <button class="action-btn" id="rollBtn">Roll Dice</button>
           <div class="dice-row" id="diceRow"></div>
-          <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
           <div class="double-choice" id="doubleChoice" style="display:none;"></div>
 
           <div id="secondaryButtons">
