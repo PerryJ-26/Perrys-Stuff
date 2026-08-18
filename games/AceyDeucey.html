@@ -1,5 +1,8 @@
 
-<!-- Revision 1 | Monday, August 17, 2026 -->
+
+
+
+<!-- Revision 2 | Monday, August 17, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1717,15 +1720,20 @@
     let bestN = 1, bestScore = -Infinity;
     const srcs = sourcesFor(current);
     for(let n=1;n<=6;n++){
-      let total = 0, count = 0;
+      let bestForThisN = -Infinity, count = 0;
       for(const s of srcs){
         const r = tryMove(current, s, n);
-        if(r.legal){ total += scoreMove(current, s, n, r); count++; }
+        if(r.legal){
+          count++;
+          const sc = scoreMove(current, s, n, r);
+          if(sc > bestForThisN) bestForThisN = sc;
+        }
       }
-      // Only consider doubles that have at least one legal move; among those, pick by total
-      // positional value rather than just how many sources happen to have a move - this is what
-      // was biasing the AI toward low/middle doubles even when a high double was clearly better.
-      if(count > 0 && total > bestScore){ bestScore = total; bestN = n; }
+      // Evaluate each die value by its single BEST available move, not the sum across every
+      // legal source. Summing was the actual bug: a die with several mediocre-or-bad options
+      // could out-score a die with one genuinely excellent move, since the sum buried the good
+      // move under a pile of unrelated bad ones that would never actually be played anyway.
+      if(count > 0 && bestForThisN > bestScore){ bestScore = bestForThisN; bestN = n; }
     }
     chooseDouble(bestN);
   }
@@ -1843,7 +1851,6 @@
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
-
   function endGame(winner){
     phase = 'game-over';
     document.getElementById('game').classList.remove('show');
