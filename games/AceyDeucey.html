@@ -1,6 +1,6 @@
 
 
-<!-- Revision 16 | Tuesday, August 18, 2026 -->
+<!-- Revision 17 | Tuesday, August 18, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -781,17 +781,29 @@
     color:var(--wood-dark);}
 
   #gameOver{
-    display:none; 
-    text-align:center;
-    /* Overrides the shared .panel background/border (higher specificity, 
-       since this is an ID selector) with the dedicated Game Over variables
-       from :root, so this screen's box color can be tweaked without affecting
-       the Setup screen boxes. */
-    background:var(--gameover-panel-bg);
-    border-color:var(--gameover-panel-border);}
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:var(--modal-overlay-bg);
+    z-index:99997;
+    text-align:center;}
 
   #gameOver.show{
     display:block;}
+
+  .gameover-box{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    max-width:600px;
+    width:90%;
+    box-sizing:border-box;
+    background:var(--gameover-panel-bg);
+    border:1px solid var(--gameover-panel-border);
+    border-radius:10px;
+    padding:24px 18px;
+    box-shadow:0 8px 30px var(--modal-box-shadow);}
 
   #gameOver h2{
     font-family:'Playfair Display',serif;
@@ -984,13 +996,16 @@
     </div>
   </section>
 
-  <div class="panel" id="gameOver">
-    <h2 id="gameOverTitle">Game Over</h2>
-    <p id="gameOverText"></p>
-    <p class="play-again-prompt">Play Another Game?</p>
-    <div class="play-again-row">
-      <button class="go-btn" id="playAgainYesBtn">Yes</button>
-      <button class="go-btn" id="playAgainNoBtn">No</button>
+  <div id="gameOver">
+    <div class="gameover-box">
+      <h2 id="gameOverTitle">Game Over</h2>
+      <p id="gameOverText"></p>
+      <p id="gameOverPips"></p>
+      <p class="play-again-prompt">Play Another Game?</p>
+      <div class="play-again-row">
+        <button class="go-btn" id="playAgainYesBtn">Yes</button>
+        <button class="go-btn" id="playAgainNoBtn">No</button>
+      </div>
     </div>
   </div>
 
@@ -2002,6 +2017,8 @@
     // right when they win (they just bore off their last checker), so this already IS the margin
     // between the two, without needing to separately compute and subtract the winner's side.
     const margin = computePipCount(opp(winner));
+    document.getElementById('gameOverPips').textContent =
+      `${names[winner]} won by ${margin} pip${margin === 1 ? '' : 's'}`;
     recordScore(names[winner], margin, names[opp(winner)]);
   }
 
