@@ -1,8 +1,6 @@
 
 
-
-
-<!-- Revision 3 | Monday, August 17, 2026 -->
+<!-- Revision 14 | Tuesday, August 18, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -634,6 +632,37 @@
     
   .action-btn:hover{filter:brightness(1.08);}
 
+  /* Roll Dice specifically - same font-family as This Session's Wins, and ~3px larger than
+     the other buttons that share .action-btn */
+  #rollBtn{
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:19.72px;}
+
+  /* ~30% smaller than .action-btn (padding and font-size scaled down) - used for the 4
+     secondary buttons (New Game/Recorded Scores/Instructions/Exit) but deliberately NOT
+     applied to Roll Dice, which keeps its original full size. */
+  .action-btn-small{
+    padding:7px 13px;
+    background:var(--gold-bright);
+    color:var(--wood-dark);
+    border:none; border-radius:8px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:700;
+    font-size:13.6px;
+    cursor:pointer;
+    width:100%;}
+
+  .action-btn-small:hover{filter:brightness(1.08);}
+
+  /* Visually separates the Roll Dice/dice group above from the 4 smaller buttons below -
+     bigger than the standard 8px flex gap between individual buttons. */
+  #secondaryButtons{
+    margin-top:20px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    width:100%;}
+
   .session-wins-box{
     margin-top:16px;
     width:100%;
@@ -645,6 +674,72 @@
     font-family:Arial, Helvetica, sans-serif;
     color:#000000;
     text-align:left;}
+
+  /* Positioned independently of the centered side-controls-inner group, so it can sit at the
+     very bottom of .side-controls (which stretches to match the board's height) instead of
+     being vertically centered along with the buttons/dice above it. */
+  .session-wins-box-bottom{
+    position:absolute;
+    bottom:0;
+    left:0;
+    margin-top:0;}
+
+  .side-controls-inner-top{
+    top:0;
+    transform:none;}
+
+  /* Compact game-screen copy of the Setup screen's mode/name/start controls - narrow enough
+     to fit the 190px sidebar, and using Arial (matching the buttons on the right side of the
+     board) instead of the Setup screen's monospace font. */
+  #gsPanel{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    font-family:Arial, Helvetica, sans-serif;}
+
+  .gs-mode-btn{
+    flex:0 0 auto;
+    max-width:none;
+    width:100%;
+    padding:7px 13px;
+    border:none;
+    border-radius:6px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:700;
+    font-size:13.6px;
+    cursor:pointer;
+    background:var(--wood-dark);
+    color:var(--cream);}
+
+  #gsAiBtn{
+    margin-bottom:16px;}
+
+  .gs-mode-btn.selected{
+    background:var(--gold-bright);
+    color:var(--wood-dark);}
+
+  .gs-field{
+    width:100%;}
+
+  .gs-field label{
+    display:block;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--gold);
+    margin-bottom:2px;}
+
+  .gs-field input{
+    width:100%;
+    box-sizing:border-box;
+    padding:7px 13px;
+    border-radius:5px;
+    border:none;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:13.6px;
+    background:var(--cream);
+    color:var(--wood-dark);}
 
   .session-wins-title{
     font-weight:bold;
@@ -748,10 +843,20 @@
     max-width:480px;}
     
   #universalModalTitle{
-    margin:0 0 10px;
+    margin:0 0 8px;
     font-family:'Playfair Display',serif;
     color:var(--wood-dark); 
+    text-align:center;
+    font-size:22.7px;
     display:none;}
+
+  #universalModalSubtitle{
+    margin:-4px 0 10px;
+    font-family:'Playfair Display',serif;
+    color:var(--wood-dark);
+    text-align:center;
+    font-size:16.72px;
+    font-weight:normal;}
     
   #universalModalText{
     margin:0 0 18px; 
@@ -799,6 +904,7 @@
 <div id="universalModal" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h3 id="universalModalTitle"></h3>
+    <p id="universalModalSubtitle" style="display:none;"></p>
     <p id="universalModalText"></p>
     <div id="universalModalButtons"></div>
   </div>
@@ -810,39 +916,6 @@
     <div class="rule-line"></div>
   </header>
 
-  <section id="setup">
-    <div class="panel setup-instructions">
-      <p class="rules-heading">Rules</p>
-      <p class="rules" style= "font-size: 16px"; >
-        Acey-deucey plays like backgammon with one big twist: <b>
-        no checkers start on the board.</b>
-        All 15 of each player's checkers begin on the bar, and you
-        enter them one at a time as the game unfolds &mdash; just
-        like re-entering after being hit. Move your checkers around the board
-        and bear them all off first to win.<br><br>
-        The special rule that gives the game its name: roll a <b>1 and a 2</b>
-        and you play both of those numbers as usual, then <b>call any double you
-        like</b> (say, double 5s) and play all four of those moves too &mdash;
-        then you get to <b>roll again</b> for a completely fresh turn. It's the
-        best roll in the game.
-      </p>
-    </div>
-    <div class="panel setup-controls">
-      <div class="mode-choices">
-        <button class="mode-btn" data-mode="human" data-label="Two Human Players">Two Human Players: OFF</button>
-        <button class="mode-btn selected" data-mode="ai" data-label="Play Against AI">Play Against AI: ON</button>
-      </div>
-      <div class="name-inputs" id="nameInputs">
-        <label>White (Player 1)
-          <input type="text" id="p1Name" placeholder="Player 1" maxlength="16">
-        </label>
-        <label id="p2Label">Black (AI)
-          <input type="text" id="p2Name" value="The AI" maxlength="16" disabled>
-        </label>
-      </div>
-      <button class="go-btn" id="startBtn">Start the Game</button>
-    </div>
-  </section>
 
   <section id="game">
     <div class="scoreboard">
@@ -863,11 +936,20 @@
 
     <div class="board-row">
       <div class="side-controls">
-        <div class="side-controls-inner">
-          <button class="action-btn" id="rollBtn">Roll Dice</button>
-          <div class="dice-row" id="diceRow"></div>
-          <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
-          <div class="double-choice" id="doubleChoice" style="display:none;"></div>
+        <div class="side-controls-inner side-controls-inner-top">
+          <div id="gsPanel">
+            <button class="mode-btn gs-mode-btn" data-mode="human" data-label="Human Opponent">Human Opponent: OFF</button>
+            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-mode="ai" data-label="AI Opponent">AI Opponent: ON</button>
+
+            <div class="gs-field">
+              <label for="gsP1Name">White (Player 1)</label>
+              <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
+            </div>
+            <div class="gs-field">
+              <label id="gsP2Label" for="gsP2Name">Black (AI)</label>
+              <input type="text" id="gsP2Name" value="The AI" maxlength="16" disabled>
+            </div>
+          </div>
         </div>
       </div>
       <div class="board-frame">
@@ -875,15 +957,22 @@
       </div>
       <div class="side-controls">
         <div class="side-controls-inner">
-          <button class="action-btn" id="soundToggleBtn">🔊 Sound: On</button>
-          <button class="action-btn" id="resetBtn">New Game</button>
-          <button class="action-btn" id="scoresBtn">Scores</button>
-          <button class="action-btn" id="exitBtn">Exit</button>
+          <button class="action-btn" id="rollBtn">Roll Dice</button>
+          <div class="dice-row" id="diceRow"></div>
+          <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
+          <div class="double-choice" id="doubleChoice" style="display:none;"></div>
 
-          <div class="session-wins-box">
-            <div class="session-wins-title">This Session's Wins</div>
-            <div class="session-wins-stats"><span id="sessionWinsP1Name">Player 1</span> = <span id="sessionWinsP1">0</span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="sessionWinsP2Name">Player 2</span> = <span id="sessionWinsP2">0</span></div>
+          <div id="secondaryButtons">
+            <button class="action-btn-small" id="resetBtn">New Game</button>
+            <button class="action-btn-small" id="scoresBtn">Recorded Scores</button>
+            <button class="action-btn-small" id="instructionsBtn">Instructions</button>
+            <button class="action-btn-small" id="exitBtn">Exit</button>
           </div>
+        </div>
+
+        <div class="session-wins-box session-wins-box-bottom">
+          <div class="session-wins-title">This Session's Wins</div>
+          <div class="session-wins-stats"><span id="sessionWinsP1Name">Player 1</span> = <span id="sessionWinsP1">0</span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="sessionWinsP2Name">Player 2</span> = <span id="sessionWinsP2">0</span></div>
         </div>
       </div>
     </div>
@@ -1100,15 +1189,19 @@
   // ---------------- setup screen ----------------
   document.querySelectorAll('.mode-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.mode-btn').forEach(b=>{
-        b.classList.remove('selected');
-        b.textContent = b.dataset.label + ': OFF';
-      });
-      btn.classList.add('selected');
-      btn.textContent = btn.dataset.label + ': ON';
       mode = btn.dataset.mode;
-      const p2Input = document.getElementById('p2Name');
-      const p2Label = document.getElementById('p2Label');
+      // Syncs EVERY mode-btn on the page (Setup screen's originals + the game-screen copies)
+      // to match whichever mode was just picked, rather than only toggling the one clicked -
+      // otherwise clicking a button in one panel wouldn't update the other panel's buttons.
+      document.querySelectorAll('.mode-btn').forEach(b=>{
+        const isSelected = b.dataset.mode === mode;
+        b.classList.toggle('selected', isSelected);
+        b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
+      });
+      // Same idea for the "Black" name field/label - only one pair now that the Setup screen
+      // (and its duplicate copy of these controls) has been removed.
+      const p2Input = document.getElementById('gsP2Name');
+      const p2Label = document.getElementById('gsP2Label');
       if(mode==='ai'){
         p2Label.childNodes[0].textContent = 'Black (AI) ';
         // Disabled field - fine to use a real value here since the player can't click into it anyway
@@ -1119,17 +1212,29 @@
         // gives a blank box to type into instead of text the player has to delete first
         p2Input.value = ''; p2Input.placeholder = 'Player 2'; p2Input.disabled = false;
       }
+      // No separate Start button anymore - changing the mode immediately starts a new game
+      // with it, same as the note says: "we already started the game."
+      startGame();
     });
   });
 
-  document.getElementById('startBtn').addEventListener('click', startGame);
+  // Likewise, finishing an edit to either name field (blur, or pressing Enter) immediately
+  // restarts the game with the new name - 'change' rather than 'input' so it fires once when
+  // you're done typing, not on every keystroke.
+  document.getElementById('gsP1Name').addEventListener('change', startGame);
+  document.getElementById('gsP2Name').addEventListener('change', startGame);
+  document.getElementById('gsP1Name').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') e.target.blur();
+  });
+  document.getElementById('gsP2Name').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') e.target.blur();
+  });
 
-  // "Yes" returns to the setup screen to start a new game.
+  // "Yes" immediately starts a fresh game with the current panel settings - there's no
+  // separate setup screen to return to anymore.
   document.getElementById('playAgainYesBtn').addEventListener('click', ()=>{
     document.getElementById('gameOver').classList.remove('show');
-    // "flex" (not "block") because #setup now lays out its two boxes with display:flex - see CSS
-    document.getElementById('setup').style.display = 'flex';
-    document.getElementById('game').classList.remove('show');
+    startGame();
   });
 
   // "No" means "I don't want to play another game," so it exits the app -
@@ -1140,8 +1245,8 @@
   });
 
   function startGame(){
-    names.white = document.getElementById('p1Name').value.trim() || 'Player 1';
-    names.black = mode==='ai' ? 'The AI' : (document.getElementById('p2Name').value.trim() || 'Player 2');
+    names.white = document.getElementById('gsP1Name').value.trim() || 'Player 1';
+    names.black = mode==='ai' ? 'The AI' : (document.getElementById('gsP2Name').value.trim() || 'Player 2');
     isAI = {white:false, black: mode==='ai'};
 
     board = newBoard();
@@ -1155,7 +1260,6 @@
     isDoubleFromAceyDeucey = false;
     selected = null; legalMap = [];
 
-    document.getElementById('setup').style.display = 'none';
     document.getElementById('game').classList.add('show');
     document.getElementById('nameWhite').textContent = names.white + ' (White)';
     document.getElementById('nameBlack').textContent = names.black + ' (Black)';
@@ -1509,7 +1613,9 @@
   }
 
   updateSoundButton();
-  document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    window.location.href = '../ADInstructions.html';
+  });
 
   // ---------------- universal modal (replaces native confirm(), themed to match the board) ----------------
   function showModal({ title, message, buttons } = {}){
@@ -1519,9 +1625,14 @@
       const textEl = document.getElementById('universalModalText');
       const buttonsEl = document.getElementById('universalModalButtons');
 
+      const subtitleEl = document.getElementById('universalModalSubtitle');
       if(titleEl){
         if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
         else { titleEl.style.display = 'none'; }
+      }
+      if(subtitleEl){
+        subtitleEl.textContent = '';
+        subtitleEl.style.display = 'none';
       }
       if(textEl){
         textEl.textContent = message || '';
@@ -1555,33 +1666,14 @@
 
   // ---------------- reset (right sidebar) ----------------
   document.getElementById('resetBtn').addEventListener('click', async ()=>{
-    const ok = await showConfirm('Return to the setup screen? Your current game will be lost.', 'New Game');
+    const ok = await showConfirm('Start a new game? Your current game will be lost.', 'New Game');
     if(ok) resetGame();
   });
 
   function resetGame(){
     if(rolling) return; // don't reset mid-tumble - wait for the animation to finish first
-
-    // Clear the in-memory game state back to defaults. This isn't strictly required
-    // since startGame() (called when "Set Up the Board" is clicked again) overwrites
-    // all of this anyway - but clearing it here avoids leaving stale board data sitting
-    // around in memory while the setup screen is showing.
-    board = newBoard();
-    bar = {white:15, black:15};
-    off = {white:0, black:0};
-    current = 'white';
-    dice = []; originalRoll = []; usedCount = 0;
-    phase = 'awaiting-roll';
-    awaitingDoubleChoice = false;
-    isDoubleFromAceyDeucey = false;
-    selected = null; legalMap = [];
-
-    // Same screen-swap the "Play Another Game?" Yes button uses: hide the game board,
-    // show the setup panel, and make sure the game-over overlay isn't stuck showing.
     document.getElementById('gameOver').classList.remove('show');
-    // "flex" (not "block") because #setup now lays out its two boxes with display:flex - see CSS
-    document.getElementById('setup').style.display = 'flex';
-    document.getElementById('game').classList.remove('show');
+    startGame(); // startGame() already resets all board/bar/off/dice state itself
   }
 
   // ---------------- exit (right sidebar) ----------------
@@ -1833,11 +1925,12 @@
     };
     const rankStr = String(rank).padStart(2, '\u00A0') + '.';
     const nameStr = pad(entry.name, 9);
-    // Right-align just the number (not the whole "N pts" string) so "pts" itself lines up
-    // in the same column whether the margin is 1 digit or 2 - padding the combined string
-    // only pushed "pts" later for wider numbers instead of keeping it in a fixed column.
-    const marginStr = String(entry.margin).padStart(2, '\u00A0');
-    const ptsStr = pad(`${marginStr} pts`, 7);
+    // Right-align just the number (not the whole "N pips" string) so "pips" itself lines up
+    // in the same column regardless of digit count - padding the combined string only pushed
+    // "pips" later for wider numbers instead of keeping it in a fixed column. 3 digits (not 2)
+    // since pip-count scores can run into the hundreds, not just 0-15.
+    const marginStr = String(entry.margin).padStart(3, '\u00A0');
+    const ptsStr = pad(`${marginStr} pips`, 9);
     // Older recorded entries (saved before the opponent field was added) won't have one -
     // fall back instead of showing "undefined".
     const opponentName = entry.opponent || 'Unknown';
@@ -1856,11 +1949,27 @@
         : list.map((entry, i) => formatScoreLine(entry, i+1)).join('\n');
     }
     const hasRows = sharedScores !== null && sharedScores.length > 0;
-    showModal({ title: 'Recorded Scores (ranked by margin of victory)', message, buttons: [
+    showModal({ title: 'Recorded Scores', message, buttons: [
       { label:'OK', value:true, primary:true }
     ]});
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    subtitleEl.textContent = '(pips needed by loser to finish)';
+    subtitleEl.style.display = '';
     document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
     document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
+  }
+
+  // Total pips a player's checkers still need to travel to bear off everything - the standard
+  // backgammon measure of "how far behind is this player," not just a checker count. A checker
+  // on the bar counts as needing a full circuit (25 pips), same convention distToOff already
+  // uses for a checker sitting on point 25 (opponent's exact entry point).
+  function computePipCount(player){
+    let pips = bar[player] * 25;
+    for(let pt = 1; pt <= 24; pt++){
+      const cell = board[pt];
+      if(cell.owner === player) pips += cell.count * distToOff(player, pt);
+    }
+    return pips;
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
@@ -1875,9 +1984,42 @@
     sessionWins[winner]++;
     saveSessionWins();
     updateSessionWinsDisplay();
-    const margin = 15 - off[opp(winner)];
+    // Score is the loser's remaining pip count at the moment the winner finishes - i.e. how many
+    // total pips of travel they still had left. The winner's own pip count is always exactly 0
+    // right when they win (they just bore off their last checker), so this already IS the margin
+    // between the two, without needing to separately compute and subtract the winner's side.
+    const margin = computePipCount(opp(winner));
     recordScore(names[winner], margin, names[opp(winner)]);
   }
+
+  // No Setup screen anymore - the board opens automatically as soon as the page loads, using
+  // whatever the default mode/name fields already show (AI Opponent, "Player 1" vs "The AI").
+  startGame();
+
+  // Aligns the top of the "Player 1" name field with the top of the "New Game" button, purely
+  // for visual balance between the two side panels. This is done at runtime (not a fixed CSS
+  // value) because "New Game"'s vertical position depends on the board's height, which changes
+  // with the window size - a hardcoded pixel margin only lined the two up at one specific
+  // viewport size and drifted out of alignment at any other. Re-run on resize (and after the
+  // page's own zoom-to-fit logic runs, since that changes effective layout too).
+  function alignPlayer1WithNewGame(){
+    try {
+      const aiBtn = document.getElementById('gsAiBtn');
+      const p1Field = document.getElementById('gsP1Name');
+      const newGameBtn = document.getElementById('resetBtn');
+      if(!aiBtn || !p1Field || !newGameBtn) return;
+      aiBtn.style.marginBottom = '0px';
+      const currentGap = p1Field.getBoundingClientRect().top - aiBtn.getBoundingClientRect().bottom;
+      const targetGap = newGameBtn.getBoundingClientRect().top - aiBtn.getBoundingClientRect().bottom;
+      const neededMargin = Math.max(0, targetGap - currentGap);
+      aiBtn.style.marginBottom = neededMargin + 'px';
+    } catch (err) {
+      console.error('alignPlayer1WithNewGame error', err);
+    }
+  }
+  alignPlayer1WithNewGame();
+  window.addEventListener('load', alignPlayer1WithNewGame);
+  window.addEventListener('resize', alignPlayer1WithNewGame);
 
 })();
 
