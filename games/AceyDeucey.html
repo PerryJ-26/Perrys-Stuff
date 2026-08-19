@@ -1,6 +1,6 @@
 
 
-<!-- Revision 22 | Wednesday, August 19, 2026 -->
+<!-- Revision 23 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1078,6 +1078,10 @@
   // ---------------- state ----------------
   let mode = 'ai'; // Defaults to AI opponent; setup screen's "Play the AI"
                    // button starts pre-selected to match
+  // When the mode toggle (Human/AI Opponent) is changed mid-game, the actual restart is
+  // deferred until the next Roll Dice click rather than applying instantly - see the
+  // mode-btn handler and the rollBtn handler below.
+  let pendingRestart = false;
   let names = {white:'Player 1', black:'Player 2'};
   let isAI = {white:false, black:false};
   let board; // points[1..24] = {owner:null|'white'|'black', count:0}
@@ -1292,17 +1296,29 @@
         // gives a blank box to type into instead of text the player has to delete first
         p2Input.value = ''; p2Input.placeholder = 'Player 2'; p2Input.disabled = false;
       }
-      // No separate Start button anymore - changing the mode immediately starts a new game
-      // with it, same as the note says: "we already started the game."
-      startGame();
+      // Mode changes need a fresh game to apply safely (switching who controls a seat
+      // mid-turn would be disruptive), but shouldn't interrupt the CURRENT game just from
+      // clicking the toggle - defer the actual restart until the next Roll Dice click.
+      pendingRestart = true;
     });
   });
 
-  // Likewise, finishing an edit to either name field (blur, or pressing Enter) immediately
-  // restarts the game with the new name - 'change' rather than 'input' so it fires once when
-  // you're done typing, not on every keystroke.
-  document.getElementById('gsP1Name').addEventListener('change', startGame);
-  document.getElementById('gsP2Name').addEventListener('change', startGame);
+  // Entering a name mid-game just relabels the current player live (header, session-wins
+  // box) - it doesn't need a restart at all, unlike mode changes which do.
+  function applyNameChangeLive(){
+    const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
+    names.white = p1;
+    document.getElementById('nameWhite').textContent = p1 + ' (White)';
+    document.getElementById('sessionWinsP1Name').textContent = p1;
+    if(mode !== 'ai'){
+      const p2 = document.getElementById('gsP2Name').value.trim() || 'Player 2';
+      names.black = p2;
+      document.getElementById('nameBlack').textContent = p2 + ' (Black)';
+      document.getElementById('sessionWinsP2Name').textContent = p2;
+    }
+  }
+  document.getElementById('gsP1Name').addEventListener('change', applyNameChangeLive);
+  document.getElementById('gsP2Name').addEventListener('change', applyNameChangeLive);
   document.getElementById('gsP1Name').addEventListener('keydown', (e)=>{
     if(e.key === 'Enter') e.target.blur();
   });
@@ -1325,6 +1341,7 @@
   });
 
   function startGame(){
+    pendingRestart = false;
     names.white = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     names.black = mode==='ai' ? 'The AI' : (document.getElementById('gsP2Name').value.trim() || 'Player 2');
     isAI = {white:false, black: mode==='ai'};
@@ -1619,6 +1636,14 @@
   }
 
   document.getElementById('rollBtn').addEventListener('click', ()=>{
+    if(pendingRestart){
+      pendingRestart = false;
+      startGame(); // reads the current mode/name field values and starts fresh with them
+      // Falls through rather than returning - if the new game's first turn belongs to the
+      // human, this same click should also count as their roll rather than requiring a
+      // second click. If it belongs to the AI, startGame() already kicked off its own
+      // auto-roll timer, and the isAI check just below will correctly skip re-rolling here.
+    }
     if(phase !== 'awaiting-roll' || isAI[current]) return;
     rollDice();
   });
