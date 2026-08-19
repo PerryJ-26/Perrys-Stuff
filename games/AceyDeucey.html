@@ -1,6 +1,6 @@
 
 
-<!-- Revision 19 | Tuesday, August 18, 2026 -->
+<!-- Revision 20 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1775,6 +1775,12 @@
     render();
 
     if(!anyLegalMove(current, dice)){
+      // If this was an Acey-Deucey roll (1-2) and neither die can be legally played at all,
+      // the bonus double should NOT be granted - nothing was actually played. Without this,
+      // forfeitTurnNoMoves() below clears the dice and calls afterDiceExhausted(), which still
+      // saw awaitingDoubleChoice=true from finishRoll() and would grant the bonus double phase
+      // anyway, even though the 1-2 itself was never playable.
+      awaitingDoubleChoice = false;
       forfeitTurnNoMoves('No legal moves available — dice forfeited.');
       return;
     }
