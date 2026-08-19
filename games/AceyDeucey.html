@@ -1,6 +1,6 @@
 
 
-<!-- Revision 20 | Wednesday, August 19, 2026 -->
+<!-- Revision 21 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -915,7 +915,55 @@
   @media (max-width:640px){
     .checker{width:18px; height:18px;}}
   
+  /* Invisible double-click toggle for the game log, tucked into the very corner of the
+     screen so it doesn't visually clutter anything or invite accidental clicks. */
+  #logToggleBtn{
+    position:fixed;
+    bottom:0; left:0;
+    width:44px; height:44px;
+    padding:0; margin:0; border:none;
+    background:transparent;
+    opacity:0;
+    cursor:default;
+    z-index:600;}
+
+  #logPanel{
+    display:none;
+    position:fixed;
+    bottom:10px; left:10px;
+    width:300px;
+    max-height:280px;
+    background:var(--wood-dark);
+    border:2px solid var(--gold);
+    border-radius:8px;
+    padding:8px 10px;
+    z-index:500;
+    box-shadow:0 6px 20px rgba(0,0,0,0.5);}
+
+  #logPanel.show{ display:flex; flex-direction:column; }
+
+  #logPanelTitle{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    color:var(--gold-bright);
+    font-size:0.95rem;
+    margin-bottom:6px;
+    flex:0 0 auto;}
+
+  #log{
+    overflow-y:auto;
+    font-size:0.78rem;
+    line-height:1.5;
+    color:var(--cream);
+    flex:1 1 auto;
+    min-height:0;}
+
+  #log div{ padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+  #log div.win{ color:var(--gold-bright); font-weight:700; }
+  #log div.info{ opacity:0.9; }
+
 </style>
+
 </head>
 <body>
 <div id="universalModal" role="dialog" aria-modal="true">
@@ -1012,6 +1060,16 @@
 
  <!-- <footer>All checkers begin off the board &middot;
  standard bear-off &amp; blocking rules apply</footer> -->
+</div>
+
+<!-- Hidden double-click toggle for the game log - invisible, sits in the very bottom-left
+     corner of the screen. Same pattern used elsewhere in the Game Hub for out-of-the-way
+     debug/utility toggles the player isn't meant to stumble onto by accident. -->
+<button id="logToggleBtn" aria-label="Toggle game log"></button>
+
+<div id="logPanel">
+  <div id="logPanelTitle">Game Log</div>
+  <div id="log"></div>
 </div>
 
 <script>
@@ -2008,6 +2066,9 @@
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+  document.getElementById('logToggleBtn').addEventListener('dblclick', ()=>{
+    document.getElementById('logPanel').classList.toggle('show');
+  });
   function endGame(winner){
     phase = 'game-over';
     document.getElementById('gameOver').classList.add('show');
