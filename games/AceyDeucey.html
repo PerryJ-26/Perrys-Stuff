@@ -1,6 +1,6 @@
 
 
-<!-- Revision 23 | Wednesday, August 19, 2026 -->
+<!-- Revision 24 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1925,33 +1925,66 @@
     doMove(current, best.s, best.d, {dest:best.r.dest, hit:best.r.hit});
   }
 
+  // Deep-copies just enough of the board state to simulate moves without touching the real
+  // game - board (owner+count per point), bar, and off. Nothing else (dice, phase, log, etc.)
+  // needs copying since simulation never touches those.
+  function cloneBoardState(){
+    const b = {};
+    for(let p=1;p<=24;p++){ b[p] = { owner: board[p].owner, count: board[p].count }; }
+    return { board: b, bar: { white: bar.white, black: bar.black }, off: { white: off.white, black: off.black } };
+  }
+
+  // Simulates actually playing up to 4 uses of die value n for `player`, on a scratch copy of
+  // the board - greedily picking the best-scoring legal move at each step (same scoreMove
+  // heuristic used everywhere else) and REALLY applying it via applyMove, so each subsequent
+  // step sees the position as it would actually be after the previous moves. This replaces the
+  // old approach of only ever scoring the FIRST move with this die value: that couldn't tell
+  // the difference between a die that spreads checkers across the board and one that piles
+  // checker after checker onto the same point, since it never looked past move #1. Stops early
+  // if it runs out of legal moves for n before using all 4 (matching real play - you play as
+  // many as you legally can) or if it would win the game outright.
+  function simulateDoubleValue(player, n){
+    const savedBoard = board, savedBar = bar, savedOff = off;
+    const clone = cloneBoardState();
+    board = clone.board; bar = clone.bar; off = clone.off;
+    let total = 0, movesPlayed = 0;
+    try {
+      for(let i=0;i<4;i++){
+        const srcs = sourcesFor(player);
+        let best = null;
+        for(const s of srcs){
+          const r = tryMove(player, s, n);
+          if(r.legal){
+            const sc = scoreMove(player, s, n, r);
+            if(!best || sc > best.sc) best = {sc, s, r};
+          }
+        }
+        if(!best) break;
+        applyMove(player, best.s, n, best.r);
+        total += best.sc;
+        movesPlayed++;
+        if(off[player] === 15) break;
+      }
+    } finally {
+      board = savedBoard; bar = savedBar; off = savedOff;
+    }
+    return { total, movesPlayed };
+  }
+
   function aiChooseDouble(){
     if(!isAI[current] || phase !== 'choose-double') return;
-    let bestN = null, bestScore = -Infinity;
-    const srcs = sourcesFor(current);
-    const perDieScores = {}; // for the log line below - which die values were even legal, and their best score
+    let bestN = null, bestTotal = -Infinity;
+    const perDieScores = {};
     for(let n=1;n<=6;n++){
-      let bestForThisN = -Infinity, count = 0;
-      for(const s of srcs){
-        const r = tryMove(current, s, n);
-        if(r.legal){
-          count++;
-          const sc = scoreMove(current, s, n, r);
-          if(sc > bestForThisN) bestForThisN = sc;
-        }
-      }
-      // Evaluate each die value by its single BEST available move, not the sum across every
-      // legal source. Summing was the actual bug: a die with several mediocre-or-bad options
-      // could out-score a die with one genuinely excellent move, since the sum buried the good
-      // move under a pile of unrelated bad ones that would never actually be played anyway.
-      perDieScores[n] = count > 0 ? bestForThisN : null;
-      if(count > 0 && bestForThisN > bestScore){ bestScore = bestForThisN; bestN = n; }
+      const { total, movesPlayed } = simulateDoubleValue(current, n);
+      perDieScores[n] = movesPlayed > 0 ? total : null;
+      if(movesPlayed > 0 && total > bestTotal){ bestTotal = total; bestN = n; }
     }
     // Logged every time (not just when something looks odd) so the log panel is a complete,
     // self-contained record - if a choice ever looks wrong later, the reasoning is already
     // sitting right there rather than needing to catch it live at the exact moment.
     const breakdown = [1,2,3,4,5,6].map(n => `${n}s=${perDieScores[n] === null ? 'n/a' : perDieScores[n]}`).join(', ');
-    log(`${names[current]} considers doubles - ${breakdown}`, 'info');
+    log(`${names[current]} considers doubles (simulating all 4 moves each) - ${breakdown}`, 'info');
     if(bestN === null){
       // Genuinely no legal move exists for ANY of the 6 possible doubles - previously this fell
       // through to declaring "double 1s" by default (bestN's unchanged initial value) even though
