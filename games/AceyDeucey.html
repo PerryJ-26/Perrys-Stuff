@@ -1,6 +1,6 @@
 
 
-<!-- Revision 18 | Tuesday, August 18, 2026 -->
+<!-- Revision 19 | Tuesday, August 18, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2004,7 +2004,6 @@
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
   function endGame(winner){
     phase = 'game-over';
-    document.getElementById('game').classList.remove('show');
     document.getElementById('gameOver').classList.add('show');
     document.getElementById('gameOverTitle').textContent = `${names[winner]} Wins!`;
     document.getElementById('gameOverText').textContent =
