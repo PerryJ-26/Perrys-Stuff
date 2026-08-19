@@ -1,6 +1,6 @@
 
 
-<!-- Revision 21 | Wednesday, August 19, 2026 -->
+<!-- Revision 22 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -932,7 +932,7 @@
     position:fixed;
     bottom:10px; left:10px;
     width:300px;
-    max-height:280px;
+    max-height:520px;
     background:var(--wood-dark);
     border:2px solid var(--gold);
     border-radius:8px;
@@ -1904,6 +1904,7 @@
     if(!isAI[current] || phase !== 'choose-double') return;
     let bestN = null, bestScore = -Infinity;
     const srcs = sourcesFor(current);
+    const perDieScores = {}; // for the log line below - which die values were even legal, and their best score
     for(let n=1;n<=6;n++){
       let bestForThisN = -Infinity, count = 0;
       for(const s of srcs){
@@ -1918,8 +1919,14 @@
       // legal source. Summing was the actual bug: a die with several mediocre-or-bad options
       // could out-score a die with one genuinely excellent move, since the sum buried the good
       // move under a pile of unrelated bad ones that would never actually be played anyway.
+      perDieScores[n] = count > 0 ? bestForThisN : null;
       if(count > 0 && bestForThisN > bestScore){ bestScore = bestForThisN; bestN = n; }
     }
+    // Logged every time (not just when something looks odd) so the log panel is a complete,
+    // self-contained record - if a choice ever looks wrong later, the reasoning is already
+    // sitting right there rather than needing to catch it live at the exact moment.
+    const breakdown = [1,2,3,4,5,6].map(n => `${n}s=${perDieScores[n] === null ? 'n/a' : perDieScores[n]}`).join(', ');
+    log(`${names[current]} considers doubles - ${breakdown}`, 'info');
     if(bestN === null){
       // Genuinely no legal move exists for ANY of the 6 possible doubles - previously this fell
       // through to declaring "double 1s" by default (bestN's unchanged initial value) even though
@@ -2066,6 +2073,7 @@
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
   document.getElementById('logToggleBtn').addEventListener('dblclick', ()=>{
     document.getElementById('logPanel').classList.toggle('show');
   });
