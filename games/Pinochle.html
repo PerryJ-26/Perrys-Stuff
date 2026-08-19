@@ -1,6 +1,7 @@
 
 
-<!-- Revision 1 | Monday, August 17, 2026 -->
+
+<!-- Revision 7 | Wednesday August 19, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -319,6 +320,9 @@
      that's what keeps 12 full-size cardbacks fitting in the seat's height.
      They're also rotated 90° — a common convention for the side seats in
      card game UIs, so the cards read as "facing" the table's center. */
+  /* Mike/Lisa's 12-card hands now sit in an actual 3x4 grid (see .cardback-row.vertical
+     above), sized down from the normal 84x118 cardback so 3 fit across their narrow side
+     column - no overlap or rotation trick needed since a real grid handles the spacing. */
   .cardback-row.vertical .cardback{ margin-left:0; margin-top:-113px; transform: rotate(90deg); }
   .cardback-row.vertical .cardback:first-child{ margin-top:0; }
 
@@ -2154,7 +2158,15 @@ function cardTextGridHtml(hand, columns){
     const isRed = RED_SUITS.includes(c.suit);
     return `<span style="color:${isRed ? '#b3261e' : '#000'};">${c.rank}${c.suit}</span>`;
   }).join('');
-  return `<div style="display:grid; grid-template-columns:repeat(${columns},1fr); gap:5px 8px; font-size:1.15rem; font-weight:700; text-align:center; background:#fffdf8; border:1px solid #999; border-radius:6px; padding:6px; width:100%;">${cells}</div>`;
+  // grid-column:1/-1 + align-self:start (see earlier fix) solved this wrapper being squished
+  // into a single tiny grid cell of the outer cardback-row.vertical grid. But that only let
+  // the wrapper size itself to its own natural content height - it didn't make that natural
+  // height actually SMALL enough to fit a short window. font-size/padding/gap here were still
+  // fixed values, so on a short window (like a ~580px-tall browser) this still needed more
+  // room than the seat had, and got clipped by #seat-W's overflow:hidden. Using clamp() tied
+  // to viewport height - same approach already used for the normal cardback grid - lets this
+  // shrink to fit too, instead of only the squishing being fixed.
+  return `<div style="display:grid; grid-column:1/-1; align-self:start; grid-template-columns:repeat(${columns},1fr); gap:clamp(2px,0.4vh,5px) clamp(4px,1vh,8px); font-size:clamp(10px,2.3vh,18px); font-weight:700; text-align:center; background:#fffdf8; border:1px solid #999; border-radius:6px; padding:clamp(2px,0.5vh,6px); width:100%; box-sizing:border-box;">${cells}</div>`;
 }
 
 function render(){
