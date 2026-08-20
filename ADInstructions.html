@@ -1,0 +1,305 @@
+
+<!-- Revision 4 | Thursday, August 20, 2026 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acey-Deucey Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card a {
+    color: var(--heading-text);
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0 0 8px;
+    font-size: 0.98rem;
+  }
+
+  .example-box p:last-child {
+    margin-bottom: 0;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 1in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/AceyDeucey.html">Back to Acey-Deucey</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">American Acey-Deucey Instructions</h2>
+    <div class="instructions-card">
+
+      <p>The American version of Acey-Deucey is a variation of Backgammon and has been a favorite game of the U.S. Navy, Marine Corps, and Merchant Marine since the First World War.</p>
+
+      <hr style="border: none; border-top: 1px solid var(--card-border); margin: 24px 0;">
+
+      <h2>Setup</h2>
+      <p>Each triangle on the board is called a point, and these points are used to count movement around the board. The players start with fifteen checkers off the board. The players enter their checkers in the opponent's home board (points 1&ndash;6), then bring them around the board. You play counterclockwise and your opponent plays clockwise.</p>
+
+      <h2>Object</h2>
+      <p>The object of the game is to move all your checkers around the board to your own home board and then bear them off. The first player to bear off all their checkers wins the game.</p>
+
+      <h2>To Start</h2>
+      <p>Each player rolls one die, and the higher number goes first. That player then rolls both dice again to begin their first turn.</p>
+
+      <h2>Entering Checkers</h2>
+      <p>You enter a checker by placing it on a point in the opponent's home board corresponding to a number rolled. For example, if you roll 6-3, then you enter one checker on the opponent's six-point and one checker on their three-point. You cannot move any checkers until all of your checkers are on the board.</p>
+
+      <h2 class="print-page-break">Movement</h2>
+      <p>The roll of the dice indicates how many points, or pips, the player is to move their checkers. The following rules apply:</p>
+      <ul>
+        <li>A point occupied by two or more checkers of the same player is called a block, and an opposing checker may not land on it.</li>
+        <li>The numbers on the two dice constitute separate moves. For example, if you roll 5 and 3, you may move one checker five spaces to an open point and another checker three spaces to an open point, or you may move one checker a total of eight spaces to an open point, but only if the intermediate point (either three or five spaces from the starting point) is also open.</li>
+        <li>Doubles are played twice. For example, a roll of 6-6 means you have four sixes to use.</li>
+        <li>You must use both numbers of a roll if possible, or all four numbers in the case of doubles. If only one number can be played, the player must play that number and forfeits the unplayable number. If neither number can be played, the player's turn ends.</li>
+      </ul>
+
+      <h2>Acey-Deucey</h2>
+      <p>The roll of 1 and 2 (Acey-Deucey) is especially valuable. When you roll 1-2:</p>
+      <ul>
+        <li>First, you play the 1 and 2 in the normal way.</li>
+        <li>Then you name any roll of doubles you wish and play it accordingly.</li>
+        <li>Then you roll again and play the roll as usual.</li>
+        <li>If the number rolled is another 1-2, you play the 1-2, then play a double of your choice, and roll again.</li>
+      </ul>
+      <div class="example-box">
+        <p><strong>Note:</strong> If you are unable to use any part of your roll, you forfeit the rest of your turn. For example, if you can move your 2 but cannot use the 1, you may not name a double and you may not roll again.</p>
+        <p>It is permissible to name a double even if only part of it can be used. For example, after moving 1 and 2, you can name 6-6 as your double even if only three of the 6s can be played. The fourth 6 is forfeited, and the turn ends.</p>
+      </div>
+
+      <h2>Hitting</h2>
+      <p>A checker sitting alone on a point is called a <em>blot</em>. If an opposing checker lands on a blot, the blot is hit and placed on the bar (the center of the board).</p>
+
+      <h2>Entering From the Bar</h2>
+      <p>When you have one or more checkers on the bar, you must reenter them into the opponent's home board before making any other move. You reenter a checker by moving it to an open point corresponding to one of the numbers on the rolled dice. If you can enter some but not all your checkers on the bar, you must reenter as many as possible and then end your turn.</p>
+
+      <h2>Bearing Off</h2>
+      <p>Once you have moved all fifteen of your checkers into your home board, you may begin bearing off. You bear off a checker by rolling a number that corresponds to the point on which it resides, then removing the checker from the board.</p>
+      <p>If there is no checker on the point indicated by the roll, you must remove a checker from the highest point that has a checker.</p>
+      <div class="example-box">
+        <p><strong>Example:</strong> If you have checkers only on the number 3 and 4 points in your home board and you roll a 5 and 6, you bear off all the checkers on the 4 point and then the 3 point.</p>
+      </div>
+
+      <h2>Scoring</h2>
+      <ul>
+        <li>A pip is counted as one checker needing to move one point before it can be taken off the board.</li>
+        <li>The loser's remaining pip count becomes the winner's score for that game.</li>
+      </ul>
+
+      <h2>Strategy</h2>
+      <p>Because the roll of 1-2 is so powerful, luck plays a big part in winning. You are never completely out of a game. Skillful checker placement, such as creating blocks, can limit your opponent's movement and improve your chances of bearing off first.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
