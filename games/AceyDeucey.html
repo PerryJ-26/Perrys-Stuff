@@ -1,6 +1,6 @@
 
 
-<!-- Revision 24 | Wednesday, August 19, 2026 -->
+<!-- Revision 25 | Wednesday, August 19, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1593,6 +1593,12 @@
     if(dice.length === 0){
       afterDiceExhausted();
     } else if(!anyLegalMove(player, dice)){
+      // Same fix as the initial-roll case above: if this fires partway through an Acey-Deucey
+      // roll (e.g. the 1 was played but the 2 can't be), the bonus double must NOT be granted -
+      // the full 1-2 was never actually completed. Without this, afterDiceExhausted() below
+      // still sees awaitingDoubleChoice=true from finishRoll() and grants the bonus anyway.
+      // Harmless no-op on any normal (non-Acey-Deucey) roll, where this is already false.
+      awaitingDoubleChoice = false;
       forfeitTurnNoMoves('No further legal moves — remaining dice forfeited.');
     } else {
       render();
