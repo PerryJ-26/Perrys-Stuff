@@ -1,6 +1,6 @@
 
 
-<!-- Revision 25 | Wednesday, August 19, 2026 -->
+<!-- Revision 27 | Thursday, August 20, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -338,6 +338,13 @@
     font-size:1.15rem; 
     font-weight:700; 
     margin-top:1px;}
+
+  /* Left box (Perry/White): "PERRY (WHITE)" recolored to match its own "0 Home..." text -
+     both lines the lighter cream color. Right box (AI/Black): "0 Home..." recolored to match
+     its own "THE AI (BLACK)" text - both lines the darker black. Scoped to each box's own ID
+     so only the requested line in each box changes, not both boxes identically. */
+  #scoreWhite .name{ color:var(--cream); }
+  #scoreBlack .stat{ color:#000000; }
 
   .turn-banner{
     text-align:center; 
