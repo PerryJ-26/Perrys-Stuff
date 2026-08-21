@@ -1,6 +1,6 @@
 
 
-<!-- Revision 27 | Thursday, August 20, 2026 -->
+<!-- Revision 28 | Thursday, August 20, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1028,7 +1028,7 @@
         <div class="board-grid" id="boardGrid"></div>
       </div>
       <div class="side-controls">
-        <div class="side-controls-inner">
+        <div class="side-controls-inner side-controls-inner-top">
           <button class="action-btn" id="rollBtn">Roll Dice</button>
           <div class="dice-row-wrap">
             <div class="dice-row" id="diceRow"></div>
@@ -1312,6 +1312,21 @@
 
   // Entering a name mid-game just relabels the current player live (header, session-wins
   // box) - it doesn't need a restart at all, unlike mode changes which do.
+  // Persisted so navigating to Instructions and back (a full page reload) doesn't lose what
+  // was typed in - sessionStorage survives page navigations within the same tab, it only
+  // clears on an actual tab close or a deliberate Exit (see performExit()). Called from both
+  // applyNameChangeLive() (a plain name edit, no restart) and startGame() (mode changes/New
+  // Game/etc.), since either one can be the most recent thing the player did.
+  function persistSettings(){
+    try {
+      sessionStorage.setItem('aceyDeuceySettings_v1', JSON.stringify({
+        p1Name: names.white,
+        p2Name: mode==='ai' ? '' : names.black, // don't persist "The AI" as if it were a typed name
+        mode: mode
+      }));
+    } catch (err) {}
+  }
+
   function applyNameChangeLive(){
     const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     names.white = p1;
@@ -1323,6 +1338,7 @@
       document.getElementById('nameBlack').textContent = p2 + ' (Black)';
       document.getElementById('sessionWinsP2Name').textContent = p2;
     }
+    persistSettings();
   }
   document.getElementById('gsP1Name').addEventListener('change', applyNameChangeLive);
   document.getElementById('gsP2Name').addEventListener('change', applyNameChangeLive);
@@ -1352,6 +1368,7 @@
     names.white = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     names.black = mode==='ai' ? 'The AI' : (document.getElementById('gsP2Name').value.trim() || 'Player 2');
     isAI = {white:false, black: mode==='ai'};
+    persistSettings();
 
     board = newBoard();
     bar = {white:15, black:15};
@@ -2167,6 +2184,36 @@
       `${names[winner]} won by ${margin} pip${margin === 1 ? '' : 's'}`;
     recordScore(names[winner], margin, names[opp(winner)]);
   }
+
+  // Restores whatever name/mode was last used, if this is a reload of an already-in-progress
+  // session (e.g. returning from the Instructions page) rather than a genuinely fresh visit.
+  // Must run BEFORE the startGame() call below, since startGame() reads directly from these
+  // same input fields and the mode variable.
+  (function restorePersistedSettings(){
+    try {
+      const raw = sessionStorage.getItem('aceyDeuceySettings_v1');
+      if(!raw) return;
+      const saved = JSON.parse(raw);
+      if(saved.p1Name) document.getElementById('gsP1Name').value = saved.p1Name;
+      if(saved.mode && saved.mode !== mode){
+        mode = saved.mode;
+        document.querySelectorAll('.mode-btn').forEach(b=>{
+          const isSelected = b.dataset.mode === mode;
+          b.classList.toggle('selected', isSelected);
+          b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
+        });
+      }
+      const p2Input = document.getElementById('gsP2Name');
+      const p2Label = document.getElementById('gsP2Label');
+      if(mode==='ai'){
+        p2Label.childNodes[0].textContent = 'Black (AI) ';
+        p2Input.value = 'The AI'; p2Input.disabled = true;
+      } else {
+        p2Label.childNodes[0].textContent = 'Black (Player 2) ';
+        p2Input.value = saved.p2Name || ''; p2Input.disabled = false;
+      }
+    } catch (err) { console.error('restorePersistedSettings error', err); }
+  })();
 
   // No Setup screen anymore - the board opens automatically as soon as the page loads, using
   // whatever the default mode/name fields already show (AI Opponent, "Player 1" vs "The AI").
