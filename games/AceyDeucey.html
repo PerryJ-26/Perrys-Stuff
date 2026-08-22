@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 30 | Saturday, August 22, 2026 -->
+<!-- Revision 31 | Saturday, August 22, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -370,22 +370,28 @@
      dice on one row; there's room to spare on both
      flanks of the board */
      
+  /* display:flex column (rather than the old position:absolute inner group +
+     absolute bottom box) so the bottom box is pushed down by margin-top:auto
+     instead of being pinned at bottom:0 independently of the content above it -
+     on a short window the two could otherwise overlap, with the bottom box
+     painted on top and hiding whichever button landed underneath it. This way
+     the box still sits flush at the bottom when there's room, but simply
+     follows on below the buttons (rather than covering them) when there isn't. */
   .side-controls{
-    position:relative; 
-    width:190px; 
-    flex-shrink:0;}
-    
+    position:relative;
+    width:190px;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;}
+
   .side-controls-inner{
-    position:absolute; 
-    top:33%; 
-    left:0; 
-    width:100%; 
-    transform:translateY(-50%);
-    display:flex; 
-    flex-direction:column; 
-    align-items:center; 
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
     gap:8px;}
-    
+
   .board-frame{
     background:linear-gradient(160deg, var(--wood), 
       var(--wood-dark));
@@ -706,18 +712,12 @@
     color:#000000;
     text-align:left;}
 
-  /* Positioned independently of the centered side-controls-inner group, so it can sit at the
-     very bottom of .side-controls (which stretches to match the board's height) instead of
-     being vertically centered along with the buttons/dice above it. */
+  /* Pushed to the bottom of the .side-controls flex column (flush with the board's
+     bottom edge, same as before) via margin-top:auto rather than position:absolute,
+     so if the buttons above ever need more room than the column has, this box is
+     simply pushed further down in normal flow instead of overlapping them. */
   .session-wins-box-bottom{
-    position:absolute;
-    bottom:0;
-    left:0;
-    margin-top:0;}
-
-  .side-controls-inner-top{
-    top:0;
-    transform:none;}
+    margin-top:auto;}
 
   /* Compact game-screen copy of the Setup screen's mode/name/start controls - narrow enough
      to fit the 190px sidebar, and using Arial (matching the buttons on the right side of the
