@@ -1,5 +1,5 @@
 
-<!-- Revision 4 | Thursday, August 20, 2026 -->
+<!-- Revision 5 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -249,7 +249,7 @@
       <p>The object of the game is to move all your checkers around the board to your own home board and then bear them off. The first player to bear off all their checkers wins the game.</p>
 
       <h2>To Start</h2>
-      <p>Each player rolls one die, and the higher number goes first. That player then rolls both dice again to begin their first turn.</p>
+      <p>The program alternates the starting player. If the opponent doesn't automatically start the game, click on the Roll Dice button.</p>
 
       <h2>Entering Checkers</h2>
       <p>You enter a checker by placing it on a point in the opponent's home board corresponding to a number rolled. For example, if you roll 6-3, then you enter one checker on the opponent's six-point and one checker on their three-point. You cannot move any checkers until all of your checkers are on the board.</p>
@@ -258,7 +258,7 @@
       <p>The roll of the dice indicates how many points, or pips, the player is to move their checkers. The following rules apply:</p>
       <ul>
         <li>A point occupied by two or more checkers of the same player is called a block, and an opposing checker may not land on it.</li>
-        <li>The numbers on the two dice constitute separate moves. For example, if you roll 5 and 3, you may move one checker five spaces to an open point and another checker three spaces to an open point, or you may move one checker a total of eight spaces to an open point, but only if the intermediate point (either three or five spaces from the starting point) is also open.</li>
+        <li>The numbers on the two dice constitute separate moves. For example, if you roll 5 and 3, you may move one checker five spaces to an open point (a point that doesn't have two or more opponents checkers) and another checker three spaces to an open point, or you may move one checker a total of eight spaces to an open point, but only if the intermediate point (either three or five spaces from the starting point) is also open.</li>
         <li>Doubles are played twice. For example, a roll of 6-6 means you have four sixes to use.</li>
         <li>You must use both numbers of a roll if possible, or all four numbers in the case of doubles. If only one number can be played, the player must play that number and forfeits the unplayable number. If neither number can be played, the player's turn ends.</li>
       </ul>
@@ -272,8 +272,8 @@
         <li>If the number rolled is another 1-2, you play the 1-2, then play a double of your choice, and roll again.</li>
       </ul>
       <div class="example-box">
-        <p><strong>Note:</strong> If you are unable to use any part of your roll, you forfeit the rest of your turn. For example, if you can move your 2 but cannot use the 1, you may not name a double and you may not roll again.</p>
-        <p>It is permissible to name a double even if only part of it can be used. For example, after moving 1 and 2, you can name 6-6 as your double even if only three of the 6s can be played. The fourth 6 is forfeited, and the turn ends.</p>
+        <p><strong>Note:</strong> If you are unable to use any part of your roll, you forfeit the rest of your turn. For example, if you can move your 1 but cannot use the 2, you may not name a double, you may not roll again, and your turn ends.</p>
+        <p>It is permissible to name a double even if you can't play all four die. For example, after moving 1 and 2, you can name 6-6 as your double even if only three of the 6s can be played. The fourth 6 is forfeited, and the turn ends. If you can't use all of your doubles, you can't roll again, and your turn is over.</p>
       </div>
 
       <h2>Hitting</h2>
@@ -289,7 +289,7 @@
         <p><strong>Example:</strong> If you have checkers only on the number 3 and 4 points in your home board and you roll a 5 and 6, you bear off all the checkers on the 4 point and then the 3 point.</p>
       </div>
 
-      <h2>Scoring</h2>
+       <h2 class="print-page-break">Scoring</h2>
       <ul>
         <li>A pip is counted as one checker needing to move one point before it can be taken off the board.</li>
         <li>The loser's remaining pip count becomes the winner's score for that game.</li>
