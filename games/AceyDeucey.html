@@ -1,6 +1,7 @@
 
 
-<!-- Revision 28 | Thursday, August 20, 2026 -->
+
+<!-- Revision 30 | Saturday, August 22, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -447,22 +448,32 @@
   .point.bottom .checker-stack{flex-direction:column-reverse;}
   
   .checker{
-    width:26px; 
-    height:26px; 
-    border-radius:50%; 
+    width:26px;
+    height:26px;
+    border-radius:50%;
     margin:1px 0;
     box-shadow:0 2px 4px var(--checker-shadow),
     inset 0 0 0 2px var(--checker-shadow-inset);
     flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:800;
+    font-size:12px;
+    line-height:1;
+    user-select:none;
   }
   .checker.white{
-    background:var(--white-checker); 
-    border:2px solid var(--white-checker-edge);}
+    background:var(--white-checker);
+    border:2px solid var(--white-checker-edge);
+    color:#000000;}
 
   .checker.black{
-    background:var(--black-checker); 
-    border:2px solid var(--black-checker-edge);}
-    
+    background:var(--black-checker);
+    border:2px solid var(--black-checker-edge);
+    color:#ffffff;}
+
   .stack-overflow{
     font-size:0.65rem;
     color:var(--gold-bright); 
@@ -489,11 +500,20 @@
     outline-offset:-3px;}
     
   .bar-half{
-    display:flex; 
-    flex-direction:column; 
-    align-items:center; 
+    display:flex;
+    flex-direction:column;
+    align-items:center;
     gap:2px;}
-    
+
+  /* Holds just the checker stack, separate from .bar-label, so the label can be
+     reordered before/after the stack (Black Bar: label on top; White Bar: label
+     on bottom) without disturbing renderStack()'s checker markup. */
+  .bar-checkers{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;}
+
   .bar-label{
     font-size:0.6rem;
     color:var(--gold);
@@ -680,7 +700,7 @@
     box-sizing:border-box;
     background:var(--cream-dark);
     border:2px solid #000000;
-    border-radius:4px;
+    border-radius:8px;
     padding:8px 12px;
     font-family:Arial, Helvetica, sans-serif;
     color:#000000;
@@ -762,7 +782,22 @@
   .session-wins-stats{
     font-size:0.8rem;
     white-space:nowrap;}
-  
+
+  /* Each row's label sits on the left and its value on the right, so the two
+     values line up in their own column regardless of how long either
+     player's name is (used by the Remaining Pips box). */
+  .pips-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;}
+
+  .pips-row + .pips-row{
+    margin-top:2px;}
+
+  .pips-value{
+    font-weight:700;
+    text-align:right;}
+
   .action-btn:disabled{opacity:0.35; cursor:not-allowed;}
   
   .double-choice{
@@ -920,7 +955,7 @@
     filter:brightness(1.06);}
 
   @media (max-width:640px){
-    .checker{width:18px; height:18px;}}
+    .checker{width:18px; height:18px; font-size:8px;}}
   
   /* Invisible double-click toggle for the game log, tucked into the very corner of the
      screen so it doesn't visually clutter anything or invite accidental clicks. */
@@ -1023,6 +1058,11 @@
             </div>
           </div>
         </div>
+
+        <div class="session-wins-box session-wins-box-bottom">
+          <div class="session-wins-title">This Session's Wins</div>
+          <div class="session-wins-stats"><span id="sessionWinsP1Name">Player 1</span> = <span id="sessionWinsP1">0</span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="sessionWinsP2Name">Player 2</span> = <span id="sessionWinsP2">0</span></div>
+        </div>
       </div>
       <div class="board-frame">
         <div class="board-grid" id="boardGrid"></div>
@@ -1045,8 +1085,11 @@
         </div>
 
         <div class="session-wins-box session-wins-box-bottom">
-          <div class="session-wins-title">This Session's Wins</div>
-          <div class="session-wins-stats"><span id="sessionWinsP1Name">Player 1</span> = <span id="sessionWinsP1">0</span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="sessionWinsP2Name">Player 2</span> = <span id="sessionWinsP2">0</span></div>
+          <div class="session-wins-title">Remaining Pips</div>
+          <div class="session-wins-stats">
+            <div class="pips-row"><span><span id="pipsWhiteLabel">Player 1</span> pips</span><span class="pips-value" id="pipsWhite">0</span></div>
+            <div class="pips-row"><span><span id="pipsBlackLabel">Player 2</span> pips</span><span class="pips-value" id="pipsBlack">0</span></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1332,11 +1375,13 @@
     names.white = p1;
     document.getElementById('nameWhite').textContent = p1 + ' (White)';
     document.getElementById('sessionWinsP1Name').textContent = p1;
+    document.getElementById('pipsWhiteLabel').textContent = p1;
     if(mode !== 'ai'){
       const p2 = document.getElementById('gsP2Name').value.trim() || 'Player 2';
       names.black = p2;
       document.getElementById('nameBlack').textContent = p2 + ' (Black)';
       document.getElementById('sessionWinsP2Name').textContent = p2;
+      document.getElementById('pipsBlackLabel').textContent = p2;
     }
     persistSettings();
   }
@@ -1386,6 +1431,8 @@
     document.getElementById('nameBlack').textContent = names.black + ' (Black)';
     document.getElementById('sessionWinsP1Name').textContent = names.white;
     document.getElementById('sessionWinsP2Name').textContent = names.black;
+    document.getElementById('pipsWhiteLabel').textContent = names.white;
+    document.getElementById('pipsBlackLabel').textContent = names.black;
     updateSessionWinsDisplay();
     log(`New game. All checkers start on the bar. ${names[current]} rolls first.`, 'info');
 
@@ -1415,8 +1462,14 @@
     barCol.className = 'bar-col';
     barCol.id = 'barCol';
     barCol.innerHTML = `
-      <div class="bar-half" id="barBlackStack"><div class="bar-label">Black Bar</div></div>
-      <div class="bar-half" id="barWhiteStack"><div class="bar-label">White Bar</div></div>
+      <div class="bar-half">
+        <div class="bar-label">Black Bar</div>
+        <div class="bar-checkers" id="barBlackStack"></div>
+      </div>
+      <div class="bar-half">
+        <div class="bar-checkers" id="barWhiteStack"></div>
+        <div class="bar-label">White Bar</div>
+      </div>
     `;
     barCol.addEventListener('click', ()=> onSourceClick('bar'));
     grid.appendChild(barCol);
@@ -1452,19 +1505,28 @@
     return el;
   }
 
-  function renderStack(container, count, color, maxVisible){
+  function renderStack(container, count, color, maxVisible, numberAtStart){
     container.querySelectorAll('.checker, .stack-overflow').forEach(n=>n.remove());
     const visible = Math.min(count, maxVisible);
+    // Which slot in the stack gets the count label. Every stack normally puts
+    // it on the LAST checker added, which (given how each stack's flex-direction
+    // is set) lands the label nearest the middle of the board - except the
+    // White Bar half, which sits in the bottom half of the center bar column
+    // without a reversed flex-direction, so its last checker lands at the
+    // outer edge instead. numberAtStart flips it to the FIRST checker there
+    // so it lands at the top of that stack, next to the bar's center divider
+    // like every other stack's label.
+    const countSlot = numberAtStart ? 0 : visible - 1;
     for(let i=0;i<visible;i++){
       const c = document.createElement('div');
       c.className = `checker ${color}`;
+      // When there are more checkers than fit visibly, stamp the TOTAL count
+      // (not just the hidden overflow) on the count slot, so the real stack
+      // size is always readable at a glance.
+      if(count > maxVisible && i === countSlot){
+        c.textContent = count;
+      }
       container.appendChild(c);
-    }
-    if(count > maxVisible){
-      const o = document.createElement('div');
-      o.className = 'stack-overflow';
-      o.textContent = '+' + (count - maxVisible);
-      container.appendChild(o);
     }
   }
 
@@ -1485,7 +1547,7 @@
     barBlackStack.querySelectorAll('.checker,.stack-overflow').forEach(n=>n.remove());
     barWhiteStack.querySelectorAll('.checker,.stack-overflow').forEach(n=>n.remove());
     renderStack(barBlackStack, bar.black, 'black', 4);
-    renderStack(barWhiteStack, bar.white, 'white', 4);
+    renderStack(barWhiteStack, bar.white, 'white', 4, true);
 
     document.getElementById('offBlackNum').textContent = off.black;
     document.getElementById('offWhiteNum').textContent = off.white;
@@ -1493,6 +1555,9 @@
     document.getElementById('offWhiteCount').textContent = off.white;
     document.getElementById('barBlackCount').textContent = bar.black;
     document.getElementById('barWhiteCount').textContent = bar.white;
+
+    document.getElementById('pipsWhite').textContent = computePipCount('white');
+    document.getElementById('pipsBlack').textContent = computePipCount('black');
 
     document.getElementById('scoreWhite').classList.toggle('active', current==='white');
     document.getElementById('scoreBlack').classList.toggle('active', current==='black');
