@@ -1,6 +1,7 @@
 
 
 
+
 <!-- Revision 8 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -325,6 +326,34 @@
      column - no overlap or rotation trick needed since a real grid handles the spacing. */
   .cardback-row.vertical .cardback{ margin-left:0; margin-top:-113px; transform: rotate(90deg); }
   .cardback-row.vertical .cardback:first-child{ margin-top:0; }
+
+  /* Small face-down pile shown at the center of the felt only while the
+     dealing animation (animateDealIn(), see script below) is running —
+     hidden the rest of the time. Same cardback pattern/colors as the real
+     .cardback class, just sized down and absolutely stacked, so it reads
+     as "the deck" without touching that class's row-overlap margins. */
+  #dealDeck{
+    display:none;
+    position:absolute;
+    top:50%; left:50%;
+    width:40px; height:56px;
+    transform:translate(-50%,-50%);
+    z-index:5;
+  }
+  #dealDeck .deal-deck-card{
+    position:absolute;
+    top:0; left:0;
+    width:40px; height:56px;
+    border-radius:5px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+  }
+  #dealDeck .deal-deck-card:nth-child(2){ transform: translate(2px,-2px); }
+  #dealDeck .deal-deck-card:nth-child(3){ transform: translate(4px,-4px); }
 
 
   #seat-N{ grid-column:2; grid-row:1; }
@@ -762,6 +791,7 @@
   <div class="bubble tail-bottom" id="bubble-W"></div>
 
   <div id="felt">
+    <div id="dealDeck"><div class="deal-deck-card"></div><div class="deal-deck-card"></div><div class="deal-deck-card"></div></div>
     <div id="trickArea">
       <div class="trick-slot" id="tc-N"></div>
       <div class="trick-slot" id="tc-W"></div>
@@ -953,6 +983,12 @@ let log = [];
 // Tracks the last HTML rendered into #south-hand — used to skip
 // recreating the DOM when nothing about it actually changed (see render()).
 let _lastSouthHandHtml = '';
+// Bumped every time animateDealIn() starts a new deal animation - each of
+// its scheduled steps captures the id at the time it was scheduled and
+// no-ops if a newer deal has since started (defensive; nothing in the game
+// currently re-deals mid-animation, but this keeps a stray double-deal from
+// leaving two overlapping animations fighting over the same card elements).
+let dealAnimId = 0;
 
 // ---------------------------------------------------------------------
 // DECK / DEAL
@@ -1081,8 +1117,131 @@ function dealNewHandInner(){
 
   addLog(`New hand dealt. Dealer: ${SEAT_NAME[SEATS[state.dealerIdx]]}. Bidding starts with ${SEAT_NAME[state.biddingOrder[0]]}.`);
   render();
-  setHandMsg('');
-  processBiddingTurn();
+  animateDealIn();
+}
+
+// ---------------------------------------------------------------------
+// DEAL ANIMATION
+// Flies each of the 48 cards out from a small pile at the center of the
+// felt to its already-correct spot in that seat's hand, in the same
+// S/W/N/E round-robin order dealNewHandInner() just dealt them in. render()
+// (called right before this) has already built the exact, final hand
+// markup - south's real cards fanned out, N/W/E's cardbacks in their rows -
+// so this never changes what gets shown, only how it arrives. It works by
+// grabbing each already-positioned card element, offsetting it back to the
+// deck with a CSS transform (which doesn't affect layout, so nothing about
+// the fan/row positions changes), then transitioning that offset back to
+// zero, staggered card by card. setHandMsg()/processBiddingTurn() - which
+// the deal used to call immediately - are deferred until the animation
+// finishes, so bidding doesn't start while cards are still arriving.
+function animateDealIn(){
+  const myId = ++dealAnimId;
+
+  // The "View All Cards" debug option replaces N/W/E's cardbacks with a
+  // plain text grid (see render()) - there's nothing card-shaped to fly in
+  // for those seats, so skip the animation entirely rather than fake it.
+  if(state.viewAllCards){
+    setHandMsg('');
+    processBiddingTurn();
+    return;
+  }
+
+  const seatEls = {
+    S: Array.from(document.querySelectorAll('#south-hand .cardWrap')),
+    N: Array.from(document.querySelectorAll('#cards-N .cardback')),
+    W: Array.from(document.querySelectorAll('#cards-W .cardback')),
+    E: Array.from(document.querySelectorAll('#cards-E .cardback')),
+  };
+  // Defensive: if the DOM doesn't actually have 12 elements per seat for
+  // any reason, skip the animation rather than risk animating the wrong
+  // elements (or crashing on a missing one) - just deal instantly instead.
+  if(!SEATS.every(s => seatEls[s].length === 12)){
+    setHandMsg('');
+    processBiddingTurn();
+    return;
+  }
+
+  // Walk the elements in the same order dealNewHandInner()'s own loop dealt
+  // them (SEATS = ['S','W','N','E'], one card per seat per round) - not the
+  // cards' identities, just which already-rendered element flies in at
+  // which step, so South's fan reveals left-to-right in its normal sorted
+  // order while N/W/E's interchangeable cardbacks fill in alongside it.
+  const nextIdx = { S:0, N:0, W:0, E:0 };
+  const flat = [];
+  for(let round=0; round<12; round++){
+    SEATS.forEach(seat => flat.push({ seat, el: seatEls[seat][nextIdx[seat]++] }));
+  }
+
+  const feltRect = document.getElementById('felt').getBoundingClientRect();
+  const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
+  // West/East's cardbacks are permanently rotated 90° by .cardback-row.vertical
+  // .cardback - that rotation has to stay part of the transform throughout
+  // (an inline transform would otherwise silently override the CSS one and
+  // the backs would flash unrotated for the deal).
+  const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
+  const FLIGHT_MS = 380, STAGGER_MS = 34;
+
+  // #table-wrap, each .seat, and #south-hand all clip their own content
+  // (overflow:hidden, so hands/panels never spill past the board's edges)
+  // - which would clip the "flying" part of this animation the moment a
+  // card's mid-flight position is outside its own seat's box, since every
+  // card starts this animation already living inside its final seat's DOM.
+  // Relaxed for the duration of the animation only, then restored exactly
+  // as part of the completion step below - nothing else changes state
+  // during this window (bidding hasn't started yet), so this is safe.
+  const overflowEls = [
+    document.getElementById('table-wrap'),
+    document.getElementById('seat-N'),
+    document.getElementById('seat-W'),
+    document.getElementById('seat-E'),
+    document.getElementById('seat-S'),
+    document.getElementById('south-hand'),
+  ];
+  overflowEls.forEach(el => { el.style.overflow = 'visible'; });
+
+  const deckPile = document.getElementById('dealDeck');
+  deckPile.style.display = 'block';
+
+  // Snap every card back to the deck's position via a transform offset -
+  // done synchronously, in the same tick as the render() call just above,
+  // so the browser never paints the fully-dealt hand before the animation
+  // starts (nothing about the element's actual layout position changes).
+  flat.forEach(({seat, el}) => {
+    const r = el.getBoundingClientRect();
+    const dx = deckCenter.x - (r.left + r.width/2);
+    const dy = deckCenter.y - (r.top + r.height/2);
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = `translate(${dx}px, ${dy}px) ${ROTATE[seat]} scale(0.8)`;
+  });
+
+  // Reveal them one at a time, same order as dealt.
+  flat.forEach(({seat, el}, i) => {
+    pausableTimeout(() => {
+      if(dealAnimId !== myId) return;
+      void el.offsetWidth; // force the hidden/offset state above to commit first
+      el.style.transition = 'transform 0.38s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
+      requestAnimationFrame(() => {
+        if(dealAnimId !== myId) return;
+        el.style.opacity = '1';
+        el.style.transform = `translate(0,0) ${ROTATE[seat]} scale(1)`;
+      });
+    }, i * STAGGER_MS);
+  });
+
+  // Cleanup + hand off to bidding once the last card has landed.
+  pausableTimeout(() => {
+    if(dealAnimId !== myId) return;
+    deckPile.style.display = 'none';
+    overflowEls.forEach(el => { el.style.overflow = ''; });
+    flat.forEach(({el}) => {
+      el.style.transition = '';
+      el.style.opacity = '';
+      el.style.transform = '';
+    });
+    setHandMsg('');
+    processBiddingTurn();
+  }, (flat.length - 1) * STAGGER_MS + FLIGHT_MS + 80);
 }
 
 // ---------------------------------------------------------------------
