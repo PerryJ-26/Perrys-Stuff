@@ -1,5 +1,6 @@
 
-<!-- Revision 1 | Monday, August 17, 2026 -->
+
+<!-- Revision 6 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -974,13 +975,60 @@ function applyScore(catId, value){
     if(Object.values(scorecard).every(v=>v!==null)){
       const finalTotal = computeGrandTotal();
       saveHighScore(currentPlayerName, finalTotal);
-      showEndBanner('Scorecard complete! Final total: ' + finalTotal);
       console.info('Yahtzee complete, total:', finalTotal);
+      showGameOverModal(finalTotal);
     }
   } catch (err) {
     console.error('applyScore error', err);
     document.getElementById('errorOverlay').textContent = 'applyScore error: ' + err.message;
     document.getElementById('errorOverlay').style.display = 'block';
+  }
+}
+
+/* Shown once the scorecard is completely filled in (see applyScore above) - replaces the old
+   non-blocking "Scorecard complete!" corner banner with the shared universal modal, and adds a
+   Play Again? Yes/No choice. Title is "Game Over" at +3px over the modal's normal title size
+   (18.72px base -> 21.72px); "Final Score:", the score itself, and "Play again?" are all set
+   +3px over the modal's normal message size (16px base -> 19px) and bold, via an HTML message
+   (see the html:true / titleFontSizePx options added to showModal above - opt-in, so no other
+   modal on this page is affected). Choosing "No" doesn't act on it immediately - it asks for a
+   "Are You Sure You Want To Quit?" confirmation first, same as Reset/Exit already do elsewhere
+   on this page. On THAT confirmation, "No" (not quitting) starts a fresh game via initYahtzee() -
+   same as clicking "Yes" up on the Game Over prompt itself; "Yes" (confirming the quit) exits the
+   app the same way the Exit Game button does (performExit(), defined below). */
+async function showGameOverModal(finalTotal){
+  try {
+    const playAgain = await showModal({
+      title: 'Game Over',
+      titleFontSizePx: 25.72,
+      html: true,
+      message: '<span style="font-size:19px;font-weight:bold;">Final Score: ' + finalTotal + '</span><br><br>' +
+                '<span style="font-size:19px;font-weight:bold;">Play again?</span>',
+      buttons: [
+        { label:'Yes', value:true, primary:true },
+        { label:'No', value:false, primary:false }
+      ]
+    });
+    if(playAgain){
+      initYahtzee();
+      return;
+    }
+    const reallyDone = await showModal({
+      title: 'Are You Sure You Want To Quit?',
+      buttons: [
+        { label:'Yes', value:true, primary:true },
+        { label:'No', value:false, primary:false }
+      ]
+    });
+    if(!reallyDone){
+      // "No" (not quitting) starts a fresh game, same as "Yes" up on the Game Over prompt.
+      initYahtzee();
+      return;
+    }
+    // reallyDone === true ("Yes", confirming the quit): exit, same as the Exit Game button.
+    performExit();
+  } catch (err) {
+    console.error('showGameOverModal error', err);
   }
 }
 
@@ -1390,7 +1438,7 @@ async function saveHighScoresToFileSilently(){
 /* -------------------------
    Universal popup modal - shared look for every popup on this page
    ------------------------- */
-function showModal({ title, message, buttons, fontSizePt } = {}){
+function showModal({ title, message, buttons, fontSizePt, titleFontSizePx, html } = {}){
   return new Promise((resolve)=>{
     const modal = document.getElementById('universalModal');
     const titleEl = document.getElementById('universalModalTitle');
@@ -1400,9 +1448,15 @@ function showModal({ title, message, buttons, fontSizePt } = {}){
     if(titleEl){
       if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
       else { titleEl.style.display = 'none'; }
+      // titleFontSizePx is an opt-in per-call override (e.g. the Game Over title); reset to '' when
+      // not supplied so it doesn't leak the last modal's size onto the next one that omits it.
+      titleEl.style.fontSize = titleFontSizePx ? (titleFontSizePx + 'px') : '';
     }
     if(textEl){
-      textEl.textContent = message || '';
+      // html is opt-in per-call (e.g. the Game Over modal needs bold/larger spans within the
+      // message); every other caller keeps passing plain text through textContent as before.
+      if(html){ textEl.innerHTML = message || ''; }
+      else { textEl.textContent = message || ''; }
       textEl.style.fontSize = (fontSizePt || 12) + 'pt';
     }
     if(buttonsEl){
