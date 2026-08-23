@@ -1,5 +1,6 @@
 
-<!-- Revision 1 | Monday, August 17, 2026 -->
+
+<!-- Revision 2 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,6 +8,10 @@
 <title>Tic Tac Toe</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
+  /* Playfair Display + Space Mono are only needed for the Exit-confirmation popup's
+     AceyDeucey-matching look (see #universalModal rules below). */
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
+
   /* ===== ALL COLORS LIVE HERE - change a theme by editing this block only ===== */
   :root{
     /* Page structure */
@@ -202,46 +207,54 @@
     top:50%;
     left:50%;
     transform:translate(-50%,-50%);
-    background:var(--modal-bg);
-    color:var(--modal-text);
+    background:#eee1c6;
+    color:#241608;
     padding:24px;border-radius:10px;
     max-width:380px;
     width:90%;
     text-align:center;
-    box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-    
+    box-shadow:0 8px 30px rgba(0,0,0,0.6);
+    border:2px solid #c9a227}
+
   #universalModalTitle{
     margin:0 0 10px;
-    color:var(--modal-text);
-    font-weight:bold;
+    color:#241608;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
     font-size:1.17em;
     display:none}
-    
+
   #universalModalText{
     margin:0 0 18px;
-    color:var(--modal-text-muted);
+    color:#241608;
+    font-family:'Space Mono', monospace;
     white-space:pre-line}
-    
+
   #universalModalButtons{
     display:flex;
     gap:8px;
     justify-content:center;
     flex-wrap:wrap}
-  
+
   .modalBtn{
     border:0;
-    padding:8px 14px;
+    padding:8px 16px;
     border-radius:6px;
-    cursor:pointer}
-    
+    cursor:pointer;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:0.9rem}
+
+  .modalBtn:hover{
+    filter:brightness(1.06)}
+
   .modalBtn.primary{
-    background:var(--modal-primary-bg);
-    color:var(--modal-primary-text);
-    font-weight:600}
-    
+    background:#e6c65c;
+    color:#241608}
+
   .modalBtn.secondary{
-    background:var(--modal-secondary-bg);
-    color:var(--modal-secondary-text)}
+    background:#d8c8a0;
+    color:#241608}
 
   /* Error overlay */
   #errorOverlay{
@@ -500,7 +513,7 @@ function showConfirm(text){
 async function confirmExitTicTacToe(){
   try {
     const choice = await showModal({
-      title: 'Exit Game',
+      title: 'Exit Tic Tac Toe',
       message: 'Are you sure you want to exit?',
       buttons: [
         { label:'Yes', value:true, primary:true },
