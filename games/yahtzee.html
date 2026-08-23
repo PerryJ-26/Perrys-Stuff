@@ -1,6 +1,6 @@
 
 
-<!-- Revision 6 | Saturday, August 22, 2026 -->
+<!-- Revision 7 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +8,10 @@
 <title>Yahtzee</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
+  /* Playfair Display + Space Mono are only needed for the Exit-confirmation popup's
+     AceyDeucey-matching look (see #universalModal.exit-style rules below). */
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
+
   /* ===== ALL COLORS LIVE HERE - change a theme by editing this block only ===== */
   :root{
     /* Page structure */
@@ -336,7 +340,41 @@
   .modalBtn.secondary{
     background:var(--modal-secondary-bg);
     color:var(--modal-secondary-text) }
-    
+
+  /* Exit-confirmation look, matching AceyDeucey's "Exit Game" popup exactly (cream/gold,
+     Playfair Display + Space Mono). Scoped to #universalModal.exit-style so it only applies
+     when showModal() is called with exitStyle:true (the Exit button) - every other popup on
+     this page (Reset, Game Over, Are You Sure You Want To Quit) keeps its normal blue/tan look. */
+  #universalModal.exit-style .box{
+    background:#eee1c6;
+    color:#241608;
+    border:2px solid #c9a227 }
+
+  #universalModal.exit-style #universalModalTitle{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    color:#241608 }
+
+  #universalModal.exit-style #universalModalText{
+    font-family:'Space Mono', monospace;
+    color:#241608 }
+
+  #universalModal.exit-style .modalBtn{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    font-size:0.9rem }
+
+  #universalModal.exit-style .modalBtn.primary{
+    background:#e6c65c;
+    color:#241608 }
+
+  #universalModal.exit-style .modalBtn.secondary{
+    background:#d8c8a0;
+    color:#241608 }
+
+  #universalModal.exit-style .modalBtn:hover{
+    filter:brightness(1.06) }
+
 
   /* Error overlay */
   #errorOverlay{
@@ -1438,12 +1476,17 @@ async function saveHighScoresToFileSilently(){
 /* -------------------------
    Universal popup modal - shared look for every popup on this page
    ------------------------- */
-function showModal({ title, message, buttons, fontSizePt, titleFontSizePx, html } = {}){
+function showModal({ title, message, buttons, fontSizePt, titleFontSizePx, html, exitStyle } = {}){
   return new Promise((resolve)=>{
     const modal = document.getElementById('universalModal');
     const titleEl = document.getElementById('universalModalTitle');
     const textEl = document.getElementById('universalModalText');
     const buttonsEl = document.getElementById('universalModalButtons');
+
+    // exitStyle is opt-in per-call (only the Exit confirmation uses the AceyDeucey-matching
+    // cream/gold look, via the #universalModal.exit-style rules below) - toggled fresh on every
+    // call so it never leaks onto the next modal that doesn't ask for it.
+    if(modal) modal.classList.toggle('exit-style', !!exitStyle);
 
     if(titleEl){
       if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
@@ -1489,7 +1532,15 @@ function showConfirm(text){
 
 async function handleExitClick(){
   try {
-    const confirmed = await showConfirm('Exit the game?');
+    const confirmed = await showModal({
+      title: 'Exit Yahtzee',
+      message: 'Are you sure you want to exit?',
+      exitStyle: true,
+      buttons: [
+        { label:'Yes', value:true, primary:true },
+        { label:'Cancel', value:false, primary:false }
+      ]
+    });
     if(!confirmed) return;
     /* High scores are saved automatically after every finished game, so this is just one last
        silent save attempt (in case a file was never connected yet) before closing - no file-save
