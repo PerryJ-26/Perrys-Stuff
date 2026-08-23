@@ -2,13 +2,17 @@
 
 
 
-<!-- Revision 8 | Saturday, August 22, 2026 -->
+<!-- Revision 9 | Saturday, August 22, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Pinochle</title>
 <style>
+  /* Playfair Display + Space Mono are only needed for the Exit-confirmation popup's
+     AceyDeucey-matching look (see #universalModal.exit-style rules below). */
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
+
   /* ===================================================================
      LAYOUT PHILOSOPHY
      Redesigned to match a reference screenshot: a solid green board with
@@ -712,6 +716,41 @@
     padding:8px 16px; cursor:pointer; font-weight:600;
   }
   #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  /* Exit-confirmation look, matching AceyDeucey's "Exit Game" popup exactly (cream/gold,
+     Playfair Display + Space Mono). Scoped to .modalBox.exit-style, which showModal() only
+     adds when its new extraClass argument is 'exit-style' (see the Exit button handler below)
+     - every other popup on this page (Rules, Options, Round Complete, etc.) keeps its normal
+     green-bordered look. */
+  #universalModal .modalBox.exit-style{
+    background:#eee1c6;
+    color:#241608;
+    border-width:2px;
+    border-color:#c9a227;
+  }
+  #universalModal .modalBox.exit-style h2{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    color:#241608;
+  }
+  #universalModal .modalBox.exit-style .modalBody{
+    font-family:'Space Mono', monospace;
+    color:#241608;
+  }
+  #universalModal .modalBox.exit-style .modalBtns button{
+    background:#e6c65c;
+    color:#241608;
+    border:2px solid #c9a227;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+  }
+  #universalModal .modalBox.exit-style .modalBtns button:hover{
+    filter:brightness(1.06);
+  }
+  #universalModal .modalBox.exit-style .modalBtns button:last-child{
+    background:#d8c8a0;
+  }
+
   #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
   #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
   /* Team name headers and their numbers center under each other - only
@@ -2533,7 +2572,7 @@ function addLog(msg){
 // MODAL SYSTEM (matches the #universalModal / showModal() pattern used
 // across the Game Hub, so Notepad++ diffs stay familiar between files)
 // ---------------------------------------------------------------------
-function showModal(title, bodyHtml, btnHtml, dismissable){
+function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   const titleEl = document.getElementById('modalTitle');
   titleEl.textContent = title;
   titleEl.style.textAlign = '';
@@ -2545,6 +2584,11 @@ function showModal(title, bodyHtml, btnHtml, dismissable){
   const modal = document.getElementById('universalModal');
   modal.style.display = 'flex';
   modal.dataset.dismissable = dismissable ? '1' : '0';
+  // extraClass is opt-in per-call (e.g. 'exit-style' for the AceyDeucey-matching Exit look, see
+  // the .modalBox.exit-style CSS above) - the class is fully replaced on every call so it never
+  // leaks from one popup onto the next one that doesn't ask for it.
+  const box = modal.querySelector('.modalBox');
+  if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
 }
 function closeModal(){
   document.getElementById('universalModal').style.display = 'none';
@@ -2598,10 +2642,10 @@ document.getElementById('rulesBtn').addEventListener('click', ()=>{
   window.open('../instructions.html', '_blank');
 });
 document.getElementById('exitBtn').addEventListener('click', ()=>{
-  showModal('Exit Pinochle?', 'Are you sure you want to exit?', `
-    <button onclick="location.href='../index.html';">Exit</button>
+  showModal('Exit Pinochle', 'Are you sure you want to exit?', `
+    <button onclick="location.href='../index.html';">Yes</button>
     <button onclick="closeModal()">Cancel</button>
-  `, false);
+  `, false, 'exit-style');
 });
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   const isDefaultName = SEAT_NAME.S === 'You';
