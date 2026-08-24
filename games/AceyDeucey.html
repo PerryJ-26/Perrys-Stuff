@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 31 | Saturday, August 22, 2026 -->
+<!-- Revision 33 | Sunday, August 23, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1195,6 +1195,28 @@
   function distToOff(player, point){ return player === 'white' ? point : 25 - point; }
   function pointFromDist(player, dist){ return player === 'white' ? dist : 25 - dist; }
 
+  // True once neither side can possibly hit the other anymore - i.e. a "pure race" with a wide-
+  // open board. White travels from high point numbers down to 1, black travels from low point
+  // numbers up to 24 - they cross paths over the course of the game. A white checker at point W
+  // and a black checker at point B can still meet as long as W >= B (white hasn't yet moved past
+  // where that black checker is); once every white checker's point is BELOW every black checker's
+  // point, the two sides have fully passed each other and are only moving further apart from here
+  // on. A checker still on the bar hasn't entered yet and could land near anything, so that alone
+  // counts as contact. Used by aiChooseDouble() below to tell "still racing/blocking matters"
+  // apart from "it's just a straight race now, so pip progress is all that matters" - see that
+  // function for why.
+  function hasContact(givenBoard, givenBar){
+    const b = givenBoard || board, br = givenBar || bar;
+    if(br.white > 0 || br.black > 0) return true;
+    let maxWhite = -Infinity, minBlack = Infinity;
+    for(let p=1;p<=24;p++){
+      if(b[p].owner === 'white') maxWhite = Math.max(maxWhite, p);
+      else if(b[p].owner === 'black') minBlack = Math.min(minBlack, p);
+    }
+    if(maxWhite === -Infinity || minBlack === Infinity) return false; // one side is entirely off
+    return maxWhite >= minBlack;
+  }
+
   function newBoard(){
     const pts = {};
     for(let i=1;i<=24;i++) pts[i] = {owner:null, count:0};
@@ -1972,6 +1994,30 @@
   }
 
   // ---------------- AI ----------------
+  // How dangerous a point is to `defender` right now, based on whether `opp(defender)` actually
+  // has a checker close enough to reach it - not just whether one exists somewhere on the board.
+  // A direct shot (reachable with a single die, 1-6 pips away) is a real, near-certain threat; an
+  // indirect shot (7-11 pips, needs two dice to combine) is real but far less likely; anything
+  // farther than that isn't worth treating as a threat yet, since so much can change before an
+  // attacker actually gets there. A checker still on the bar could enter and threaten almost
+  // anywhere, so it counts as a modest ongoing threat rather than being ignored. This is what lets
+  // scoreMove() (below) tell "making this point is genuinely defending against something" apart
+  // from "nothing is anywhere close, so this is just early/open-board bookkeeping" - see there.
+  function nearbyThreatLevel(defender, pt){
+    const attacker = opp(defender);
+    const targetDist = distToOff(attacker, pt);
+    let threat = bar[attacker] > 0 ? 0.5 : 0;
+    for(let p=1;p<=24;p++){
+      if(board[p].owner !== attacker) continue;
+      const pips = distToOff(attacker, p) - targetDist;
+      if(pips <= 0) continue; // that checker has already passed this point - no threat from it
+      if(pips <= 6) threat = Math.max(threat, 1);
+      else if(pips <= 11) threat = Math.max(threat, 0.5);
+      else if(pips <= 18) threat = Math.max(threat, 0.15);
+    }
+    return threat;
+  }
+
   function scoreMove(player, source, die, result){
     let s = 0;
     if(result.dest === 'off') s += 1000;
@@ -1982,11 +2028,17 @@
       const cell = board[result.dest];
       const willBeCount = (cell.owner===player ? cell.count+1 : 1);
       if(willBeCount === 1){
-        s -= 25; // leaves a blot
+        // A blot sitting somewhere the opponent can't realistically reach isn't actually risky -
+        // scale the penalty by how real the threat is, from a light -5 (nothing nearby) up to the
+        // original -25 (a direct shot sitting right there).
+        s -= 5 + 20 * nearbyThreatLevel(player, result.dest);
       } else if(willBeCount === 2){
-        // Making (or covering) a point is the single most valuable positional outcome - reward
-        // it the most, whether that's a brand-new point or finally covering the player's own blot.
-        s += 25;
+        // Likewise, making (or covering) a point is only worth its full old value when it's
+        // actually defending against a nearby threat. Early in the game, or any time the board is
+        // this open, covering a point nothing can reach yet shouldn't outweigh a move that simply
+        // makes more progress - that's exactly what was making the AI over-value "safety" it
+        // didn't need and undervalue bigger doubles/dice with nothing around to punish a blot.
+        s += 3 + 22 * nearbyThreatLevel(player, result.dest);
       } else {
         // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it has fast-
         // diminishing value and is exactly what was causing the AI to bunch checkers onto just a
@@ -2068,18 +2120,28 @@
 
   function aiChooseDouble(){
     if(!isAI[current] || phase !== 'choose-double') return;
-    let bestN = null, bestTotal = -Infinity;
+    // Once the board is wide open (no contact possible either way - see hasContact() above),
+    // scoreMove's positional bonuses for making/covering points stop meaning anything: there's no
+    // blot risk left to protect against, so a die value that happens to cover a point isn't
+    // actually better than one that doesn't. What matters in a pure race is only how many total
+    // pips get played this turn, since that's exactly what determines who gets home first. So in
+    // race mode, rank each die value by pips actually used (movesPlayed * n) instead of the
+    // positional score - which is what correctly favors 6s over 4s once nothing is left to defend.
+    const raceMode = !hasContact();
+    let bestN = null, bestRank = -Infinity;
     const perDieScores = {};
     for(let n=1;n<=6;n++){
       const { total, movesPlayed } = simulateDoubleValue(current, n);
-      perDieScores[n] = movesPlayed > 0 ? total : null;
-      if(movesPlayed > 0 && total > bestTotal){ bestTotal = total; bestN = n; }
+      const rank = raceMode ? movesPlayed * n : total;
+      perDieScores[n] = movesPlayed > 0 ? rank : null;
+      if(movesPlayed > 0 && rank > bestRank){ bestRank = rank; bestN = n; }
     }
     // Logged every time (not just when something looks odd) so the log panel is a complete,
     // self-contained record - if a choice ever looks wrong later, the reasoning is already
     // sitting right there rather than needing to catch it live at the exact moment.
     const breakdown = [1,2,3,4,5,6].map(n => `${n}s=${perDieScores[n] === null ? 'n/a' : perDieScores[n]}`).join(', ');
-    log(`${names[current]} considers doubles (simulating all 4 moves each) - ${breakdown}`, 'info');
+    const modeNote = raceMode ? 'pips played, no contact left - racing' : 'position score';
+    log(`${names[current]} considers doubles (${modeNote}) - ${breakdown}`, 'info');
     if(bestN === null){
       // Genuinely no legal move exists for ANY of the 6 possible doubles - previously this fell
       // through to declaring "double 1s" by default (bestN's unchanged initial value) even though
