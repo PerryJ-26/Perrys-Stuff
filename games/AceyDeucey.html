@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 36 | Tuesday, August 25, 2026 -->
+<!-- Revision 37 | Tuesday, August 25, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2330,9 +2330,14 @@
   // Numbers are hidden by default; double-clicking the hidden button flips them off/on,
   // same interaction pattern as the log toggle right below it. Persisted the same way sound is,
   // so the choice survives a page reload rather than resetting to "hidden" every time.
+  // Storage key intentionally versioned (V2) - an earlier revision defaulted to shown, so a
+  // stray double-click while trying the toggle out could have saved "false" under the old key.
+  // Since Perry reuses the same file path/origin across revisions, that stale value would keep
+  // overriding the new hidden-by-default behavior forever. Bumping the key name makes this
+  // revision start clean, ignoring anything saved under the old name.
   let pointNumbersHidden = true;
   try {
-    const savedPointNumbers = localStorage.getItem('aceyDeuceyPointNumbersHidden');
+    const savedPointNumbers = localStorage.getItem('aceyDeuceyPointNumbersHiddenV2');
     if(savedPointNumbers !== null) pointNumbersHidden = savedPointNumbers === 'true';
   } catch(e) { /* ignore */ }
 
@@ -2344,7 +2349,7 @@
   document.getElementById('pointNumbersToggleBtn').addEventListener('dblclick', ()=>{
     pointNumbersHidden = !pointNumbersHidden;
     applyPointNumbersVisibility();
-    try { localStorage.setItem('aceyDeuceyPointNumbersHidden', String(pointNumbersHidden)); } catch(e) {}
+    try { localStorage.setItem('aceyDeuceyPointNumbersHiddenV2', String(pointNumbersHidden)); } catch(e) {}
   });
 
   function endGame(winner){
