@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 33 | Sunday, August 23, 2026 -->
+<!-- Revision 35 | Tuesday, August 25, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -429,8 +429,26 @@
   
   .point.shade-b .tri{background:var(--maroon);}
   
+  /* Point numbers, restored along the outer edge of the board (top edge for the top row of
+     points, bottom edge for the bottom row) - a dark number with a light gold glow around it
+     stays readable on both the light and dark triangle shades. Hidden entirely whenever
+     #boardGrid carries .numbers-hidden, which pointNumbersToggleBtn (below) flips - see the
+     script for how that's wired up and persisted. */
   .point .plabel{
-    display:none;}
+    position:absolute;
+    left:50%;
+    transform:translateX(-50%);
+    font-size:clamp(9px, 1.6vw, 13px);
+    font-weight:800;
+    color:var(--wood-dark);
+    text-shadow:0 0 2px var(--gold-bright), 0 0 3px var(--gold-bright);
+    pointer-events:none;
+    z-index:2;}
+
+  .point.top .plabel{ top:2px; }
+  .point.bottom .plabel{ bottom:2px; }
+
+  #boardGrid.numbers-hidden .plabel{ display:none; }
 
   .point.legal-dest{
     outline:3px solid var(--gold-bright); 
@@ -969,6 +987,19 @@
     cursor:default;
     z-index:600;}
 
+  /* Same invisible hidden-toggle pattern as #logToggleBtn just below it, but for showing/hiding
+     the point numbers instead of the log. Stacked directly above so the two out-of-the-way
+     toggles sit in the same corner without overlapping each other. */
+  #pointNumbersToggleBtn{
+    position:fixed;
+    bottom:44px; left:0;
+    width:44px; height:44px;
+    padding:0; margin:0; border:none;
+    background:transparent;
+    opacity:0;
+    cursor:default;
+    z-index:600;}
+
   #logPanel{
     display:none;
     position:fixed;
@@ -1116,6 +1147,10 @@
      corner of the screen. Same pattern used elsewhere in the Game Hub for out-of-the-way
      debug/utility toggles the player isn't meant to stumble onto by accident. -->
 <button id="logToggleBtn" aria-label="Toggle game log"></button>
+
+<!-- Hidden double-click toggle for the point numbers on the board - same invisible pattern as
+     logToggleBtn, stacked directly above it. -->
+<button id="pointNumbersToggleBtn" aria-label="Toggle point numbers"></button>
 
 <div id="logPanel">
   <div id="logPanelTitle">Game Log</div>
@@ -2292,6 +2327,28 @@
   document.getElementById('logToggleBtn').addEventListener('dblclick', ()=>{
     document.getElementById('logPanel').classList.toggle('show');
   });
+
+  // ---------------- point numbers toggle (hidden button, stacked just above the log toggle) ----------------
+  // Numbers are hidden by default; double-clicking the hidden button flips them off/on,
+  // same interaction pattern as the log toggle right below it. Persisted the same way sound is,
+  // so the choice survives a page reload rather than resetting to "hidden" every time.
+  let pointNumbersHidden = true;
+  try {
+    const savedPointNumbers = localStorage.getItem('aceyDeuceyPointNumbersHidden');
+    if(savedPointNumbers !== null) pointNumbersHidden = savedPointNumbers === 'true';
+  } catch(e) { /* ignore */ }
+
+  function applyPointNumbersVisibility(){
+    const grid = document.getElementById('boardGrid');
+    if(grid) grid.classList.toggle('numbers-hidden', pointNumbersHidden);
+  }
+
+  document.getElementById('pointNumbersToggleBtn').addEventListener('dblclick', ()=>{
+    pointNumbersHidden = !pointNumbersHidden;
+    applyPointNumbersVisibility();
+    try { localStorage.setItem('aceyDeuceyPointNumbersHidden', String(pointNumbersHidden)); } catch(e) {}
+  });
+
   function endGame(winner){
     phase = 'game-over';
     document.getElementById('gameOver').classList.add('show');
@@ -2345,6 +2402,7 @@
   // No Setup screen anymore - the board opens automatically as soon as the page loads, using
   // whatever the default mode/name fields already show (AI Opponent, "Player 1" vs "The AI").
   startGame();
+  applyPointNumbersVisibility(); // #boardGrid now exists - apply the restored/saved show-numbers state
 
   // Aligns the top of the "Player 1" name field with the top of the "New Game" button, purely
   // for visual balance between the two side panels. This is done at runtime (not a fixed CSS
