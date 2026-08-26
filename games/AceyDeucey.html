@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 35 | Tuesday, August 25, 2026 -->
+<!-- Revision 36 | Tuesday, August 25, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -430,18 +430,16 @@
   .point.shade-b .tri{background:var(--maroon);}
   
   /* Point numbers, restored along the outer edge of the board (top edge for the top row of
-     points, bottom edge for the bottom row) - a dark number with a light gold glow around it
-     stays readable on both the light and dark triangle shades. Hidden entirely whenever
-     #boardGrid carries .numbers-hidden, which pointNumbersToggleBtn (below) flips - see the
-     script for how that's wired up and persisted. */
+     points, bottom edge for the bottom row) - plain black, no shadow/glow. Hidden entirely
+     whenever #boardGrid carries .numbers-hidden, which pointNumbersToggleBtn (below) flips -
+     see the script for how that's wired up and persisted. */
   .point .plabel{
     position:absolute;
     left:50%;
     transform:translateX(-50%);
     font-size:clamp(9px, 1.6vw, 13px);
     font-weight:800;
-    color:var(--wood-dark);
-    text-shadow:0 0 2px var(--gold-bright), 0 0 3px var(--gold-bright);
+    color:#000000;
     pointer-events:none;
     z-index:2;}
 
