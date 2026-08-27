@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 37 | Tuesday, August 25, 2026 -->
+<!-- Revision 38 | Thursday, August 27, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2061,17 +2061,21 @@
       const cell = board[result.dest];
       const willBeCount = (cell.owner===player ? cell.count+1 : 1);
       if(willBeCount === 1){
-        // A blot sitting somewhere the opponent can't realistically reach isn't actually risky -
-        // scale the penalty by how real the threat is, from a light -5 (nothing nearby) up to the
-        // original -25 (a direct shot sitting right there).
-        s -= 5 + 20 * nearbyThreatLevel(player, result.dest);
+        // A blot sitting somewhere the opponent can't realistically reach isn't actually risky at
+        // all - scale the penalty purely by how real the threat is, from 0 (nothing anywhere near
+        // it) up to the original -25 (a direct shot sitting right there). This used to keep a flat
+        // -5 floor even at zero threat, which was still enough to out-weigh the +2-per-pip die
+        // progress term across a few simulated moves - exactly what kept steering the AI's double
+        // selection (and its regular moves) away from bigger, more efficient dice on a wide-open
+        // board even when nothing was there to punish the "risk."
+        s -= 25 * nearbyThreatLevel(player, result.dest);
       } else if(willBeCount === 2){
-        // Likewise, making (or covering) a point is only worth its full old value when it's
-        // actually defending against a nearby threat. Early in the game, or any time the board is
-        // this open, covering a point nothing can reach yet shouldn't outweigh a move that simply
-        // makes more progress - that's exactly what was making the AI over-value "safety" it
-        // didn't need and undervalue bigger doubles/dice with nothing around to punish a blot.
-        s += 3 + 22 * nearbyThreatLevel(player, result.dest);
+        // Likewise, making (or covering) a point is only worth anything when it's actually
+        // defending against a nearby threat. On a wide-open board there's nothing to defend, so
+        // this is now 0 rather than a flat +3 floor - a point nothing can reach yet is worth
+        // exactly what it looks like: nothing, and shouldn't outweigh a move that simply makes
+        // more progress.
+        s += 25 * nearbyThreatLevel(player, result.dest);
       } else {
         // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it has fast-
         // diminishing value and is exactly what was causing the AI to bunch checkers onto just a
