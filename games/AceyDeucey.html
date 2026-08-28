@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 38 | Thursday, August 27, 2026 -->
+<!-- Revision 39 | Thursday, August 27, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2044,9 +2044,17 @@
       if(board[p].owner !== attacker) continue;
       const pips = distToOff(attacker, p) - targetDist;
       if(pips <= 0) continue; // that checker has already passed this point - no threat from it
+      // Only a direct shot (<=6, any single die) or an easy two-die combo (<=11) counts as a
+      // real threat. Beyond 11 pips, hitting requires a specific double (12/16/18/20/24 - each
+      // only 1/36) - rare enough that it shouldn't shape ordinary play, and previously registering
+      // it as a faint 0.15 "threat" covered so much of the board that it was firing almost
+      // everywhere, which was enough (since the blot penalty below reacts much more sharply to
+      // threat than the anti-stacking nudge does) to make the AI treat piling a spare onto an
+      // already-safe point as better than spreading to a fresh one on boards that were, in every
+      // practical sense, still wide open. Dropping this band lets "wide open" actually mean zero
+      // threat again.
       if(pips <= 6) threat = Math.max(threat, 1);
       else if(pips <= 11) threat = Math.max(threat, 0.5);
-      else if(pips <= 18) threat = Math.max(threat, 0.15);
     }
     return threat;
   }
@@ -2077,11 +2085,17 @@
         // more progress.
         s += 25 * nearbyThreatLevel(player, result.dest);
       } else {
-        // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it has fast-
-        // diminishing value and is exactly what was causing the AI to bunch checkers onto just a
-        // couple of points instead of spreading out to occupy more of the board. Taper the bonus
-        // down instead of giving every stack size the same flat reward.
-        s += Math.max(2, 12 - (willBeCount - 2) * 3);
+        // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it only earns its
+        // keep as a spare when there's an actual nearby threat to reinforce against, same as the
+        // other two cases above. This used to be a flat +2 to +9 bonus regardless of threat, which
+        // - once the blot/point-made floors above were removed - became the single biggest reward
+        // on a wide-open board (bigger than just advancing to a fresh point), which is exactly what
+        // was pulling checkers off open points and piling them onto just a couple of stacks instead
+        // of spreading out. Scaling it by threat and letting it go slightly negative at zero threat
+        // means a fresh point (which nets 0) is now naturally preferred over deepening a stack that
+        // isn't defending anything.
+        const taperCeiling = Math.max(2, 12 - (willBeCount - 2) * 3);
+        s += taperCeiling * nearbyThreatLevel(player, result.dest) - 2;
       }
     }
     return s;
