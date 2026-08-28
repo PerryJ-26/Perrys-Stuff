@@ -1,7 +1,7 @@
 
 
 
-<!-- Revision 39 | Thursday, August 27, 2026 -->
+<!-- Revision 40 | Thursday, August 27, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2111,7 +2111,14 @@
         const r = tryMove(current, s, d);
         if(r.legal){
           const sc = scoreMove(current, s, d, r);
-          if(!best || sc > best.sc) best = {sc, s, d, r};
+          // >= (not just >) is deliberate: sourcesFor lists points in ascending order, so once
+          // two candidate moves score exactly the same (very common on an open board, where the
+          // pip-progress term is identical for the same die regardless of which checker uses it),
+          // this lets the later, higher-numbered source win the tie instead of the earlier, lower
+          // one. That means the AI now prefers advancing its most-forward checker into new
+          // territory over endlessly reshuffling checkers still sitting near where they entered -
+          // exactly the "stuck in the first quadrant" behavior being reported.
+          if(!best || sc >= best.sc) best = {sc, s, d, r};
         }
       }
     }
@@ -2154,7 +2161,10 @@
           const r = tryMove(player, s, n);
           if(r.legal){
             const sc = scoreMove(player, s, n, r);
-            if(!best || sc > best.sc) best = {sc, s, r};
+            // Same >= tie-break as aiStep - prefer advancing the more-forward checker (higher
+            // source point) when two options score identically, instead of always favoring
+            // whichever comes first in ascending point order.
+            if(!best || sc >= best.sc) best = {sc, s, r};
           }
         }
         if(!best) break;
