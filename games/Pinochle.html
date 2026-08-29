@@ -1,8 +1,5 @@
 
-
-
-
-<!-- Revision 9 | Saturday, August 22, 2026 -->
+<!-- Revision 11 | Friday, August 28, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -225,6 +222,13 @@
     gap:6px;
     width:100%;
     margin-top:2px;
+    /* Never shrink or get squeezed out - a seat's name/status must always stay visible even
+       when the available height is tighter than expected (a shorter window, a different font's
+       metrics rendering a hand of cards slightly taller, etc). Without this, flexbox's default
+       min-height:auto on #south-hand (see below) kept it from actually shrinking, so on a tight
+       window this row (and meta-line right after it) could get pushed entirely past seat-S's own
+       clipped bottom edge instead - i.e. the name/status simply wasn't there. */
+    flex-shrink:0;
   }
   #seat-N .name-row, #seat-S .name-row{ justify-content:center; }
   #seat-W .name-row{ justify-content:center; }
@@ -239,6 +243,8 @@
     min-height: 1em;
     text-align:center;
     white-space: nowrap;
+    flex-shrink:0; /* same reasoning as .name-row above - the Dealer/Declarer status line must
+                       never be the thing that gets squeezed off-screen on a tight window */
   }
   .meta-line .tag{ color: var(--yellow); text-shadow: 0 1px 2px rgba(0,0,0,.7); }
   .meta-line .tricks{ color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
@@ -436,14 +442,31 @@
   #tc-W{ grid-area:w; z-index:2; }
   #tc-S{ grid-area:s; z-index:3; }
   #tc-E{ grid-area:e; z-index:4; }
-  /* Mike/Lisa's bid bubbles are direct grid items instead of being
-     nested inside their aqua boxes - anchored to the bottom edge of
-     Bill's row (row 1), in the same column as each player. This is
-     what stops them from pushing the card piles down: they no longer
-     contribute to seat-W/seat-E's own layout height at all. Extra
-     margin-bottom keeps the tail from overlapping the name text below. */
-  #bubble-W{ grid-column:1; grid-row:1; justify-self:center; align-self:end; margin-bottom:-2px; z-index:20; }
-  #bubble-E{ grid-column:3; grid-row:1; justify-self:center; align-self:end; margin-bottom:-2px; z-index:20; }
+  /* Mike/Lisa's bid bubbles are direct grid items instead of being nested
+     inside their aqua boxes, so they never contribute to seat-W/seat-E's
+     own layout height (that's what stops them from pushing the card piles
+     down). They used to be anchored in Bill's row (row 1) above Mike/Lisa's
+     own row, which visually put the bubble on top of their name instead of
+     beside it. Placed in row 2 now (the same row Mike/Lisa's seats occupy)
+     but in the shared felt column (column 2) rather than their own narrow
+     ~105-140px column - that column is too tight for a ~130px-wide bubble
+     to actually fit next to the name text without either one of them
+     getting clipped by the column's own bounds. Anchoring to the near edge
+     of the felt column (its left edge for Mike, right edge for Lisa) lands
+     the bubble in the open green gutter around the felt rather than
+     overlapping it, but that left a wide, viewport-width-dependent gap
+     back to the name (since column 1's own width is itself responsive,
+     clamp(105px,10vw,140px)) - much wider than the ~18px gap between Bill
+     and his own bubble at a typical window size, but a fixed pull-in
+     amount tuned for that size only overshot and overlapped the name at
+     narrower widths. positionSideBubble() (see script) measures the actual
+     rendered gap each time a bubble is shown and nudges it to ~18px via a
+     transform, so this stays correct at any window size instead of
+     guessing a fixed number. align-self:start plus the small top margin
+     lines the bubble up with the name text's own vertical position near
+     the top of the seat. */
+  #bubble-W{ grid-column:2; grid-row:2; justify-self:start; align-self:start; margin-top:2px; z-index:20; }
+  #bubble-E{ grid-column:2; grid-row:2; justify-self:end; align-self:start; margin-top:2px; z-index:20; }
 
   #trumpBadge{
     /* Placed directly into North's row, aligned to the left edge of
@@ -506,6 +529,14 @@
     margin-top: 2px;
     padding: 20px 4px 6px;
     width: 100%;
+    /* min-height:0 overrides flexbox's default min-height:auto on a column flex item (seat-S is
+       display:flex; flex-direction:column). Without this, the hand couldn't actually shrink below
+       its own natural content height on a tight window - it would just keep its full size and
+       push name-row/meta-line (both flex-shrink:0 now) past seat-S's own clipped bottom edge
+       instead, which is what was making the name/status vanish. With this, if space ever runs
+       short, it's the hand's own top padding/overflow that quietly gives first, while the name
+       and status stay put. */
+    min-height: 0;
   }
   #south-hand .cardWrap{
     flex-shrink: 0;
@@ -827,7 +858,7 @@
     <div class="cardback-row vertical" id="cards-W"></div>
   </div>
 
-  <div class="bubble tail-bottom" id="bubble-W"></div>
+  <div class="bubble tail-left" id="bubble-W"></div>
 
   <div id="felt">
     <div id="dealDeck"><div class="deal-deck-card"></div><div class="deal-deck-card"></div><div class="deal-deck-card"></div></div>
@@ -845,7 +876,7 @@
     <div id="roundPanel" class="control-panel wide-panel"></div>
   </div>
 
-  <div class="bubble tail-bottom" id="bubble-E"></div>
+  <div class="bubble tail-right" id="bubble-E"></div>
 
   <div class="seat" id="seat-E">
     <div class="name-row">
@@ -2514,6 +2545,38 @@ function clearTrickArea(){
 }
 function setHandMsg(msg){ /* handMsg UI removed per request — kept as a no-op so existing calls don't need touching; addLog() already captures the same info in the game log */ }
 
+// Mike/Lisa's bubbles live in the shared felt column rather than their own
+// narrow seat column (see the #bubble-W/#bubble-E CSS comment for why), so
+// a fixed CSS offset can't reliably land them right next to the name at
+// every window size - that column's own width is itself responsive. This
+// measures the actual rendered gap each time one of their bubbles is shown
+// and nudges it with a transform to match the ~18px gap Bill's bubble
+// already keeps next to his own name, so it looks the same at any window
+// size instead of only at the one size a fixed number was tuned for.
+function positionSideBubble(seat){
+  if(seat !== 'W' && seat !== 'E') return;
+  const bubble = document.getElementById(`bubble-${seat}`);
+  const name = document.querySelector(`#seat-${seat} .name`);
+  if(!bubble || !name) return;
+  bubble.style.transform = ''; // reset first so re-measuring isn't thrown off by an earlier nudge
+  const nameRect = name.getBoundingClientRect();
+  const bubbleRect = bubble.getBoundingClientRect();
+  const desiredGap = 18; // matches bubble-N's own gap next to Bill's name
+  const overshoot = seat === 'W'
+    ? (bubbleRect.left - nameRect.right) - desiredGap
+    : (nameRect.left - bubbleRect.right) - desiredGap;
+  const dx = seat === 'W' ? -overshoot : overshoot;
+  bubble.style.transform = `translateX(${dx}px)`;
+}
+// Re-run whenever the window resizes while one of these bubbles is still up
+// (persist=true bubbles during bidding can easily still be showing then).
+window.addEventListener('resize', () => {
+  ['W','E'].forEach(seat=>{
+    const el = document.getElementById(`bubble-${seat}`);
+    if(el && el.classList.contains('visible')) positionSideBubble(seat);
+  });
+});
+
 // Speech bubbles: shows a short message next to a seat's avatar, then
 // fades it back out after a few seconds. Re-triggering on the same seat
 // before it fades just resets the timer with the new text. persist=true
@@ -2524,6 +2587,7 @@ function showBubble(seat, text, persist=false){
   if(!el) return;
   el.innerHTML = text; // safe: text is always an internally-built string, never raw user input
   el.classList.add('visible');
+  positionSideBubble(seat);
   clearTimeout(el._hideTimer);
   if(!persist){
     el._hideTimer = setTimeout(()=> el.classList.remove('visible'), 2800);
