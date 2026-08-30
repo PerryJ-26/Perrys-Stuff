@@ -1,6 +1,5 @@
 
-
-<!-- Revision 7 | Saturday, August 22, 2026 -->
+<!-- Revision 8 | Sunday, August 30, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -745,20 +744,19 @@ const MAX_HIGH_SCORES_DISPLAY = 12;
    deleting any of the actual backup logic, so it's a one-line flip to turn it back on later. */
 const LOCAL_FILE_BACKUP_ENABLED = false;
 
-/* Player name - shown in the Name field and recorded with each finished game. Uses sessionStorage
-   (not localStorage) on purpose: the name should stick around for as long as this tab stays open -
-   including through New Game and Reset - but reset back to "Visitor" the next time the app is
-   opened fresh, rather than being remembered forever across browser sessions. */
+/* Player name - shown in the Name field and recorded with each finished game. Uses localStorage
+   so the name is remembered the next time the app is opened, even in a brand new browser
+   session - not just for as long as the current tab stays open. */
 const PLAYER_NAME_KEY = 'yahtzeePlayerName';
 let currentPlayerName = 'Visitor';
 try {
-  const savedName = sessionStorage.getItem(PLAYER_NAME_KEY);
+  const savedName = localStorage.getItem(PLAYER_NAME_KEY);
   if (savedName && savedName.trim()) currentPlayerName = savedName.trim();
 } catch (e) { /* ignore */ }
 
 function updatePlayerName(value){
   currentPlayerName = (value && value.trim()) ? value.trim() : 'Visitor';
-  try { sessionStorage.setItem(PLAYER_NAME_KEY, currentPlayerName); } catch (e) {}
+  try { localStorage.setItem(PLAYER_NAME_KEY, currentPlayerName); } catch (e) {}
 }
 
 /* Non-blocking end-of-game banner */
