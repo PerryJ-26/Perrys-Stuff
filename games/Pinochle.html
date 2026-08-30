@@ -1,5 +1,5 @@
 
-<!-- Revision 11 | Friday, August 28, 2026 -->
+<!-- Revision 17 | Saturday, August 29, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -147,10 +147,32 @@
        three rows. These floors add up to about 516px, leaving a small
        safety buffer. South's row gets the most since that's the
        player's own hand and the top priority to never clip. */
+    /* Row 2 (Mike/Lisa + the felt) used to carry the 1fr flexible slot,
+       which meant it greedily absorbed any leftover vertical space in
+       the window - measured at a real 838px-tall window, that pushed
+       row 2 to 238.6px even though its actual content (a 12-card
+       cardback stack, name, and status line) only needs about 211px.
+       That stolen space is exactly what South's row was missing when
+       the name/status got clipped off the bottom. Row 2's max is now
+       fixed just above its measured content need instead of 1fr, and
+       South's row (row 3) carries the flexible slot instead, so any
+       surplus height in the window now goes to the row that actually
+       needs it. */
+    /* Row 1 and row 2's floors (the fixed minimums below the clamp's own
+       vh-based number) turned out to still be taller than they need to
+       be - measured directly at a real 549px-tall window, the whole grid
+       (both floors, plus gaps/padding/border) needed about 21px more than
+       table-wrap actually had to give, and since a grid row won't shrink
+       itself below its own stated floor, that 21px simply overflowed
+       table-wrap's own clipped edge instead - landing on South's row
+       since it's last. Trimmed both floors here (Bill's row and Mike/
+       Lisa's row) well past that shortfall so South's row - the one
+       that actually needs the protection - has real breathing room
+       instead of just barely fitting. */
     grid-template-rows:
-      minmax(clamp(145px,16vh,195px), 195px)
-      minmax(clamp(188px,24vh,300px), 1fr)
-      minmax(clamp(183px,30vh,350px), 350px);
+      minmax(clamp(122px,16vh,195px), 195px)
+      minmax(clamp(165px,20vh,211px), 211px)
+      minmax(clamp(183px,30vh,350px), 1fr);
     gap: 6px;
     padding: 10px;
     flex: 1;
@@ -367,8 +389,16 @@
 
 
   #seat-N{ grid-column:2; grid-row:1; }
-  #seat-W{ grid-column:1; grid-row:2; }
-  #seat-E{ grid-column:3; grid-row:2; }
+  /* align-self:start so these hug their own content (name + card stack)
+     instead of the default grid stretch-to-fill-the-row behavior, which
+     was leaving visible empty green space below Mike/Lisa's card piles
+     up to row 2's full track height - the same fix already applied to
+     #felt for the same reason. This tightens the visible aqua outline
+     around the actual content, though - like felt - it doesn't by
+     itself change how tall row 2 needs to be, since that's still set by
+     the tallest content in the row (Mike/Lisa's 12-card stack). */
+  #seat-W{ grid-column:1; grid-row:2; align-self:start; }
+  #seat-E{ grid-column:3; grid-row:2; align-self:start; }
   /* South spans all 3 columns instead of being confined to the same
      narrow center column as North — South's hand needs noticeably more
      horizontal room than North's overlapping cardback row, and this
@@ -395,6 +425,32 @@
     max-width: 320px;
     width: 100%;
     margin: 0 auto;
+    /* Without this, a grid item stretches to fill its row's full height
+       by default - since row 2 is noticeably taller than the trick
+       display actually needs, that left the red double-border box with
+       a lot of empty green space inside it, top and bottom. align-self
+       lets it size to its own content instead and just center itself
+       within the row, which is what made the box look oversized. */
+    align-self: center;
+    /* #felt has no visible content at all for a brief moment between
+       hands (after the deal animation finishes and before the first
+       bid appears) and briefly between tricks - with align-self:center
+       alone, that moment collapsed the whole double red border down to
+       a flat sliver, since an empty flex column has no height of its
+       own. This floor keeps the box a sensible size at all times while
+       still letting it shrink well below the old full-row-height
+       stretch the rest of the time.
+       152px specifically - not just "big enough to look right" - the
+       North and South trick-slot cards are only 2px tall on paper (see
+       #trickArea's row heights below) and rely on overflowing that row
+       to show a full card; measured directly, a full 4-card trick needs
+       about 149px of vertical room top-to-bottom to avoid clipping
+       North's or South's card. The first version of this fix (140px)
+       was sized from the control panels (bidding/meld/passing), which
+       are shorter than that and don't show a trick - so it never
+       surfaced this until an actual trick with both North and South
+       cards down was captured. */
+    min-height: 152px;
     /* Double red border around the center playing area, with a 2px gap
        between the two lines. Using box-shadow rather than outline —
        #felt has overflow:hidden, and outline rendering next to an
@@ -447,26 +503,21 @@
      own layout height (that's what stops them from pushing the card piles
      down). They used to be anchored in Bill's row (row 1) above Mike/Lisa's
      own row, which visually put the bubble on top of their name instead of
-     beside it. Placed in row 2 now (the same row Mike/Lisa's seats occupy)
-     but in the shared felt column (column 2) rather than their own narrow
-     ~105-140px column - that column is too tight for a ~130px-wide bubble
-     to actually fit next to the name text without either one of them
-     getting clipped by the column's own bounds. Anchoring to the near edge
-     of the felt column (its left edge for Mike, right edge for Lisa) lands
-     the bubble in the open green gutter around the felt rather than
-     overlapping it, but that left a wide, viewport-width-dependent gap
-     back to the name (since column 1's own width is itself responsive,
-     clamp(105px,10vw,140px)) - much wider than the ~18px gap between Bill
-     and his own bubble at a typical window size, but a fixed pull-in
-     amount tuned for that size only overshot and overlapped the name at
-     narrower widths. positionSideBubble() (see script) measures the actual
-     rendered gap each time a bubble is shown and nudges it to ~18px via a
-     transform, so this stays correct at any window size instead of
-     guessing a fixed number. align-self:start plus the small top margin
-     lines the bubble up with the name text's own vertical position near
-     the top of the seat. */
-  #bubble-W{ grid-column:2; grid-row:2; justify-self:start; align-self:start; margin-top:2px; z-index:20; }
-  #bubble-E{ grid-column:2; grid-row:2; justify-self:end; align-self:start; margin-top:2px; z-index:20; }
+     beside it, then (Revision 11) moved beside the name but toward the
+     felt. Per request, now anchored to the OUTSIDE of the name instead -
+     Mike's bubble off the left edge of his own column, Lisa's off the
+     right edge of hers. table-wrap's grid is centered inside a wider box
+     (see its own justify-content:center), which leaves real unused green
+     space outside column 1/3 - wide enough for a one-line bubble like
+     "I bid 250" without overlapping the card stack or running off the
+     board, at any window width the game supports. positionSideBubble()
+     (see script) measures the actual rendered gap to the name each time a
+     bubble is shown and nudges it to ~18px via a transform, so this stays
+     correct at any window size instead of guessing a fixed number.
+     align-self:start plus the small top margin lines the bubble up with
+     the name text's own vertical position near the top of the seat. */
+  #bubble-W{ grid-column:1; grid-row:2; justify-self:start; align-self:start; margin-top:2px; z-index:20; }
+  #bubble-E{ grid-column:3; grid-row:2; justify-self:end; align-self:start; margin-top:2px; z-index:20; }
 
   #trumpBadge{
     /* Placed directly into North's row, aligned to the left edge of
@@ -716,6 +767,21 @@
   }
   #logPanel div{ margin-bottom:4px; border-bottom:1px solid #ccc; padding-bottom:3px;}
 
+  /* ---------- Diagnostic readout (temporary - see debug-on toggle) ----------
+     Shown alongside the debug outlines. Reports the actual live window
+     size and whether South's name/status line fits inside it, so a
+     screenshot taken with outlines on tells us the real numbers instead
+     of us having to guess them from cropped screenshots. */
+  #debugReadout{
+    display:none;
+    position:fixed; top:8px; right:8px; z-index:60;
+    background: rgba(0,0,0,.8); color:#fff;
+    font-family: monospace; font-size:12px; line-height:1.5;
+    padding:8px 12px; border-radius:6px;
+    white-space:pre;
+  }
+  body.debug-on #debugReadout{ display:block; }
+
   /* ---------- Universal modal ---------- */
   #universalModal{
     display:none;
@@ -858,7 +924,7 @@
     <div class="cardback-row vertical" id="cards-W"></div>
   </div>
 
-  <div class="bubble tail-left" id="bubble-W"></div>
+  <div class="bubble tail-right" id="bubble-W"></div>
 
   <div id="felt">
     <div id="dealDeck"><div class="deal-deck-card"></div><div class="deal-deck-card"></div><div class="deal-deck-card"></div></div>
@@ -876,7 +942,7 @@
     <div id="roundPanel" class="control-panel wide-panel"></div>
   </div>
 
-  <div class="bubble tail-right" id="bubble-E"></div>
+  <div class="bubble tail-left" id="bubble-E"></div>
 
   <div class="seat" id="seat-E">
     <div class="name-row">
@@ -917,6 +983,7 @@
 <button id="outlineToggle">Show Outlines</button>
 <button id="logToggle">Game Log</button>
 <div id="logPanel"></div>
+<div id="debugReadout"></div>
 
 <div id="universalModal">
   <div class="modalBox">
@@ -2545,9 +2612,9 @@ function clearTrickArea(){
 }
 function setHandMsg(msg){ /* handMsg UI removed per request — kept as a no-op so existing calls don't need touching; addLog() already captures the same info in the game log */ }
 
-// Mike/Lisa's bubbles live in the shared felt column rather than their own
-// narrow seat column (see the #bubble-W/#bubble-E CSS comment for why), so
-// a fixed CSS offset can't reliably land them right next to the name at
+// Mike/Lisa's bubbles are anchored to the outside edge of their own seat
+// column (see the #bubble-W/#bubble-E CSS comment for why), so a fixed CSS
+// offset can't reliably land them a consistent distance from the name at
 // every window size - that column's own width is itself responsive. This
 // measures the actual rendered gap each time one of their bubbles is shown
 // and nudges it with a transform to match the ~18px gap Bill's bubble
@@ -2557,15 +2624,27 @@ function positionSideBubble(seat){
   if(seat !== 'W' && seat !== 'E') return;
   const bubble = document.getElementById(`bubble-${seat}`);
   const name = document.querySelector(`#seat-${seat} .name`);
+  const cards = document.getElementById(`cards-${seat}`);
   if(!bubble || !name) return;
   bubble.style.transform = ''; // reset first so re-measuring isn't thrown off by an earlier nudge
   const nameRect = name.getBoundingClientRect();
+  const cardsRect = cards ? cards.getBoundingClientRect() : nameRect;
   const bubbleRect = bubble.getBoundingClientRect();
-  const desiredGap = 18; // matches bubble-N's own gap next to Bill's name
-  const overshoot = seat === 'W'
-    ? (bubbleRect.left - nameRect.right) - desiredGap
-    : (nameRect.left - bubbleRect.right) - desiredGap;
-  const dx = seat === 'W' ? -overshoot : overshoot;
+  const desiredGap = 6; // tighter than bubble-N's 18px - Mike/Lisa's bubbles sit right next to their own name/cards now, not out in the open gutter Bill's does
+  // Gapping off the whole aqua seat box (an earlier version of this) put
+  // real distance between the bubble and the name, since that column is
+  // wider than the name/card stack it holds - Mike's seat column can be up
+  // to 140px wide while his card stack is only 84px, so a lot of that
+  // "gap" was actually empty column padding no one could see. Measuring
+  // against the wider of the name or the card stack (whichever actually
+  // extends furthest toward this side) still guarantees no overlap with
+  // either, but lands the bubble visually right next to them instead.
+  const outerEdge = seat === 'W'
+    ? Math.min(nameRect.left, cardsRect.left)
+    : Math.max(nameRect.right, cardsRect.right);
+  const dx = seat === 'W'
+    ? (outerEdge - desiredGap) - bubbleRect.right
+    : (outerEdge + desiredGap) - bubbleRect.left;
   bubble.style.transform = `translateX(${dx}px)`;
 }
 // Re-run whenever the window resizes while one of these bubbles is still up
@@ -2787,6 +2866,47 @@ document.getElementById('outlineToggle').addEventListener('dblclick', function()
   const on = document.body.classList.toggle('debug-on');
   this.textContent = on ? 'Hide Outlines' : 'Show Outlines';
 });
+
+// Reports the live window size and whether South's name/status line
+// actually fits within it, right on screen - so a screenshot taken with
+// outlines on (double-click the hidden button just above "Game Log")
+// carries the real numbers instead of us guessing from cropped
+// screenshots. Purely a temporary diagnostic; only visible while
+// body.debug-on is set (see #debugReadout CSS).
+function updateDebugReadout(){
+  const el = document.getElementById('debugReadout');
+  if(!el || !document.body.classList.contains('debug-on')) return;
+  const nameEl = document.querySelector('#seat-S .name');
+  const metaEl = document.querySelector('#seat-S .meta-line');
+  const wrap = document.getElementById('table-wrap');
+  const rows = wrap ? getComputedStyle(wrap).gridTemplateRows : '?';
+  const winH = window.innerHeight;
+  // The real clip boundary is table-wrap's OWN bottom edge (it has
+  // overflow:hidden), not the window's edge - table-wrap can be shorter
+  // than the window (it has its own top/bottom margins), and if the
+  // grid's row floors add up to more room than table-wrap actually has,
+  // the excess overflows table-wrap's own edge while still being well
+  // within window.innerHeight. An earlier version of this readout only
+  // checked against the window and reported "OK" for a case that was
+  // visibly clipped in a screenshot - checking against table-wrap's own
+  // bottom is what actually matches what you see on screen.
+  const wrapRect = wrap ? wrap.getBoundingClientRect() : null;
+  const clipBottom = wrapRect ? wrapRect.bottom : winH;
+  function fitInfo(label, node){
+    if(!node) return `${label}: (not in DOM)`;
+    const r = node.getBoundingClientRect();
+    const fits = r.bottom <= clipBottom && r.top >= 0;
+    return `${label}: bottom=${Math.round(r.bottom)} ${fits ? 'OK' : '*** CLIPPED ***'}`;
+  }
+  el.textContent =
+    `window: ${window.innerWidth} x ${winH}\n` +
+    `table-wrap bottom: ${Math.round(clipBottom)}\n` +
+    `rows: ${rows}\n` +
+    fitInfo('name', nameEl) + '\n' +
+    fitInfo('meta', metaEl);
+}
+setInterval(updateDebugReadout, 400);
+window.addEventListener('resize', updateDebugReadout);
 
 dealNewHand();
 </script>
