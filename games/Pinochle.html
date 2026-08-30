@@ -1,5 +1,5 @@
 
-<!-- Revision 21 | Saturday, August 29, 2026 -->
+<!-- Revision 23 | Sunday, August 30, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1102,6 +1102,21 @@ const PARTNER = { S:'N', N:'S', W:'E', E:'W' };
 function getTeamLabel(team){
   return team === 'NS' ? `${SEAT_NAME.S} & ${SEAT_NAME.N}` : `${SEAT_NAME.W} & ${SEAT_NAME.E}`;
 }
+
+// Player's own name ("Your Name" box, lower-right corner) - persisted in localStorage so it's
+// remembered the next time the app is opened, not just for the current tab/session (the same
+// treatment given to AceyDeucey's and Yahtzee's player-name fields). #south-name and
+// #yourNameInput already exist in the DOM at this point (this script tag sits after
+// #table-wrap in the markup), so it's safe to apply the saved name to both right here.
+const PLAYER_NAME_KEY = 'pinochlePlayerName_v1';
+try {
+  const savedPlayerName = localStorage.getItem(PLAYER_NAME_KEY);
+  if(savedPlayerName && savedPlayerName.trim()){
+    SEAT_NAME.S = savedPlayerName.trim();
+    document.getElementById('south-name').textContent = SEAT_NAME.S;
+    document.getElementById('yourNameInput').value = SEAT_NAME.S;
+  }
+} catch(e) { /* ignore */ }
 
 // "This Session's Wins" tally (lower-left corner box) - counts whole GAMES won by
 // each team this session, not individual hands. Persisted in sessionStorage (like
@@ -2935,7 +2950,7 @@ document.getElementById('exitBtn').addEventListener('click', ()=>{
 });
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
-    <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.5in;">These Options are Provided for Learning Purposes</p>
+    <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
     <div style="display:grid; grid-template-columns: auto 130px; row-gap:18px; column-gap:16px; align-items:center;">
       <label for="aiMeldsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">AI Creates the Melds:</label>
       <input type="checkbox" id="aiMeldsCheckbox" ${state.aiCreatesMelds ? 'checked' : ''}
@@ -2968,6 +2983,10 @@ document.getElementById('yourNameInput').addEventListener('change', ()=>{
   SEAT_NAME.S = newName || 'You';
   document.getElementById('south-name').textContent = SEAT_NAME.S;
   input.value = newName; // leave it empty (placeholder shows) if they cleared it
+  try {
+    if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+    else localStorage.removeItem(PLAYER_NAME_KEY); // cleared back to "You" - forget the saved name too
+  } catch(e) {}
   render(); // refreshes the score table, session-wins labels, bubbles, etc.
 });
 
