@@ -1,5 +1,5 @@
 
-<!-- Revision 17 | Saturday, August 29, 2026 -->
+<!-- Revision 21 | Saturday, August 29, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,6 +78,8 @@
   body.debug-on #trickArea{ outline: 2px solid lime; outline-offset: -2px; }
   body.debug-on #scoreTable{ outline: 2px solid blue; outline-offset: -2px; }
   body.debug-on #trumpBadge{ outline: 2px solid blue; outline-offset: -2px; }
+  body.debug-on #sessionWinsBox{ outline: 2px solid blue; outline-offset: -2px; }
+  body.debug-on #yourNameBox{ outline: 2px solid blue; outline-offset: -2px; }
   /* ===== END TEMPORARY DEBUG OUTLINES ===== */
 
   /* ---------- Buttons: small vertical stack, fixed to the left edge —
@@ -738,6 +740,62 @@
   #scoreTable td{ font-size:calc(.85rem + 2px); font-weight:400; }
   #scoreTable tr:not(:last-child) td{ border-bottom: 1px solid rgba(0,0,0,.15); }
 
+  /* ---------- This Session's Wins / Your Name (bottom corners of the board) ----------
+     Styled to be an exact match of AceyDeucey's "This Session's Wins" box: same
+     cream-dark background, black border, Arial font, bold underlined title.
+     Anchored exactly the same way #scoreTable/#trumpBadge anchor to the top
+     corners: grid-column limited to just the West/East column (not spanning the
+     full board width) with justify-self:end/start, so each box's outer edge is
+     pinned to the very same West/East column boundary the top boxes use, and the
+     two rows of corner boxes line up vertically. align-self:end drops it to the
+     bottom of row 3, below South's hand/name/status (which pack to the top of
+     that row) - the same surplus green space at the bottom of the board that
+     earlier revisions freed up. A shared fixed width keeps the two new boxes
+     exactly the same size regardless of their differing content. */
+  .corner-box{
+    grid-row: 3;
+    align-self: end;
+    position:relative; z-index:15;
+    box-sizing:border-box;
+    width:180px;
+    min-height:73px;
+    background:#d8c8a0;
+    border:2px solid #000000;
+    border-radius:8px;
+    padding:8px 12px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#000000;
+    text-align:left;
+  }
+  #sessionWinsBox{ grid-column: 1; justify-self: end; margin: 0 0 8px 0; }
+  #yourNameBox{ grid-column: 3; justify-self: start; margin: 0 0 8px 0; }
+  .corner-box-title{
+    font-weight:bold;
+    text-decoration:underline;
+    font-size:0.85rem;
+    margin-bottom:6px;
+    white-space:nowrap;
+  }
+  #yourNameBox .corner-box-title{ text-align:center; }
+  .corner-box-stats{ font-size:0.8rem; white-space:nowrap; }
+  /* Each row's label sits on the left, its value on the right, so the two counts
+     line up in their own column regardless of either team label's length -
+     same pattern as AceyDeucey's Remaining Pips rows. */
+  .wins-row{ display:flex; justify-content:space-between; gap:10px; }
+  .wins-row + .wins-row{ margin-top:2px; }
+  .wins-value{ font-weight:700; text-align:right; }
+  #yourNameInput{
+    width:100%;
+    box-sizing:border-box;
+    padding:4px 8px;
+    border-radius:5px;
+    border:1px solid #000;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:0.8rem;
+    background:#fffdf5;
+    color:#000;
+  }
+
   /* ---------- Log ---------- */
   #outlineToggle{
     /* Invisible but still clickable in its original spot - opacity:0
@@ -961,6 +1019,21 @@
     <div class="meta-line" id="meta-S"></div>
   </div>
 
+  <div class="corner-box" id="sessionWinsBox">
+    <div class="corner-box-title">This Session's Wins</div>
+    <div class="corner-box-stats">
+      <div class="wins-row"><span id="sessionWinsNSLabel">You &amp; Bill =</span><span class="wins-value" id="sessionWinsNS">0</span></div>
+      <div class="wins-row"><span id="sessionWinsEWLabel">Mike &amp; Lisa =</span><span class="wins-value" id="sessionWinsEW">0</span></div>
+    </div>
+  </div>
+
+  <div class="corner-box" id="yourNameBox">
+    <div class="corner-box-title">Your Name</div>
+    <div class="corner-box-stats">
+      <input type="text" id="yourNameInput" maxlength="16" placeholder="You">
+    </div>
+  </div>
+
   <div id="scoreTable">
     <table>
       <tr><th>Team</th><th>Bid</th><th>Score</th></tr>
@@ -1029,6 +1102,28 @@ const PARTNER = { S:'N', N:'S', W:'E', E:'W' };
 function getTeamLabel(team){
   return team === 'NS' ? `${SEAT_NAME.S} & ${SEAT_NAME.N}` : `${SEAT_NAME.W} & ${SEAT_NAME.E}`;
 }
+
+// "This Session's Wins" tally (lower-left corner box) - counts whole GAMES won by
+// each team this session, not individual hands. Persisted in sessionStorage (like
+// AceyDeucey's own session-wins feature) so a refresh mid-game doesn't lose the
+// count, but it's never reset on New Game - only an intentional Exit clears it.
+const SESSION_WINS_KEY = 'pinochleSessionWins_v1';
+let sessionWins = { NS:0, EW:0 };
+function loadSessionWins(){
+  try{
+    const raw = sessionStorage.getItem(SESSION_WINS_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(typeof parsed.NS === 'number' && typeof parsed.EW === 'number'){
+        sessionWins = parsed;
+      }
+    }
+  }catch(e){ /* sessionStorage unavailable - just keep the zeroed default */ }
+}
+function saveSessionWins(){
+  try{ sessionStorage.setItem(SESSION_WINS_KEY, JSON.stringify(sessionWins)); }catch(e){}
+}
+loadSessionWins();
 
 const MIN_BID = 250;
 const BID_STEP = 10;
@@ -2394,6 +2489,14 @@ function finishHand(){
     const titleEl = document.getElementById('modalTitle');
     titleEl.style.color = 'red';
     titleEl.classList.add('win-blink');
+
+    // This is the one and only place a whole game actually ends in the normal
+    // flow (nextHand()'s own gameOver check is just a defensive backstop that
+    // never fires here), so this is the single correct spot to increment
+    // "This Session's Wins" - avoids any risk of double-counting.
+    sessionWins[winnerTeam]++;
+    saveSessionWins();
+    updateSessionWinsDisplay();
   }
 }
 
@@ -2465,8 +2568,19 @@ function cardTextGridHtml(hand, columns){
   return `<div style="display:grid; grid-column:1/-1; align-self:start; grid-template-columns:repeat(${columns},1fr); gap:clamp(2px,0.4vh,5px) clamp(4px,1vh,8px); font-size:clamp(10px,2.3vh,18px); font-weight:700; text-align:center; background:#fffdf8; border:1px solid #999; border-radius:6px; padding:clamp(2px,0.5vh,6px); width:100%; box-sizing:border-box;">${cells}</div>`;
 }
 
+// "This Session's Wins" box (lower-left corner): team labels are rebuilt from
+// getTeamLabel() every render, same as the score table, so a name change to
+// SEAT_NAME.S is reflected here too.
+function updateSessionWinsDisplay(){
+  document.getElementById('sessionWinsNSLabel').textContent = `${getTeamLabel('NS')} =`;
+  document.getElementById('sessionWinsEWLabel').textContent = `${getTeamLabel('EW')} =`;
+  document.getElementById('sessionWinsNS').textContent = sessionWins.NS;
+  document.getElementById('sessionWinsEW').textContent = sessionWins.EW;
+}
+
 function render(){
   updateScoreTable();
+  updateSessionWinsDisplay();
 
   // Combined Declarer/Dealer + Tricks line — one line per seat instead of
   // two, which is what actually fixed "Declarer" getting clipped: it cut
@@ -2574,6 +2688,8 @@ function render(){
     const slot = document.getElementById(`tc-${seat}`);
     slot.innerHTML = state.trick[seat] ? cardHtml(state.trick[seat], true) : '';
   });
+
+  positionCornerBoxes();
 }
 
 function isSouthsTurn(){
@@ -2611,6 +2727,33 @@ function clearTrickArea(){
   });
 }
 function setHandMsg(msg){ /* handMsg UI removed per request — kept as a no-op so existing calls don't need touching; addLog() already captures the same info in the game log */ }
+
+// Aligns the two bottom corner boxes with the OUTER edge of their matching top
+// corner box - This Session's Wins with the score table's left edge, Your Name
+// with the Trump badge's right edge - per Perry's request to match the top
+// boxes' outer edges rather than the inner edge the grid-column boundary they
+// share naturally lines up (the CSS anchors both pairs to the same West/East
+// column boundary, which only matches their INNER edges since the two boxes in
+// each pair are different widths). Measured and nudged with a transform, the
+// same approach positionSideBubble() uses for the same reason - a fixed CSS
+// offset can't reliably land two different-width boxes' outer edges flush at
+// every window size or every score-table width (e.g. once scores hit 4 digits).
+function positionCornerBoxes(){
+  const scoreTable = document.getElementById('scoreTable');
+  const trumpBadge = document.getElementById('trumpBadge');
+  const winsBox = document.getElementById('sessionWinsBox');
+  const nameBox = document.getElementById('yourNameBox');
+  if(!scoreTable || !trumpBadge || !winsBox || !nameBox) return;
+  winsBox.style.transform = '';
+  nameBox.style.transform = '';
+  const scoreRect = scoreTable.getBoundingClientRect();
+  const trumpRect = trumpBadge.getBoundingClientRect();
+  const winsRect = winsBox.getBoundingClientRect();
+  const nameRect = nameBox.getBoundingClientRect();
+  winsBox.style.transform = `translateX(${scoreRect.left - winsRect.left}px)`;
+  nameBox.style.transform = `translateX(${trumpRect.right - nameRect.right}px)`;
+}
+window.addEventListener('resize', positionCornerBoxes);
 
 // Mike/Lisa's bubbles are anchored to the outside edge of their own seat
 // column (see the #bubble-W/#bubble-E CSS comment for why), so a fixed CSS
@@ -2791,15 +2934,9 @@ document.getElementById('exitBtn').addEventListener('click', ()=>{
   `, false, 'exit-style');
 });
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
-  const isDefaultName = SEAT_NAME.S === 'You';
   showModal('Options', `
-    <p style="font-size:.92rem; font-weight:600; text-align:center; margin: -10px 0 0.5in;">(The Check Boxes are Provided for Learning Purposes)</p>
+    <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.5in;">These Options are Provided for Learning Purposes</p>
     <div style="display:grid; grid-template-columns: auto 130px; row-gap:18px; column-gap:16px; align-items:center;">
-      <label for="playerNameInput" style="font-weight:600; text-align:left;">Change the Name:</label>
-      <input type="text" id="playerNameInput" maxlength="16"
-        value="${isDefaultName ? '' : SEAT_NAME.S}" placeholder="${isDefaultName ? 'You' : SEAT_NAME.S}"
-        style="padding:6px 10px;font-size:1rem;border:2px solid #333;border-radius:6px;width:100%;">
-
       <label for="aiMeldsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">AI Creates the Melds:</label>
       <input type="checkbox" id="aiMeldsCheckbox" ${state.aiCreatesMelds ? 'checked' : ''}
         style="width:22px;height:22px;cursor:pointer;justify-self:end;">
@@ -2816,23 +2953,32 @@ document.getElementById('optionsBtn').addEventListener('click', ()=>{
     <button onclick="saveOptions()">Save</button>
     <button onclick="closeModal()">Cancel</button>
   `, true);
-  document.getElementById('playerNameInput').focus();
+});
+
+// Live-updates SEAT_NAME.S as soon as the "Your Name" box (lower-right corner)
+// loses focus or Enter is pressed - this replaced the old Options-modal
+// "Change the Name" field, which only applied on its own explicit Save click.
+document.getElementById('yourNameInput').addEventListener('change', ()=>{
+  const input = document.getElementById('yourNameInput');
+  const newName = input.value.trim();
+  // Field starts empty (showing the "You" placeholder) rather than pre-filled
+  // with the literal text "You" - so typing a name never requires selecting
+  // and deleting existing text first. Clearing the field back to empty is a
+  // deliberate way to go back to the default "You" too.
+  SEAT_NAME.S = newName || 'You';
+  document.getElementById('south-name').textContent = SEAT_NAME.S;
+  input.value = newName; // leave it empty (placeholder shows) if they cleared it
+  render(); // refreshes the score table, session-wins labels, bubbles, etc.
 });
 
 function saveOptions(){
-  const input = document.getElementById('playerNameInput');
-  const newName = input.value.trim();
-  if(newName){
-    SEAT_NAME.S = newName;
-    document.getElementById('south-name').textContent = newName;
-  }
   state.aiCreatesMelds = document.getElementById('aiMeldsCheckbox').checked;
   state.viewAllCards = document.getElementById('viewAllCardsCheckbox').checked;
   state.spacebarPauseEnabled = document.getElementById('spacebarPauseCheckbox').checked;
   // If the player just disabled spacebar-pause while already paused,
   // don't leave the game stuck paused with no way to resume it.
   if(!state.spacebarPauseEnabled && state.paused) togglePause();
-  render(); // refreshes the score table, bubbles, and anywhere else that reads SEAT_NAME.S
+  render();
   closeModal();
 }
 
