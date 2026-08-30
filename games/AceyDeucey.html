@@ -1,7 +1,5 @@
 
-
-
-<!-- Revision 40 | Thursday, August 27, 2026 -->
+<!-- Revision 41 | Sunday, August 30, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1410,18 +1408,23 @@
 
   // Entering a name mid-game just relabels the current player live (header, session-wins
   // box) - it doesn't need a restart at all, unlike mode changes which do.
-  // Persisted so navigating to Instructions and back (a full page reload) doesn't lose what
-  // was typed in - sessionStorage survives page navigations within the same tab, it only
-  // clears on an actual tab close or a deliberate Exit (see performExit()). Called from both
-  // applyNameChangeLive() (a plain name edit, no restart) and startGame() (mode changes/New
-  // Game/etc.), since either one can be the most recent thing the player did.
+  // Names are saved to localStorage (not sessionStorage) so they're remembered the next time
+  // the app is opened, even in a brand new browser session - not just within the same tab.
+  // Mode stays in sessionStorage as before: it should reset to the default the next time the
+  // app is opened fresh, it just shouldn't reset on an in-tab reload (e.g. Instructions and
+  // back). Called from both applyNameChangeLive() (a plain name edit, no restart) and
+  // startGame() (mode changes/New Game/etc.), since either one can be the most recent thing
+  // the player did.
+  const PLAYER_NAMES_KEY = 'aceyDeuceyPlayerNames_v1';
   function persistSettings(){
     try {
-      sessionStorage.setItem('aceyDeuceySettings_v1', JSON.stringify({
+      localStorage.setItem(PLAYER_NAMES_KEY, JSON.stringify({
         p1Name: names.white,
         p2Name: mode==='ai' ? '' : names.black, // don't persist "The AI" as if it were a typed name
-        mode: mode
       }));
+    } catch (err) {}
+    try {
+      sessionStorage.setItem('aceyDeuceySettings_v1', JSON.stringify({ mode: mode }));
     } catch (err) {}
   }
 
@@ -2400,23 +2403,31 @@
     recordScore(names[winner], margin, names[opp(winner)]);
   }
 
-  // Restores whatever name/mode was last used, if this is a reload of an already-in-progress
-  // session (e.g. returning from the Instructions page) rather than a genuinely fresh visit.
+  // Restores whatever name/mode was last used - names come from localStorage so they carry
+  // over even into a brand new browser session, not just a reload of an already-in-progress
+  // one; mode still comes from sessionStorage (see persistSettings() above) so it only carries
+  // over within the same tab (e.g. returning from the Instructions page), not forever.
   // Must run BEFORE the startGame() call below, since startGame() reads directly from these
   // same input fields and the mode variable.
   (function restorePersistedSettings(){
+    let savedNames = {};
     try {
-      const raw = sessionStorage.getItem('aceyDeuceySettings_v1');
-      if(!raw) return;
-      const saved = JSON.parse(raw);
-      if(saved.p1Name) document.getElementById('gsP1Name').value = saved.p1Name;
-      if(saved.mode && saved.mode !== mode){
-        mode = saved.mode;
-        document.querySelectorAll('.mode-btn').forEach(b=>{
-          const isSelected = b.dataset.mode === mode;
-          b.classList.toggle('selected', isSelected);
-          b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
-        });
+      const rawNames = localStorage.getItem(PLAYER_NAMES_KEY);
+      if(rawNames) savedNames = JSON.parse(rawNames);
+    } catch (err) { console.error('restorePersistedSettings (names) error', err); }
+    try {
+      if(savedNames.p1Name) document.getElementById('gsP1Name').value = savedNames.p1Name;
+      const rawSettings = sessionStorage.getItem('aceyDeuceySettings_v1');
+      if(rawSettings){
+        const saved = JSON.parse(rawSettings);
+        if(saved.mode && saved.mode !== mode){
+          mode = saved.mode;
+          document.querySelectorAll('.mode-btn').forEach(b=>{
+            const isSelected = b.dataset.mode === mode;
+            b.classList.toggle('selected', isSelected);
+            b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
+          });
+        }
       }
       const p2Input = document.getElementById('gsP2Name');
       const p2Label = document.getElementById('gsP2Label');
@@ -2425,7 +2436,7 @@
         p2Input.value = 'The AI'; p2Input.disabled = true;
       } else {
         p2Label.childNodes[0].textContent = 'Black (Player 2) ';
-        p2Input.value = saved.p2Name || ''; p2Input.disabled = false;
+        p2Input.value = savedNames.p2Name || ''; p2Input.disabled = false;
       }
     } catch (err) { console.error('restorePersistedSettings error', err); }
   })();
