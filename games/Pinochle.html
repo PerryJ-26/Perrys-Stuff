@@ -1,5 +1,5 @@
 
-<!-- Revision 23 | Sunday, August 30, 2026 -->
+<!-- Revision 24 | Sunday, August 30, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -536,6 +536,11 @@
     padding: 8px 20px;
     font-size:1.35rem;
     font-weight:700;
+    /* Without this, a longer trump name (Diamonds is the longest of the four) wrapped onto its
+       own second line instead of widening the box - the min-width JS below only sets a floor,
+       it doesn't make the box grow to fit unwrapped content on its own. nowrap forces the text
+       to stay on one line, which is what actually makes the box grow to fit it. */
+    white-space: nowrap;
   }
 
   /* ---------- Card visuals ---------- */
