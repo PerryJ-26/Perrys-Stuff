@@ -1,6 +1,5 @@
 
-
-<!-- Revision 7 | Monday, August 31, 2026 -->
+<!-- Revision 8 | Monday, August 31, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1233,8 +1232,18 @@
       }));
     } catch (err) { console.error('savePlayerNames error', err); }
   }
+  // Keeps the "This Session's Wins" name labels in sync with the name fields as the
+  // user types, instead of only updating them the next time startGame() runs.
+  function updateSessionWinsNameLabels(){
+    const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
+    const p2 = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'The AI' : 'Player 2');
+    document.getElementById('sessionWinsP1Name').textContent = p1;
+    document.getElementById('sessionWinsP2Name').textContent = p2;
+  }
   document.getElementById('gsP1Name').addEventListener('change', savePlayerNames);
   document.getElementById('gsP2Name').addEventListener('change', savePlayerNames);
+  document.getElementById('gsP1Name').addEventListener('input', updateSessionWinsNameLabels);
+  document.getElementById('gsP2Name').addEventListener('input', updateSessionWinsNameLabels);
 
   // Unlike Acey-Deucey (where the mode switch is deferred until the next Roll Dice click,
   // to avoid interrupting a die-tumble animation), Othello has no equivalent gated action -
@@ -1405,8 +1414,7 @@
 
     document.getElementById('nameBlack').textContent = `${names.black} (Black)`;
     document.getElementById('nameWhite').textContent = `${names.white} (White)`;
-    document.getElementById('sessionWinsP1Name').textContent = names.black;
-    document.getElementById('sessionWinsP2Name').textContent = names.white;
+    updateSessionWinsNameLabels();
 
     document.getElementById('log').innerHTML = '';
     document.getElementById('gameOver').classList.remove('show');
