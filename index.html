@@ -1,8 +1,5 @@
 
-
-
-
-<!-- Revision 1 | Monday, August 17, 2026 -->
+<!-- Revision 2 | Monday, August 31, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,16 +98,18 @@
   }
 
   /* ---- Game list ---- */
+  /* Widened (600px -> 900px) to fit a third column at the same per-card width as before;
+     margin: 30px auto keeps the whole group centered on the page at any width. */
   main {
-    max-width: 600px;
+    max-width: 900px;
     margin: 30px auto;
     padding: 0 20px;
   }
 
-  /* 2 columns x 2 rows - narrower cards so all games are visible without scrolling */
+  /* 3 columns x 2 rows - narrower cards so all games are visible without scrolling */
   .game-list {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 1px;
     background: var(--row-border);
     border: 1px solid var(--row-border);
@@ -211,6 +210,11 @@
         <div class="game-title">Yahtzee</div>
       </a>
 
+      <a class="game-row" href="games/Othello.html">
+        <div class="game-thumb"><img src="images/Othello.jpg" alt="Othello game screenshot"></div>
+        <div class="game-title">Othello</div>
+      </a>
+
       <a class="game-row" href="games/AceyDeucey.html">
         <div class="game-thumb"><img src="images/AceyDeucey.jpg" alt="Acey Deucey game screenshot"></div>
         <div class="game-title">Acey Deucey</div>
@@ -220,6 +224,13 @@
         <div class="game-thumb"><img src="images/Pinochle.jpg" alt="Pinochle game screenshot"></div>
         <div class="game-title">Pinochle</div>
       </a>
+
+      <!-- Empty 6th slot from the new 3-column layout - not a link, uses the existing
+           "coming soon" styling so it reads as reserved space rather than a rendering glitch. -->
+      <div class="game-row disabled">
+        <div class="game-thumb"></div>
+        <div class="game-title"><span class="soon-badge">Coming Soon</span></div>
+      </div>
 
     </div>
   </main>
