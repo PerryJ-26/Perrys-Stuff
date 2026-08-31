@@ -1,5 +1,5 @@
 
-<!-- Revision 41 | Sunday, August 30, 2026 -->
+<!-- Revision 48 | Sunday, August 30, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -757,8 +757,22 @@
     background:var(--wood-dark);
     color:var(--cream);}
 
-  #gsAiBtn{
-    margin-bottom:16px;}
+  /* Game Options intentionally isn't given the shared .mode-btn class - that class is what the
+     Human/AI toggle JS selects and relabels, and this button isn't a mode toggle. .gs-mode-btn
+     already covers the rest of the look on its own (border:none, which overrides .mode-btn's
+     gold border on Human/AI Opponent too - neither of those actually shows a border), except
+     the background/text color, which is overridden below to the same gold-bright/wood-dark
+     pairing as Roll Dice (and every other action button on the page) instead of the mode
+     buttons' plain wood-dark/cream, since Game Options isn't a toggle and Perry asked for it to
+     match Roll Dice's yellow specifically. Its bottom margin is set at runtime by
+     alignPlayer1WithNewGame() instead of a fixed value here, same as AI Opponent's margin used
+     to be, since it's now the last button in the group sitting right above the name fields - AI
+     Opponent itself goes back to relying on the panel's normal 6px gap, the same spacing it
+     already had above itself (between it and Human Opponent), so Game Options' top margin
+     matches AI Opponent's. */
+  #gameOptionsBtn{
+    background:var(--gold-bright);
+    color:var(--wood-dark);}
 
   .gs-mode-btn.selected{
     background:var(--gold-bright);
@@ -968,6 +982,72 @@
   #universalModalButtons button:hover{
     filter:brightness(1.06);}
 
+  /* Game Options placeholder popup, styled to match Pinochle's Options popup exactly (cream/
+     ink/green, Segoe UI) instead of this page's own gold/cream Playfair Display look - the same
+     kind of one-off cross-game reskin Pinochle itself already does for its Exit popup (matching
+     THIS page's gold/cream/Playfair look there). Scoped to .modal-box.pinochle-style, which the
+     Game Options button adds only to this one modal; showModal() strips the class again on
+     every other call so it never leaks into Recorded Scores, New Game, Exit, etc. */
+  #universalModal .modal-box.pinochle-style{
+    background:#fffdf5;
+    color:#1b1b1b;
+    border:3px solid #111111;
+    max-width:520px;}
+
+  /* Font sizes below are copied from Pinochle's own Options popup exactly - its title (h2,
+     24px/700), its "(...Provided for Learning Purposes)" subtitle line (16.72px/600), and its
+     checkbox labels (14.72px/600) - so this popup reads as the same size hierarchy even though
+     the actual option text here is longer and wraps onto multiple lines. */
+  #universalModal .modal-box.pinochle-style #universalModalTitle{
+    font-family:'Segoe UI', Tahoma, sans-serif;
+    color:#1b1b1b;
+    font-size:24px;
+    font-weight:700;}
+
+  #universalModal .modal-box.pinochle-style #universalModalSubtitle{
+    font-family:'Segoe UI', Tahoma, sans-serif;
+    color:#1b1b1b;
+    font-size:16.72px;
+    font-weight:600;
+    text-align:center;}
+
+  #universalModal .modal-box.pinochle-style #universalModalText{
+    font-family:'Segoe UI', Tahoma, sans-serif;
+    color:#1b1b1b;
+    text-align:left;}
+
+  /* Numbered option rows: label text on the left (can wrap onto multiple lines), its checkbox
+     lined up on the right - same left-label/right-checkbox grid pattern Pinochle's own Options
+     popup uses, just with a narrower fixed checkbox column since these rows wrap. */
+  #universalModal .modal-box.pinochle-style .go-options-grid{
+    display:grid;
+    grid-template-columns:auto 32px;
+    row-gap:18px;
+    column-gap:16px;
+    align-items:center;}
+
+  #universalModal .modal-box.pinochle-style .go-item-text{
+    font-size:14.72px;
+    font-weight:600;}
+
+  #universalModal .modal-box.pinochle-style .go-checkbox{
+    width:22px;
+    height:22px;
+    cursor:pointer;
+    justify-self:end;}
+
+  #universalModal .modal-box.pinochle-style #universalModalButtons button{
+    background:#2f7d3a;
+    color:#fff;
+    border:2px solid #111111;
+    border-radius:6px;
+    font-family:'Segoe UI', Tahoma, sans-serif;
+    font-weight:600;}
+
+  #universalModal .modal-box.pinochle-style #universalModalButtons button:hover{
+    filter:none;
+    background:#235c2b;}
+
   @media (max-width:640px){
     .checker{width:18px; height:18px; font-size:8px;}}
   
@@ -1074,6 +1154,7 @@
           <div id="gsPanel">
             <button class="mode-btn gs-mode-btn" data-mode="human" data-label="Human Opponent">Human Opponent: OFF</button>
             <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-mode="ai" data-label="AI Opponent">AI Opponent: ON</button>
+            <button class="gs-mode-btn" id="gameOptionsBtn">Game Options</button>
 
             <div class="gs-field">
               <label for="gsP1Name">White (Player 1)</label>
@@ -1175,6 +1256,15 @@
   let phase = 'awaiting-roll'; // awaiting-roll | moving | choose-double | game-over
   let awaitingDoubleChoice = false;
   let isDoubleFromAceyDeucey = false;
+  let isDoubleBonusPending = false; // Option 2: bonus roll queued up after a played (non Acey-Deucey) double
+  let doublesStreak = 0;            // Option 2: consecutive genuine doubles rolled by the current player this turn
+  let gameOptions = { opt1:false, opt2:false, opt3:false }; // real value assigned below, once loadGameOptions() exists
+  // Option 1 only covers the OPENING dance, where everyone's still streaming checkers in from
+  // the bar for the first time - not a checker that gets hit and sent to the bar again later,
+  // which always has to re-enter before anything else moves, same as with the option off. Once
+  // a player has gotten every one of their 15 checkers off the bar for the first time this game,
+  // this flips true for good (see applyMove()) and Option 1 stops applying to them.
+  let everFullyEntered = {white:false, black:false};
   let selected = null; // 'bar' or point number
   let legalMap = [];    // [{die, dest, hit}] for currently selected source
   let rolling = false;  // True while the tumble animation is playing, guards against double-rolls
@@ -1273,6 +1363,14 @@
     return m;
   }
 
+  // Option 1 ("move before all checkers are entered") only ever relaxes the bar-first rule
+  // during a player's OPENING entry - once they've gotten all 15 off the bar for the first
+  // time this game, a later hit always has to re-enter before anything else moves, exactly as
+  // if the option were off.
+  function opt1Applies(player){
+    return gameOptions.opt1 && !everFullyEntered[player];
+  }
+
   // Attempt a move; returns {legal:bool, dest:'off'|number, hit:bool}
   function tryMove(player, source, die){
     if(source === 'bar'){
@@ -1286,7 +1384,10 @@
       const p = source;
       const cell = board[p];
       if(cell.owner !== player || cell.count <= 0) return {legal:false};
-      if(bar[player] > 0) return {legal:false}; // must enter first
+      // Option 1: normally you must finish entering every checker from the bar before moving
+      // any other checker. With Option 1 checked, that restriction is lifted - but only during
+      // this player's opening entry (see opt1Applies() above).
+      if(bar[player] > 0 && !opt1Applies(player)) return {legal:false}; // must enter first
       const dist = distToOff(player, p);
       const newDist = dist - die;
       if(newDist > 0){
@@ -1300,6 +1401,9 @@
         return {legal:true, dest:'off', hit:false};
       } else {
         if(!allCheckersHome(player)) return {legal:false};
+        // Option 3: normally an overshoot can bear off the highest occupied point instead.
+        // With Option 3 checked, only an exact roll may bear a checker off - no fallback.
+        if(gameOptions.opt3) return {legal:false};
         const m = maxDistOnBoard(player);
         if(dist === m) return {legal:true, dest:'off', hit:false};
         return {legal:false};
@@ -1308,7 +1412,13 @@
   }
 
   function applyMove(player, source, die, result){
-    if(source === 'bar'){ bar[player]--; }
+    if(source === 'bar'){
+      bar[player]--;
+      // The moment this player's bar count reaches 0 for the first time this game, their
+      // opening entry is complete - Option 1 (see opt1Applies()) stops applying to them from
+      // here on, even if they get hit and land back on the bar again later.
+      if(bar[player] === 0) everFullyEntered[player] = true;
+    }
     else { board[source].count--; if(board[source].count <= 0){ board[source].owner=null; board[source].count=0; } }
 
     if(result.dest === 'off'){
@@ -1328,7 +1438,13 @@
 
   function sourcesFor(player){
     const list = [];
-    if(bar[player] > 0){ list.push('bar'); return list; }
+    if(bar[player] > 0){
+      list.push('bar');
+      // Normally that's the ONLY legal source until the bar is empty. Option 1 lifts that -
+      // on-board checkers become legal sources too, even with checkers still on the bar - but
+      // only during this player's opening entry (see opt1Applies()).
+      if(!opt1Applies(player)) return list;
+    }
     for(let p=1;p<=24;p++){ if(board[p].owner===player && board[p].count>0) list.push(p); }
     return list;
   }
@@ -1428,6 +1544,26 @@
     } catch (err) {}
   }
 
+  // Game Options checkbox selections are saved to localStorage (like player names) so they're
+  // remembered the next time the app is opened, not just within the current tab.
+  const GAME_OPTIONS_KEY = 'aceyDeuceyGameOptions_v1';
+  function loadGameOptions(){
+    try {
+      const raw = localStorage.getItem(GAME_OPTIONS_KEY);
+      if(raw) return JSON.parse(raw);
+    } catch (err) {}
+    return { opt1:false, opt2:false, opt3:false };
+  }
+  function saveGameOptions(opts){
+    try { localStorage.setItem(GAME_OPTIONS_KEY, JSON.stringify(opts)); } catch (err) {}
+  }
+  // Now that loadGameOptions() actually exists, replace the placeholder above with whatever
+  // was really saved (an earlier attempt at this line, up near the other "let" state near the
+  // top of the file, silently failed - GAME_OPTIONS_KEY didn't exist yet at that point in the
+  // script, so the try/catch inside loadGameOptions() quietly ate the error and always
+  // returned the all-false default).
+  gameOptions = loadGameOptions();
+
   function applyNameChangeLive(){
     const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     names.white = p1;
@@ -1482,6 +1618,9 @@
     phase = 'awaiting-roll';
     awaitingDoubleChoice = false;
     isDoubleFromAceyDeucey = false;
+    isDoubleBonusPending = false;
+    doublesStreak = 0;
+    everFullyEntered = {white:false, black:false};
     selected = null; legalMap = [];
 
     document.getElementById('game').classList.add('show');
@@ -1688,7 +1827,7 @@
     if(isAI[current]) return;
     if(source === selected){ selected = null; legalMap = []; render(); return; }
 
-    if(bar[current] > 0 && source !== 'bar'){
+    if(bar[current] > 0 && source !== 'bar' && !opt1Applies(current)){
       log(`${names[current]} must enter from the bar first.`, 'info');
       return;
     }
@@ -1745,7 +1884,9 @@
       // the full 1-2 was never actually completed. Without this, afterDiceExhausted() below
       // still sees awaitingDoubleChoice=true from finishRoll() and grants the bonus anyway.
       // Harmless no-op on any normal (non-Acey-Deucey) roll, where this is already false.
+      // Same reasoning applies to Option 2's bonus roll - a partially-played double doesn't earn it.
       awaitingDoubleChoice = false;
+      isDoubleBonusPending = false;
       forfeitTurnNoMoves('No further legal moves — remaining dice forfeited.');
     } else {
       render();
@@ -1770,7 +1911,16 @@
       maybeAutoRollForAI();
       return;
     }
+    if(isDoubleBonusPending){
+      isDoubleBonusPending = false;
+      phase = 'awaiting-roll';
+      log(`Bonus roll for ${names[current]} — doubles!`, 'info');
+      render();
+      maybeAutoRollForAI();
+      return;
+    }
     current = opp(current);
+    doublesStreak = 0;
     phase = 'awaiting-roll';
     render();
     maybeAutoRollForAI();
@@ -1911,7 +2061,12 @@
       }
       if(modal) modal.style.display = 'block';
       const box = modal ? modal.querySelector('.modal-box') : null;
-      if(box) box.classList.remove('wide');
+      if(box){
+        box.classList.remove('wide');
+        // Reset back to this page's normal look by default - only the Game Options button
+        // (see its click handler below) adds this back, so it never leaks into any other popup.
+        box.classList.remove('pinochle-style');
+      }
     });
   }
 
@@ -1921,6 +2076,42 @@
       { label:'Cancel', value:false, primary:false }
     ]});
   }
+
+  // "Game Options" popup - styled to match Pinochle's Options popup (see the .pinochle-style
+  // CSS above) rather than this page's own gold/cream look. The three checkboxes' checked/
+  // unchecked state is saved to localStorage as soon as a box is toggled, restored the next
+  // time the popup (or the app itself) is opened, and takes effect immediately in the game
+  // (see gameOptions and its uses in tryMove()/finishRoll()/afterDiceExhausted()).
+  document.getElementById('gameOptionsBtn').addEventListener('click', ()=>{
+    showModal({ title: 'Game Options', message: '', buttons: [
+      { label:'OK', value:true, primary:true }
+    ]});
+    document.querySelector('#universalModal .modal-box').classList.add('pinochle-style');
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    subtitleEl.textContent = 'These options allow you to customize the game.';
+    subtitleEl.style.display = '';
+    const savedOptions = loadGameOptions();
+    document.getElementById('universalModalText').innerHTML = `
+      <div class="go-options-grid">
+        <div class="go-item-text">1) You may move your checkers out of the opponent&rsquo;s Home Board before you have all your checkers off the bar.</div>
+        <input type="checkbox" id="goOpt1" class="go-checkbox" ${savedOptions.opt1 ? 'checked' : ''}>
+        <div class="go-item-text">2) When you get doubles you can roll again. If you get three doubles in a row, you can&rsquo;t use the third double and your turn is over.</div>
+        <input type="checkbox" id="goOpt2" class="go-checkbox" ${savedOptions.opt2 ? 'checked' : ''}>
+        <div class="go-item-text">3) You need the exact numbers on the dice to bear off your Home Board.</div>
+        <input type="checkbox" id="goOpt3" class="go-checkbox" ${savedOptions.opt3 ? 'checked' : ''}>
+      </div>
+    `;
+    // Save immediately whenever a box is checked/unchecked, so the selection is remembered
+    // the next time this popup - or the app itself - is opened.
+    ['goOpt1','goOpt2','goOpt3'].forEach((id, i)=>{
+      document.getElementById(id).addEventListener('change', ()=>{
+        const opts = loadGameOptions();
+        opts['opt' + (i+1)] = document.getElementById(id).checked;
+        saveGameOptions(opts);
+        gameOptions = opts; // take effect immediately, mid-game if needed - no reload required
+      });
+    });
+  });
 
   // ---------------- reset (right sidebar) ----------------
   document.getElementById('resetBtn').addEventListener('click', async ()=>{
@@ -1996,14 +2187,32 @@
     const d2 = 1 + Math.floor(Math.random()*6);
     originalRoll = [d1,d2];
     if(d1 === d2){
+      // Option 2: rolling doubles queues up a bonus roll once this double is used, but three
+      // genuine doubles in a row is one too many - the third can't be played at all, and the
+      // turn ends immediately. The Acey-Deucey (1-2) roll is a separate mechanic and doesn't
+      // count toward, or interrupt, this streak.
+      if(gameOptions.opt2 && doublesStreak >= 2){
+        doublesStreak = 0;
+        dice = [];
+        log(`${names[current]} rolls double ${d1}s again — that's three in a row! The double can't be used, and the turn ends.`, 'info');
+        phase = 'moving';
+        render();
+        afterDiceExhausted();
+        return;
+      }
       dice = [d1,d1,d1,d1];
       log(`${names[current]} rolls double ${d1}s!`, 'info');
+      if(gameOptions.opt2){
+        doublesStreak++;
+        isDoubleBonusPending = true;
+      }
     } else if((d1===1&&d2===2)||(d1===2&&d2===1)){
       dice = [1,2];
       awaitingDoubleChoice = true;
       log(`${names[current]} rolls Acey-Deucey (1-2)!`, 'info');
     } else {
       dice = [d1,d2];
+      doublesStreak = 0;
       log(`${names[current]} rolls ${d1} and ${d2}.`);
     }
     phase = 'moving';
@@ -2015,8 +2224,10 @@
       // the bonus double should NOT be granted - nothing was actually played. Without this,
       // forfeitTurnNoMoves() below clears the dice and calls afterDiceExhausted(), which still
       // saw awaitingDoubleChoice=true from finishRoll() and would grant the bonus double phase
-      // anyway, even though the 1-2 itself was never playable.
+      // anyway, even though the 1-2 itself was never playable. The same logic applies to a
+      // regular double under Option 2 - if none of it can be played, no bonus roll either.
       awaitingDoubleChoice = false;
+      isDoubleBonusPending = false;
       forfeitTurnNoMoves('No legal moves available — dice forfeited.');
       return;
     }
@@ -2042,7 +2253,15 @@
   function nearbyThreatLevel(defender, pt){
     const attacker = opp(defender);
     const targetDist = distToOff(attacker, pt);
-    let threat = bar[attacker] > 0 ? 0.5 : 0;
+    // A checker on the bar always re-enters into the DEFENDER's own home board - so if `pt` is
+    // inside the defender's home board, a waiting attacker isn't just "somewhere nearby," they
+    // have a direct single-die shot at this exact point on their very next roll. That's a real,
+    // immediate threat (1), not the softer "might work its way over eventually" 0.5 used for a
+    // bar checker threatening a point anywhere else on the board.
+    let threat = 0;
+    if(bar[attacker] > 0){
+      threat = (distToOff(defender, pt) <= 6) ? 1 : 0.5;
+    }
     for(let p=1;p<=24;p++){
       if(board[p].owner !== attacker) continue;
       const pips = distToOff(attacker, p) - targetDist;
@@ -2081,11 +2300,15 @@
         // board even when nothing was there to punish the "risk."
         s -= 25 * nearbyThreatLevel(player, result.dest);
       } else if(willBeCount === 2){
-        // Likewise, making (or covering) a point is only worth anything when it's actually
-        // defending against a nearby threat. On a wide-open board there's nothing to defend, so
-        // this is now 0 rather than a flat +3 floor - a point nothing can reach yet is worth
-        // exactly what it looks like: nothing, and shouldn't outweigh a move that simply makes
-        // more progress.
+        // Making (or covering) a point still gets the full threat-scaled bonus below when there's
+        // something nearby to actually defend against. But a small FLAT bonus on top of that,
+        // regardless of threat, gives building a point real value even on a wide-open board -
+        // without it, a fresh blot and a newly-made point score identically (both 0) whenever
+        // nothing is nearby yet, so a double with no immediate threat had no reason to ever spread
+        // into a new point instead of just repeatedly advancing whichever checker the tie-break
+        // happened to prefer. Real backgammon strategy builds blocking points proactively, before
+        // the threat that would justify them shows up - this restores a reason to do that.
+        s += 6;
         s += 25 * nearbyThreatLevel(player, result.dest);
       } else {
         // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it only earns its
@@ -2452,17 +2675,19 @@
   // with the window size - a hardcoded pixel margin only lined the two up at one specific
   // viewport size and drifted out of alignment at any other. Re-run on resize (and after the
   // page's own zoom-to-fit logic runs, since that changes effective layout too).
+  // Adjusts the LAST button before the name fields (Game Options, now that it sits below AI
+  // Opponent) rather than AI Opponent itself, so the added button doesn't throw this off.
   function alignPlayer1WithNewGame(){
     try {
-      const aiBtn = document.getElementById('gsAiBtn');
+      const lastBtn = document.getElementById('gameOptionsBtn');
       const p1Field = document.getElementById('gsP1Name');
       const newGameBtn = document.getElementById('resetBtn');
-      if(!aiBtn || !p1Field || !newGameBtn) return;
-      aiBtn.style.marginBottom = '0px';
-      const currentGap = p1Field.getBoundingClientRect().top - aiBtn.getBoundingClientRect().bottom;
-      const targetGap = newGameBtn.getBoundingClientRect().top - aiBtn.getBoundingClientRect().bottom;
+      if(!lastBtn || !p1Field || !newGameBtn) return;
+      lastBtn.style.marginBottom = '0px';
+      const currentGap = p1Field.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
+      const targetGap = newGameBtn.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
       const neededMargin = Math.max(0, targetGap - currentGap);
-      aiBtn.style.marginBottom = neededMargin + 'px';
+      lastBtn.style.marginBottom = neededMargin + 'px';
     } catch (err) {
       console.error('alignPlayer1WithNewGame error', err);
     }
