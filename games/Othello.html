@@ -1,0 +1,1562 @@
+
+
+<!-- Revision 7 | Monday, August 31, 2026 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Othello</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  /* ===== ALL COLORS LIVE HERE - blue theme, matches the rest of the site ===== */
+  :root{
+    /* Page background gradient */
+    --baize:#2f6fa8;
+    --baize-dark:#0d2438;
+    --wood:#1f3a5f;
+    --wood-dark:#12233d;
+    --cream:#eaf2fb;
+    --cream-dark:#cfe0ef;
+    --h1-shadow:rgba(0,0,0,0.35);
+
+    /* Score card - player name labels */
+    --player-name-color:#eaf2fb;
+
+    /* Discs */
+    --white-checker:#f4f8fc;
+    --white-checker-edge:#6f89a3;
+    --black-checker:#101a2a;
+    --black-checker-edge:#7fc4f5;
+    --checker-shadow:rgba(0,0,0,0.5);
+    --checker-shadow-inset:rgba(0,0,0,0.18);
+
+    /* Panels (score cards, side boxes) */
+    --panel-bg:rgba(0,0,0,0.22);
+    --panel-border:rgba(74,144,194,0.35);
+    --score-card-bg:rgba(0,0,0,0.28);
+    --score-card-border:rgba(74,144,194,0.3);
+    --score-card-active-glow:rgba(127,196,245,0.25);
+
+    /* Board */
+    --board-tile:#3d6f97;
+    --board-tile-line:rgba(127,196,245,0.22);
+    --hint-circle:rgba(0,0,0,0.32);
+
+    /* Accent (replaces gold in the wood/gold reference theme) */
+    --accent:#4a90c2;
+    --accent-bright:#7fc4f5;
+
+    /* Universal confirmation modal */
+    --modal-overlay-bg:rgba(0,0,0,0.65);
+    --modal-box-shadow:rgba(0,0,0,0.6);
+
+    /* Game Over / "Play Another Game?" screen */
+    --gameover-panel-bg:rgba(0,0,0,0.2);
+    --gameover-panel-border:rgba(74,144,194,0.35);
+    --gameover-title-color:#7fc4f5;
+    --gameover-prompt-color:#12233d;
+    --gameover-btn-bg:#7fc4f5;
+    --gameover-btn-text:#12233d;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+
+  body{
+    margin:0;
+    height:100vh;
+    overflow:hidden;
+    background:radial-gradient(
+      ellipse at 50% -10%,
+      var(--baize),
+      var(--baize-dark) 100%);
+    font-family:'Space Mono', monospace;
+    color:var(--cream);
+    display:flex;
+    justify-content:center;
+    padding:10px 12px;}
+
+  .wrap{
+    width:100%;
+    max-width:1056px;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    min-height:0;}
+
+  header{
+    text-align:center;
+    margin-bottom:6px;
+    flex:0 0 auto;}
+
+  h1{
+    font-family:'Playfair Display', serif;
+    font-weight:900;
+    font-size:clamp(1.3rem,3.5vw,2.2rem);
+    margin:0;
+    color:var(--accent-bright);
+    text-shadow:0 2px 0 var(--h1-shadow);}
+
+  .subtitle{
+    margin:2px 0 0;
+    font-size:0.80rem;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--accent-bright);
+    font-weight:bold;}
+
+  .rule-line{
+    width:90px;
+    height:2px;
+    background:var(--accent);
+    margin:6px auto 0;
+    opacity:0.6;}
+
+  /* ---- game screen ---- */
+  #game{display:flex; flex-direction:column; flex:1; min-height:0;}
+
+  .scoreboard{
+    display:flex;
+    gap:10px;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+    flex:0 0 auto;}
+
+  .score-card{
+    flex:1 1 200px;
+    background:var(--score-card-bg);
+    border:2px solid var(--score-card-border);
+    border-radius:8px;
+    padding:6px 14px;
+    text-align:center;}
+
+  .score-card.active{
+    border-color:var(--accent-bright);
+    box-shadow:0 0 0 1px var(--accent-bright),
+    0 0 16px var(--score-card-active-glow);}
+
+  .score-card .name{
+    font-size:1.0rem;
+    font-weight:900;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--player-name-color);
+    opacity:1;}
+
+  .score-card .stat{
+    font-family:'Playfair Display',serif;
+    font-size:1.15rem;
+    font-weight:700;
+    margin-top:1px;
+    color:var(--player-name-color);}
+
+  .turn-banner{
+    text-align:center;
+    font-family:'Playfair Display',serif;
+    font-size:0.95rem;
+    font-weight:bold;
+    color:var(--accent-bright);
+    margin-bottom:6px;
+    min-height:1.2em;
+    flex:0 0 auto;}
+
+  /* ---- board ---- */
+  .board-row{
+    display:flex;
+    gap:14px;
+    align-items:stretch;
+    flex:1;
+    min-height:0;
+    justify-content:center;}
+
+  .side-controls{
+    position:relative;
+    width:190px;
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;}
+
+  .side-controls-inner{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;}
+
+  /* Padding widened (10px -> 26px) to leave room for the row/column position markers -
+     see .col-labels/.row-labels below - along the top and left edges of the frame. */
+  .board-frame{
+    background:linear-gradient(160deg, var(--wood), var(--wood-dark));
+    border:8px solid var(--wood-dark);
+    border-radius:10px;
+    padding:26px;
+    height:100%;
+    aspect-ratio:1 / 1;
+    max-width:100%;
+    display:flex;
+    position:relative;}
+
+  .board-grid{
+    display:grid;
+    grid-template-columns:repeat(8, 1fr);
+    grid-template-rows:repeat(8, 1fr);
+    gap:2px;
+    flex:1;
+    min-height:0;
+    position:relative;}
+
+  /* Column (A-H) and row (1-8) position markers, shown only in Human Opponent mode - sit in
+     the widened frame padding above/left of the grid, lined up with a matching 8-cell
+     grid+gap so each label centers exactly over its column/row. */
+  .col-labels, .row-labels{
+    display:none;
+    position:absolute;
+    pointer-events:none;
+    color:#ffffff;
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    font-size:0.8rem;}
+
+  .col-labels.show, .row-labels.show{display:grid;}
+
+  .col-labels{
+    top:0; left:26px; right:26px; height:26px;
+    grid-template-columns:repeat(8, 1fr);
+    gap:2px;
+    align-items:center;
+    justify-items:center;}
+
+  .row-labels{
+    left:0; top:26px; bottom:26px; width:26px;
+    grid-template-rows:repeat(8, 1fr);
+    gap:2px;
+    align-items:center;
+    justify-items:center;}
+
+  .cell{
+    position:relative;
+    background:var(--board-tile);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid var(--board-tile-line);}
+
+  .cell:hover{filter:brightness(1.12);}
+
+  .disc{
+    position:absolute;
+    width:78%;
+    aspect-ratio:1 / 1;
+    border-radius:50%;
+    transition:transform 260ms ease;
+    box-shadow:0 2px 4px var(--checker-shadow),
+      inset 0 0 0 2px var(--checker-shadow-inset);
+    pointer-events:none;}
+
+  .disc.empty{transform:scale(0); box-shadow:none;}
+
+  .disc.black{background:var(--black-checker); border:2px solid var(--black-checker-edge);}
+
+  .disc.white{background:var(--white-checker); border:2px solid var(--white-checker-edge);}
+
+  /* 75% the size of the discs themselves (discs are 78% of the cell, so this is 58.5%) -
+     an open ring (border only, no fill) in the same hint color. */
+  .hint{
+    position:absolute;
+    width:58.5%;
+    aspect-ratio:1 / 1;
+    border-radius:50%;
+    background:transparent;
+    border:3px solid var(--hint-circle);
+    pointer-events:none;}
+
+  /* Marks the single most recently placed piece - a fixed physical size (0.0875in, i.e.
+     0.125in reduced ~30%), not scaled to the cell, per request. */
+  .last-move-dot{
+    display:none;
+    position:absolute;
+    width:0.0875in;
+    height:0.0875in;
+    border-radius:50%;
+    background:#ff1a1a;
+    box-shadow:0 0 2px rgba(0,0,0,0.7);
+    pointer-events:none;
+    z-index:5;}
+
+  .action-btn{
+    padding:10px 18px;
+    background:var(--accent-bright);
+    color:var(--wood-dark);
+    border:none; border-radius:8px;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:0.92rem;
+    cursor:pointer;
+    width:100%;}
+
+  .action-btn:hover{filter:brightness(1.08);}
+
+  .action-btn:disabled{opacity:0.35; cursor:not-allowed; filter:none;}
+
+  .action-btn-small{
+    padding:7px 13px;
+    background:var(--accent-bright);
+    color:var(--wood-dark);
+    border:none; border-radius:8px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:700;
+    font-size:13.6px;
+    cursor:pointer;
+    width:100%;}
+
+  .action-btn-small:hover{filter:brightness(1.08);}
+
+  #secondaryButtons{
+    margin-top:10px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    width:100%;}
+
+  .session-wins-box{
+    margin-top:16px;
+    width:100%;
+    box-sizing:border-box;
+    background:var(--cream-dark);
+    border:2px solid #000000;
+    border-radius:8px;
+    padding:8px 12px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#000000;
+    text-align:left;}
+
+  .session-wins-box-bottom{margin-top:auto;}
+
+  .session-wins-title{
+    font-weight:bold;
+    text-decoration:underline;
+    font-size:0.85rem;
+    margin-bottom:6px;
+    white-space:nowrap;}
+
+  .session-wins-stats{
+    font-size:0.8rem;
+    white-space:nowrap;}
+
+  .pips-row{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;}
+
+  .pips-row + .pips-row{margin-top:2px;}
+
+  .pips-value{font-weight:700; text-align:right;}
+
+  #gsPanel{
+    width:100%;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    font-family:Arial, Helvetica, sans-serif;}
+
+  .mode-btn, .gs-mode-btn{
+    flex:0 0 auto;
+    max-width:none;
+    width:100%;
+    padding:7px 13px;
+    border:none;
+    border-radius:6px;
+    font-family:Arial, Helvetica, sans-serif;
+    font-weight:700;
+    font-size:13.6px;
+    cursor:pointer;
+    background:var(--wood-dark);
+    color:var(--cream);}
+
+  .mode-btn:hover{background:var(--wood);}
+
+  .mode-btn.selected, .gs-mode-btn.selected{
+    background:var(--accent-bright);
+    color:var(--wood-dark);}
+
+  .gs-field{width:100%; margin-top:6px;}
+
+  .gs-field label{
+    display:block;
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--accent-bright);
+    margin-bottom:2px;}
+
+  .gs-field input{
+    width:100%;
+    box-sizing:border-box;
+    padding:7px 13px;
+    border-radius:5px;
+    border:none;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:13.6px;
+    background:var(--cream);
+    color:var(--wood-dark);}
+
+  footer{
+    text-align:center;
+    font-size:0.62rem;
+    letter-spacing:0.08em;
+    color:var(--accent);
+    opacity:0.6;
+    margin-top:4px;
+    flex:0 0 auto;}
+
+  /* Themed confirmation modal (replaces native confirm()) */
+  #universalModal{
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:var(--modal-overlay-bg);
+    z-index:99998;}
+
+  /* Used only by the Can't Move popup - lets clicks pass through the dimmed backdrop so the
+     sidebar's Pass button (the only thing that's meant to dismiss it) stays clickable. */
+  #universalModal.passthrough{ pointer-events:none; }
+
+  #universalModal .modal-box{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    background:var(--cream);
+    color:var(--wood-dark);
+    padding:24px;
+    border-radius:10px;
+    max-width:380px;
+    width:90%; text-align:center;
+    box-shadow:0 8px 30px var(--modal-box-shadow);
+    border:2px solid var(--accent);}
+
+  #universalModal .modal-box.wide{max-width:480px;}
+
+  #universalModalTitle{
+    margin:0 0 8px;
+    font-family:'Playfair Display',serif;
+    color:var(--wood-dark);
+    text-align:center;
+    font-size:22.7px;
+    display:none;}
+
+  #universalModalSubtitle{
+    margin:-4px 0 10px;
+    font-family:'Playfair Display',serif;
+    color:var(--wood-dark);
+    text-align:center;
+    font-size:16.72px;
+    font-weight:normal;}
+
+  #universalModalText{
+    margin:0 0 18px;
+    color:var(--wood-dark);
+    white-space:pre-line;}
+
+  #universalModalText.scores-list{
+    font-family:'Space Mono', monospace;
+    font-size:0.8rem;
+    text-align:left;
+    display:inline-block;}
+
+  #universalModalButtons{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    flex-wrap:wrap;}
+
+  #universalModalButtons button{
+    padding:8px 16px;
+    border-radius:6px;
+    border:none;
+    cursor:pointer;
+    font-family:'Playfair Display',serif;
+    font-weight:700;
+    font-size:0.9rem;}
+
+  #universalModalButtons button.primary{
+    background:var(--accent-bright);
+    color:var(--wood-dark);}
+
+  #universalModalButtons button.secondary{
+    background:var(--cream-dark);
+    color:var(--wood-dark);}
+
+  #universalModalButtons button:hover{filter:brightness(1.06);}
+
+  #gameOver{
+    display:none;
+    position:fixed;
+    top:0; left:0;
+    width:100%; height:100%;
+    background:transparent;
+    z-index:99997;
+    text-align:center;}
+
+  #gameOver.show{display:block;}
+
+  .gameover-box{
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%, -50%);
+    max-width:400px;
+    width:90%;
+    box-sizing:border-box;
+    background:var(--cream);
+    color:var(--wood-dark);
+    border:2px solid var(--accent);
+    border-radius:10px;
+    padding:18px;
+    box-shadow:0 8px 30px var(--modal-box-shadow);}
+
+  #gameOver h2{
+    font-family:'Playfair Display',serif;
+    color:var(--gameover-title-color);
+    font-size:1.6rem;
+    margin-bottom:6px;
+    animation:flash-red 1s step-start infinite;}
+
+  @keyframes flash-red{
+    0%, 49%{color:#ff4d4d;}
+    50%, 100%{color:var(--gameover-title-color);}
+  }
+
+  .play-again-prompt{
+    text-align:center;
+    font-family:'Playfair Display',serif;
+    font-size:1.5rem;
+    color:var(--wood-dark);
+    font-weight:bold;
+    margin:4px 0 10px;}
+
+  .play-again-row{
+    display:flex;
+    gap:10px;
+    max-width:200px;
+    margin:0 auto;}
+
+  .play-again-row .go-btn{
+    width:auto;
+    flex:1;
+    padding:8px 12px;
+    font-size:1.3rem;
+    background:var(--gameover-btn-bg);
+    color:var(--gameover-btn-text);
+    border:none;
+    border-radius:8px;
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    cursor:pointer;}
+
+  .play-again-row .go-btn:hover{filter:brightness(1.08);}
+
+  @media (max-width:640px){
+    .side-controls{width:150px;}
+  }
+
+  /* Invisible double-click toggle for the game log, tucked into the very corner of the
+     screen so it doesn't visually clutter anything or invite accidental clicks. */
+  #logToggleBtn{
+    position:fixed;
+    bottom:0; left:0;
+    width:44px; height:44px;
+    padding:0; margin:0; border:none;
+    background:transparent;
+    opacity:0;
+    cursor:default;
+    z-index:600;}
+
+  #logPanel{
+    display:none;
+    position:fixed;
+    bottom:10px; left:10px;
+    width:300px;
+    max-height:520px;
+    background:var(--wood-dark);
+    border:2px solid var(--accent);
+    border-radius:8px;
+    padding:8px 10px;
+    z-index:500;
+    box-shadow:0 6px 20px rgba(0,0,0,0.5);}
+
+  #logPanel.show{display:flex; flex-direction:column;}
+
+  #logPanelTitle{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    color:var(--accent-bright);
+    font-size:0.95rem;
+    margin-bottom:6px;
+    flex:0 0 auto;}
+
+  #log{
+    overflow-y:auto;
+    font-size:0.78rem;
+    line-height:1.5;
+    color:var(--cream);
+    flex:1 1 auto;
+    min-height:0;}
+
+  #log div{padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  #log div.win{color:var(--accent-bright); font-weight:700;}
+  #log div.info{opacity:0.9;}
+
+</style>
+</head>
+<body>
+<div id="universalModal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <h3 id="universalModalTitle"></h3>
+    <p id="universalModalSubtitle" style="display:none;"></p>
+    <p id="universalModalText"></p>
+    <div id="universalModalButtons"></div>
+  </div>
+</div>
+<div class="wrap">
+  <header>
+    <h1>Othello</h1>
+    <p class="subtitle">A Game of Discs and Strategy</p>
+    <div class="rule-line"></div>
+  </header>
+
+  <section id="game">
+    <div class="scoreboard">
+      <div class="score-card" id="scoreBlack">
+        <div class="name" id="nameBlack">Player 1 (Black)</div>
+        <div class="stat"><span id="countBlack">2</span> Discs</div>
+      </div>
+      <div class="score-card" id="scoreWhite">
+        <div class="name" id="nameWhite">Player 2 (White)</div>
+        <div class="stat"><span id="countWhite">2</span> Discs</div>
+      </div>
+    </div>
+
+    <div class="turn-banner" id="turnBanner"></div>
+
+    <div class="board-row">
+      <div class="side-controls">
+        <div class="side-controls-inner side-controls-inner-top">
+          <div id="gsPanel">
+            <button class="mode-btn gs-mode-btn" data-mode="human" data-label="Human Opponent">Human Opponent: OFF</button>
+            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-mode="ai" data-label="AI Opponent">AI Opponent: ON</button>
+
+            <div class="gs-field">
+              <label for="gsP1Name">Black (Player 1)</label>
+              <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
+            </div>
+            <div class="gs-field">
+              <label id="gsP2Label" for="gsP2Name">White (AI)</label>
+              <input type="text" id="gsP2Name" value="The AI" maxlength="16" disabled>
+            </div>
+          </div>
+        </div>
+
+        <div class="session-wins-box session-wins-box-bottom">
+          <div class="session-wins-title">This Session's Wins</div>
+          <div class="session-wins-stats"><span id="sessionWinsP1Name">Player 1</span> = <span id="sessionWinsP1">0</span>&nbsp;&nbsp;&nbsp;&nbsp;<span id="sessionWinsP2Name">Player 2</span> = <span id="sessionWinsP2">0</span></div>
+        </div>
+      </div>
+
+      <div class="board-frame">
+        <div class="col-labels" id="colLabels"></div>
+        <div class="row-labels" id="rowLabels"></div>
+        <div class="board-grid" id="boardGrid"></div>
+      </div>
+
+      <div class="side-controls">
+        <div class="side-controls-inner side-controls-inner-top">
+          <button class="action-btn" id="passBtn" disabled>Pass</button>
+          <button class="action-btn" id="surrenderBtn">Surrender</button>
+
+          <div id="secondaryButtons">
+            <button class="action-btn-small" id="resetBtn">New Game</button>
+            <button class="action-btn-small" id="scoresBtn">Recorded Scores</button>
+            <button class="action-btn-small" id="instructionsBtn">Instructions</button>
+            <button class="action-btn-small" id="exitBtn">Exit</button>
+          </div>
+        </div>
+
+        <div class="session-wins-box session-wins-box-bottom">
+          <div class="session-wins-title">Current Discs</div>
+          <div class="session-wins-stats">
+            <div class="pips-row"><span>Black</span><span class="pips-value" id="discBlack">2</span></div>
+            <div class="pips-row"><span>White</span><span class="pips-value" id="discWhite">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="gameOver">
+    <div class="gameover-box">
+      <h2 id="gameOverTitle">Game Over</h2>
+      <p id="gameOverText"></p>
+      <p id="gameOverPips"></p>
+      <p class="play-again-prompt">Play Another Game?</p>
+      <div class="play-again-row">
+        <button class="go-btn" id="playAgainYesBtn">Yes</button>
+        <button class="go-btn" id="playAgainNoBtn">No</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden double-click toggle for the game log - invisible, sits in the very bottom-left
+     corner of the screen. Same pattern used elsewhere in the Game Hub for out-of-the-way
+     debug/utility toggles the player isn't meant to stumble onto by accident. -->
+<button id="logToggleBtn" aria-label="Toggle game log"></button>
+
+<div id="logPanel">
+  <div id="logPanelTitle">Game Log</div>
+  <div id="log"></div>
+</div>
+
+<script>
+(function(){
+
+  // ---------------- state ----------------
+  let mode = 'ai'; // Defaults to AI opponent
+  let names = {black:'Player 1', white:'Player 2'};
+  let isAI = {black:false, white:false};
+  let board;               // board[r][c] = null | 'black' | 'white', r,c in 0..7
+  let current;              // 'black' | 'white'
+  let phase = 'playing';    // playing | game-over
+  let legalMoveList = [];
+  let turnToken = 0;        // stale-timer guard for the AI's setTimeout move delay
+
+  const DIRECTIONS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  function opp(p){ return p === 'black' ? 'white' : 'black'; }
+  function inBounds(r,c){ return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+  function newBoard(){
+    const b = [];
+    for(let r=0;r<8;r++) b.push(new Array(8).fill(null));
+    b[3][3]='white'; b[3][4]='black'; b[4][3]='black'; b[4][4]='white';
+    return b;
+  }
+
+  // Returns the array of [r,c] cells that would be flipped if `player` played at (r,c) -
+  // empty array means the move is not legal (must capture at least one disc).
+  function flipsForMove(player, r, c, bd){
+    bd = bd || board;
+    if(bd[r][c] !== null) return [];
+    const enemy = opp(player);
+    let all = [];
+    for(const [dr,dc] of DIRECTIONS){
+      let rr = r+dr, cc = c+dc;
+      const line = [];
+      while(inBounds(rr,cc) && bd[rr][cc] === enemy){
+        line.push([rr,cc]);
+        rr += dr; cc += dc;
+      }
+      if(line.length > 0 && inBounds(rr,cc) && bd[rr][cc] === player){
+        all = all.concat(line);
+      }
+    }
+    return all;
+  }
+
+  function legalMoves(player, bd){
+    bd = bd || board;
+    const moves = [];
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      if(bd[r][c] === null){
+        const flips = flipsForMove(player, r, c, bd);
+        if(flips.length > 0) moves.push({r, c, flips});
+      }
+    }
+    return moves;
+  }
+
+  function applyMove(player, r, c){
+    const flips = flipsForMove(player, r, c);
+    board[r][c] = player;
+    flips.forEach(([fr,fc]) => { board[fr][fc] = player; });
+    return flips;
+  }
+
+  function countDiscs(){
+    let black = 0, white = 0;
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      if(board[r][c] === 'black') black++;
+      else if(board[r][c] === 'white') white++;
+    }
+    return {black, white};
+  }
+
+  function coordLabel(r,c){ return 'abcdefgh'[c] + (r+1); }
+
+  // ---------------- board DOM ----------------
+  let cellEls = []; // cellEls[r][c] = {cell, disc, hint, marker}
+  let lastMoveCell = null; // {r,c} of the most recently placed piece, or null before any move
+
+  function buildBoardDOM(){
+    const grid = document.getElementById('boardGrid');
+    grid.innerHTML = '';
+    cellEls = [];
+    lastMoveCell = null;
+    for(let r=0;r<8;r++){
+      const row = [];
+      for(let c=0;c<8;c++){
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.r = r; cell.dataset.c = c;
+        const disc = document.createElement('div');
+        disc.className = 'disc empty';
+        disc.dataset.state = 'empty';
+        const hint = document.createElement('div');
+        hint.className = 'hint';
+        hint.style.display = 'none';
+        const marker = document.createElement('div');
+        marker.className = 'last-move-dot';
+        marker.style.display = 'none';
+        cell.appendChild(disc);
+        cell.appendChild(hint);
+        cell.appendChild(marker);
+        cell.addEventListener('click', () => onCellClick(r, c));
+        grid.appendChild(cell);
+        row.push({cell, disc, hint, marker});
+      }
+      cellEls.push(row);
+    }
+  }
+
+  // A-H across the top, 1-8 down the left side - only ever shown in Human Opponent mode
+  // (see updateLabelsVisibility()). Row 1 is the top row, matching coordLabel()'s notation.
+  function buildBoardLabels(){
+    const colEl = document.getElementById('colLabels');
+    const rowEl = document.getElementById('rowLabels');
+    colEl.innerHTML = '';
+    rowEl.innerHTML = '';
+    for(let c=0;c<8;c++){
+      const span = document.createElement('span');
+      span.textContent = 'ABCDEFGH'[c];
+      colEl.appendChild(span);
+    }
+    for(let r=0;r<8;r++){
+      const span = document.createElement('span');
+      span.textContent = String(r+1);
+      rowEl.appendChild(span);
+    }
+  }
+
+  function updateLabelsVisibility(){
+    const show = mode === 'human';
+    document.getElementById('colLabels').classList.toggle('show', show);
+    document.getElementById('rowLabels').classList.toggle('show', show);
+  }
+
+  // Draws the board's current state directly (no pop-in animation) - used right after
+  // buildBoardDOM() for the initial 4-disc setup.
+  function renderBoardImmediate(){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const val = board[r][c];
+      const {disc} = cellEls[r][c];
+      disc.className = val ? ('disc ' + val) : 'disc empty';
+      disc.dataset.state = val || 'empty';
+    }
+  }
+
+  function renderHints(){
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      cellEls[r][c].hint.style.display = 'none';
+    }
+    if(phase !== 'playing' || isAI[current]) return;
+    legalMoveList.forEach(m => { cellEls[m.r][m.c].hint.style.display = 'block'; });
+  }
+
+  function animatePlacement(r, c, player){
+    const {disc} = cellEls[r][c];
+    disc.className = 'disc ' + player;
+    disc.dataset.state = player;
+    disc.style.transform = 'scale(0)';
+    void disc.offsetWidth; // force reflow so the transition below actually plays
+    disc.style.transform = 'scale(1)';
+  }
+
+  function animateFlip(r, c, player){
+    const {disc} = cellEls[r][c];
+    disc.style.transform = 'scaleX(0)';
+    setTimeout(() => {
+      disc.className = 'disc ' + player;
+      disc.dataset.state = player;
+      disc.style.transform = 'scaleX(1)';
+    }, 140);
+  }
+
+  // ---------------- turn flow ----------------
+  function updateScoreboard(){
+    const {black, white} = countDiscs();
+    document.getElementById('countBlack').textContent = black;
+    document.getElementById('countWhite').textContent = white;
+    document.getElementById('discBlack').textContent = black;
+    document.getElementById('discWhite').textContent = white;
+  }
+
+  function updateTurnBanner(){
+    const banner = document.getElementById('turnBanner');
+    if(phase !== 'playing'){ banner.textContent = ''; return; }
+    banner.textContent = `${names[current]}'s Turn`;
+    document.getElementById('scoreBlack').classList.toggle('active', current === 'black');
+    document.getElementById('scoreWhite').classList.toggle('active', current === 'white');
+  }
+
+  function log(msg, cls){
+    const logEl = document.getElementById('log');
+    const div = document.createElement('div');
+    if(cls) div.className = cls;
+    div.textContent = msg;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // Pass is enabled any time the player on the clock (human OR the AI) has no legal move -
+  // a human always has to be the one to click it, even when it's the AI that's stuck, since
+  // the AI never acts on its own until someone dismisses its Can't Move popup for it.
+  function updateActionButtons(){
+    const passBtnEl = document.getElementById('passBtn');
+    if(passBtnEl) passBtnEl.disabled = !(phase === 'playing' && legalMoveList.length === 0);
+    const surrenderBtnEl = document.getElementById('surrenderBtn');
+    if(surrenderBtnEl) surrenderBtnEl.disabled = (phase !== 'playing');
+  }
+
+  function showCantMoveModal(player){
+    showModal({
+      title: "Can't Move",
+      message: 'No legal move this turn. Click Pass to continue, or Surrender to end the game.',
+      buttons: [] // deliberately no OK button - only the sidebar Pass/Surrender buttons dismiss this
+    });
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    subtitleEl.textContent = names[player];
+    subtitleEl.style.display = '';
+    // "passthrough" lets clicks reach the sidebar (Pass and Surrender in particular) right
+    // through the dimmed backdrop - a normal modal blocks the whole page, but this one
+    // specifically needs to stay out of the way of the buttons that are meant to dismiss it.
+    document.getElementById('universalModal').classList.add('passthrough');
+  }
+
+  // Starts (or resumes, after a pass) the given player's turn. cameFromPass is true only on
+  // the recursive call made right after the OTHER player just passed - if this player also
+  // has no legal move, that's back-to-back passes, which ends the game (per the instructions:
+  // "If both players pass in a row, there are no more legal moves and the game ends").
+  function beginTurn(player, cameFromPass){
+    const {black, white} = countDiscs();
+    if(black + white === 64){ endGame(); return; }
+    current = player;
+    legalMoveList = legalMoves(player);
+    renderHints();
+    updateTurnBanner();
+    updateScoreboard();
+    updateActionButtons();
+    // Bumped on every call (blocked or not) so any earlier setTimeout (an AI move already in
+    // flight, say) is invalidated the instant a new turn state begins - see its check below.
+    turnToken++;
+    const myToken = turnToken;
+
+    if(legalMoveList.length === 0){
+      if(cameFromPass){ endGame(); return; }
+      log(`${names[player]} has no legal move.`, 'info');
+      // Whether it's a human or the AI that's stuck, a human always has to click Pass (or
+      // Surrender) to move on - see showCantMoveModal() and the passBtn click handler below.
+      showCantMoveModal(player);
+      return;
+    }
+
+    if(isAI[current] && phase === 'playing'){
+      setTimeout(() => { if(phase === 'playing' && turnToken === myToken) aiStep(); }, 700);
+    }
+  }
+
+  function onCellClick(r, c){
+    if(phase !== 'playing') return;
+    if(isAI[current]) return;
+    const move = legalMoveList.find(m => m.r === r && m.c === c);
+    if(!move) return;
+    playMove(r, c);
+  }
+
+  function playMove(r, c){
+    const player = current;
+    legalMoveList.forEach(m => { cellEls[m.r][m.c].hint.style.display = 'none'; });
+    legalMoveList = []; // guards against a second click landing mid-animation
+    const flips = applyMove(player, r, c);
+    playDiscSound();
+    animatePlacement(r, c, player);
+    flips.forEach(([fr,fc]) => animateFlip(fr, fc, player));
+    log(`${names[player]} plays ${coordLabel(r,c)}, flipping ${flips.length} disc${flips.length === 1 ? '' : 's'}.`);
+    updateScoreboard();
+
+    // Moves the red "last piece played" marker off wherever it was and onto this new piece.
+    if(lastMoveCell) cellEls[lastMoveCell.r][lastMoveCell.c].marker.style.display = 'none';
+    lastMoveCell = {r, c};
+    cellEls[r][c].marker.style.display = 'block';
+    setTimeout(() => { beginTurn(opp(player), false); }, flips.length > 0 ? 260 : 60);
+  }
+
+  // ---------------- AI (single-ply heuristic, same sophistication as the Acey-Deucey AI) ----------------
+  // Classic Othello positional weight matrix: corners are extremely valuable, the cells
+  // touching a corner are dangerous (they can hand the corner to the opponent) unless that
+  // corner is already taken - see weightFor()'s dynamic override below.
+  const WEIGHTS = [
+    [100,-20,10,5,5,10,-20,100],
+    [-20,-50,-2,-2,-2,-2,-50,-20],
+    [10,-2,-1,-1,-1,-1,-2,10],
+    [5,-2,-1,-1,-1,-1,-2,5],
+    [5,-2,-1,-1,-1,-1,-2,5],
+    [10,-2,-1,-1,-1,-1,-2,10],
+    [-20,-50,-2,-2,-2,-2,-50,-20],
+    [100,-20,10,5,5,10,-20,100]
+  ];
+  const CORNER_ADJ = {
+    '0,1':[0,0], '1,0':[0,0], '1,1':[0,0],
+    '0,6':[0,7], '1,7':[0,7], '1,6':[0,7],
+    '6,0':[7,0], '7,1':[7,0], '6,1':[7,0],
+    '6,7':[7,7], '7,6':[7,7], '6,6':[7,7]
+  };
+  function weightFor(r, c){
+    const base = WEIGHTS[r][c];
+    const key = r + ',' + c;
+    if(base < 0 && CORNER_ADJ[key]){
+      const [cr, cc] = CORNER_ADJ[key];
+      // The risky penalty only applies while that corner is still up for grabs - once it's
+      // occupied (by either color), playing next to it no longer hands anyone anything.
+      if(board[cr][cc] !== null) return 0;
+    }
+    return base;
+  }
+  function scoreMove(move){
+    let score = weightFor(move.r, move.c);
+    score += move.flips.length * 0.5; // small bonus for capturing more discs
+    score += Math.random() * 0.7;     // tie-breaking jitter, keeps the AI from feeling robotic
+    return score;
+  }
+  function aiStep(){
+    if(phase !== 'playing') return;
+    const moves = legalMoves(current);
+    if(moves.length === 0){ beginTurn(opp(current), true); return; } // safety net
+    let best = moves[0], bestScore = -Infinity;
+    for(const mv of moves){
+      const s = scoreMove(mv);
+      if(s > bestScore){ bestScore = s; best = mv; }
+    }
+    playMove(best.r, best.c);
+  }
+
+  // ---------------- sound ----------------
+  // Always on now - the button that used to toggle this was replaced with Pass, per request.
+  const soundEnabled = true;
+
+  let audioCtx = null;
+  function getAudioCtx(){
+    try {
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch(err) {
+      console.error('getAudioCtx error', err);
+      return null;
+    }
+  }
+
+  /* A short percussive "click/clack" - simulates a disc being set down on a wooden board. */
+  function playDiscSound(){
+    if(!soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      if(!ctx) return;
+      const now = ctx.currentTime;
+
+      const bufferSize = Math.floor(ctx.sampleRate * 0.045);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i = 0; i < bufferSize; i++){
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.value = 600 + Math.random() * 900;
+      bandpass.Q.value = 1.2;
+
+      const gain = ctx.createGain();
+      const peak = 0.24 + Math.random() * 0.08;
+      gain.gain.setValueAtTime(peak, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+      noise.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(ctx.destination);
+
+      noise.start(now);
+      noise.stop(now + 0.06);
+    } catch(err) {
+      console.error('playDiscSound error', err);
+    }
+  }
+
+  // ---------------- universal modal (matches the rest of the site) ----------------
+  function showModal({ title, message, buttons } = {}){
+    return new Promise((resolve) => {
+      const modal = document.getElementById('universalModal');
+      const titleEl = document.getElementById('universalModalTitle');
+      const textEl = document.getElementById('universalModalText');
+      const buttonsEl = document.getElementById('universalModalButtons');
+      const subtitleEl = document.getElementById('universalModalSubtitle');
+
+      if(titleEl){
+        if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
+        else { titleEl.style.display = 'none'; }
+      }
+      if(subtitleEl){ subtitleEl.textContent = ''; subtitleEl.style.display = 'none'; }
+      if(textEl){ textEl.textContent = message || ''; textEl.classList.remove('scores-list'); }
+      if(buttonsEl){
+        buttonsEl.innerHTML = '';
+        (buttons || [{label:'OK', value:undefined, primary:true}]).forEach((def) => {
+          const btn = document.createElement('button');
+          btn.textContent = def.label;
+          btn.className = def.primary ? 'primary' : 'secondary';
+          btn.onclick = () => {
+            if(modal) modal.style.display = 'none';
+            resolve(def.value);
+          };
+          buttonsEl.appendChild(btn);
+        });
+      }
+      if(modal){ modal.style.display = 'block'; modal.classList.remove('passthrough'); }
+      const box = modal ? modal.querySelector('.modal-box') : null;
+      if(box) box.classList.remove('wide');
+    });
+  }
+
+  function showConfirm(text, title){
+    return showModal({ title, message: text, buttons: [
+      { label:'Yes', value:true, primary:true },
+      { label:'Cancel', value:false, primary:false }
+    ]});
+  }
+
+  // ---------------- pass / surrender ----------------
+  // Only does anything once the player on the clock (human OR the AI) genuinely has no legal
+  // move (the button is disabled the rest of the time - see updateActionButtons()) - this is
+  // what dismisses the Can't Move popup and actually hands the turn to the other player. A
+  // human always has to click this, even on the AI's behalf, since the AI never dismisses its
+  // own popup.
+  document.getElementById('passBtn').addEventListener('click', () => {
+    if(phase !== 'playing') return;
+    if(legalMoveList.length !== 0) return;
+    const modal = document.getElementById('universalModal');
+    if(modal) modal.style.display = 'none';
+    const player = current;
+    log(`${names[player]} passes.`, 'info');
+    beginTurn(opp(player), true);
+  });
+
+  document.getElementById('surrenderBtn').addEventListener('click', async () => {
+    if(phase !== 'playing') return;
+    // In AI mode this always means the human (Black) giving up to the AI - in a human vs
+    // human game, it's whichever player's turn it currently is that surrenders.
+    const surrenderingPlayer = mode === 'ai' ? 'black' : current;
+    const winner = opp(surrenderingPlayer);
+    const ok = await showConfirm(
+      `Are you sure ${names[surrenderingPlayer]} wants to surrender? ${names[winner]} will win the game.`,
+      'Surrender'
+    );
+    if(ok) surrenderGame(surrenderingPlayer);
+  });
+
+  function surrenderGame(surrenderingPlayer){
+    phase = 'game-over';
+    turnToken++; // invalidates any pending AI move/pass timer
+    const winner = opp(surrenderingPlayer);
+    document.getElementById('universalModal').style.display = 'none';
+    document.getElementById('gameOver').classList.add('show');
+    document.getElementById('turnBanner').textContent = '';
+    document.getElementById('scoreBlack').classList.remove('active');
+    document.getElementById('scoreWhite').classList.remove('active');
+    updateActionButtons();
+    const {black, white} = countDiscs();
+    document.getElementById('gameOverTitle').textContent = `${names[winner]} Wins!`;
+    document.getElementById('gameOverText').textContent =
+      `${names[surrenderingPlayer]} surrendered. Final count: ${black} Black, ${white} White.`;
+    document.getElementById('gameOverPips').textContent = `${names[winner]} wins by surrender`;
+    log(`${names[surrenderingPlayer]} surrenders. ${names[winner]} wins the game!`, 'win');
+    sessionWins[winner]++;
+    saveSessionWins();
+    updateSessionWinsDisplay();
+    recordScore(names[winner], Math.abs(black - white), names[surrenderingPlayer]);
+  }
+
+  // ---------------- new game / exit ----------------
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const ok = await showConfirm('Start a new game? Your current game will be lost.', 'New Game');
+    if(ok) startGame();
+  });
+
+  document.getElementById('exitBtn').addEventListener('click', async () => {
+    const ok = await showConfirm('Are you sure you want to exit?', 'Exit Game');
+    if(ok) performExit();
+  });
+
+  function performExit(){
+    // Cleared here (not just on load) since sessionStorage is tied to the browser tab's
+    // lifetime, not this page - an intentional Exit should start the next visit fresh.
+    try { sessionStorage.removeItem('othelloSessionWins_v1'); } catch (err) {}
+    window.location.href = '../index.html';
+  }
+
+  document.getElementById('instructionsBtn').addEventListener('click', () => {
+    window.location.href = '../OthInstructions.html';
+  });
+
+  document.getElementById('playAgainYesBtn').addEventListener('click', () => {
+    document.getElementById('gameOver').classList.remove('show');
+    startGame();
+  });
+  document.getElementById('playAgainNoBtn').addEventListener('click', performExit);
+
+  // ---------------- Human/AI Opponent toggle ----------------
+  const PLAYER_NAMES_KEY = 'othelloPlayerNames_v1';
+  function savePlayerNames(){
+    try {
+      localStorage.setItem(PLAYER_NAMES_KEY, JSON.stringify({
+        p1Name: document.getElementById('gsP1Name').value,
+        p2Name: mode === 'human' ? document.getElementById('gsP2Name').value : ''
+      }));
+    } catch (err) { console.error('savePlayerNames error', err); }
+  }
+  document.getElementById('gsP1Name').addEventListener('change', savePlayerNames);
+  document.getElementById('gsP2Name').addEventListener('change', savePlayerNames);
+
+  // Unlike Acey-Deucey (where the mode switch is deferred until the next Roll Dice click,
+  // to avoid interrupting a die-tumble animation), Othello has no equivalent gated action -
+  // toggling Human/AI Opponent here just starts a fresh game immediately.
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newMode = btn.dataset.mode;
+      if(newMode === mode) return;
+      mode = newMode;
+      document.querySelectorAll('.mode-btn').forEach(b => {
+        const isSelected = b.dataset.mode === mode;
+        b.classList.toggle('selected', isSelected);
+        b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
+      });
+      const p2Input = document.getElementById('gsP2Name');
+      const p2Label = document.getElementById('gsP2Label');
+      if(mode === 'ai'){
+        p2Label.childNodes[0].textContent = 'White (AI) ';
+        p2Input.value = 'The AI'; p2Input.disabled = true;
+      } else {
+        p2Label.childNodes[0].textContent = 'White (Player 2) ';
+        let savedP2 = '';
+        try {
+          const raw = localStorage.getItem(PLAYER_NAMES_KEY);
+          if(raw) savedP2 = JSON.parse(raw).p2Name || '';
+        } catch (err) {}
+        p2Input.value = savedP2; p2Input.disabled = false;
+      }
+      try { sessionStorage.setItem('othelloSettings_v1', JSON.stringify({mode})); } catch (err) {}
+      startGame();
+    });
+  });
+
+  // ---------------- session wins scoreboard ----------------
+  // sessionStorage (not localStorage) - see Acey-Deucey's identical comment: this tally is
+  // meant to survive a page reload within the same tab, but correctly reset once the tab closes.
+  const SESSION_WINS_KEY = 'othelloSessionWins_v1';
+  function loadSessionWins(){
+    try {
+      const raw = sessionStorage.getItem(SESSION_WINS_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(typeof parsed.black === 'number' && typeof parsed.white === 'number') return parsed;
+      }
+    } catch (err) { console.error('loadSessionWins error', err); }
+    return { black: 0, white: 0 };
+  }
+  function saveSessionWins(){
+    try { sessionStorage.setItem(SESSION_WINS_KEY, JSON.stringify(sessionWins)); }
+    catch (err) { console.error('saveSessionWins error', err); }
+  }
+  const sessionWins = loadSessionWins();
+  function updateSessionWinsDisplay(){
+    document.getElementById('sessionWinsP1').textContent = sessionWins.black;
+    document.getElementById('sessionWinsP2').textContent = sessionWins.white;
+  }
+
+  // ---------------- ranked score history (shared, via Firebase) ----------------
+  const MAX_RECORDED_SCORES = 15;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'block' && document.getElementById('universalModalText').classList.contains('scores-list')){
+      showScoresModal();
+    }
+  };
+
+  function recordScore(name, margin, opponent){
+    try {
+      const entry = { name, margin, opponent, date: new Date().toLocaleDateString() };
+      if(window.pushSharedScore) window.pushSharedScore(entry);
+    } catch (err) { console.error('recordScore error', err); }
+  }
+
+  function formatScoreLine(entry, rank){
+    const pad = (str, len) => {
+      str = String(str);
+      const extra = Math.max(0, len - str.length);
+      return str + ' '.repeat(extra);
+    };
+    const rankStr = String(rank).padStart(2, ' ') + '.';
+    const nameStr = pad(entry.name, 9);
+    const marginStr = String(entry.margin).padStart(2, ' ');
+    const ptsStr = pad(`${marginStr} discs`, 10);
+    const opponentName = entry.opponent || 'Unknown';
+    const vsStr = pad('vs ' + opponentName, 12);
+    return `${rankStr} ${nameStr} ${ptsStr} ${vsStr} ${entry.date}`;
+  }
+
+  function showScoresModal(){
+    let message;
+    if(sharedScores === null){
+      message = 'Loading scores… (or unable to reach the shared scoreboard right now)';
+    } else {
+      const list = [...sharedScores].sort((a,b) => b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
+      message = list.length === 0
+        ? 'No scores recorded yet. Play a game to add one!'
+        : list.map((entry, i) => formatScoreLine(entry, i+1)).join('\n');
+    }
+    const hasRows = sharedScores !== null && sharedScores.length > 0;
+    showModal({ title: 'Recorded Scores', message, buttons: [
+      { label:'OK', value:true, primary:true }
+    ]});
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    subtitleEl.textContent = '(margin of discs the winner finished ahead by)';
+    subtitleEl.style.display = '';
+    document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
+    document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
+  }
+
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  document.getElementById('logToggleBtn').addEventListener('dblclick', () => {
+    document.getElementById('logPanel').classList.toggle('show');
+  });
+
+  // ---------------- game over ----------------
+  function endGame(){
+    phase = 'game-over';
+    const {black, white} = countDiscs();
+    document.getElementById('universalModal').style.display = 'none';
+    document.getElementById('gameOver').classList.add('show');
+    document.getElementById('turnBanner').textContent = '';
+    document.getElementById('scoreBlack').classList.remove('active');
+    document.getElementById('scoreWhite').classList.remove('active');
+    updateActionButtons();
+    let winner = null;
+    if(black > white) winner = 'black';
+    else if(white > black) winner = 'white';
+
+    if(winner){
+      const winnerCount = winner === 'black' ? black : white;
+      const loserCount = winner === 'black' ? white : black;
+      const margin = winnerCount - loserCount;
+      document.getElementById('gameOverTitle').textContent = `${names[winner]} Wins!`;
+      document.getElementById('gameOverText').textContent =
+        `${names[winner]} finished with ${winnerCount} discs to ${names[opp(winner)]}'s ${loserCount}.`;
+      document.getElementById('gameOverPips').textContent =
+        `${names[winner]} won by ${margin} disc${margin === 1 ? '' : 's'}`;
+      log(`${names[winner]} wins the game, ${winnerCount}-${loserCount}!`, 'win');
+      sessionWins[winner]++;
+      saveSessionWins();
+      updateSessionWinsDisplay();
+      recordScore(names[winner], margin, names[opp(winner)]);
+    } else {
+      document.getElementById('gameOverTitle').textContent = `It's a Tie!`;
+      document.getElementById('gameOverText').textContent = `Both players finished with ${black} discs.`;
+      document.getElementById('gameOverPips').textContent = `Tied ${black}-${white}`;
+      log(`Game over — tied ${black}-${white}.`, 'win');
+    }
+  }
+
+  // ---------------- start / restart ----------------
+  function startGame(){
+    board = newBoard();
+    phase = 'playing';
+    turnToken++;
+    buildBoardDOM();
+    renderBoardImmediate();
+    buildBoardLabels();
+    updateLabelsVisibility();
+
+    names.black = document.getElementById('gsP1Name').value.trim() || 'Player 1';
+    names.white = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'The AI' : 'Player 2');
+    isAI.black = false;
+    isAI.white = (mode === 'ai');
+
+    document.getElementById('nameBlack').textContent = `${names.black} (Black)`;
+    document.getElementById('nameWhite').textContent = `${names.white} (White)`;
+    document.getElementById('sessionWinsP1Name').textContent = names.black;
+    document.getElementById('sessionWinsP2Name').textContent = names.white;
+
+    document.getElementById('log').innerHTML = '';
+    document.getElementById('gameOver').classList.remove('show');
+    document.getElementById('universalModal').style.display = 'none';
+
+    log('New game started.');
+    updateScoreboard();
+    updateSessionWinsDisplay();
+
+    const starter = Math.random() < 0.5 ? 'black' : 'white';
+    log(`${names[starter]} plays first.`);
+    beginTurn(starter, false);
+  }
+
+  // Restores whatever name/mode was last used - names from localStorage (persist forever),
+  // mode from sessionStorage (only within this tab). Must run before startGame(), since
+  // startGame() reads directly from these same input fields and the mode variable.
+  (function restorePersistedSettings(){
+    let savedNames = {};
+    try {
+      const rawNames = localStorage.getItem(PLAYER_NAMES_KEY);
+      if(rawNames) savedNames = JSON.parse(rawNames);
+    } catch (err) { console.error('restorePersistedSettings (names) error', err); }
+    try {
+      if(savedNames.p1Name) document.getElementById('gsP1Name').value = savedNames.p1Name;
+      const rawSettings = sessionStorage.getItem('othelloSettings_v1');
+      if(rawSettings){
+        const saved = JSON.parse(rawSettings);
+        if(saved.mode && saved.mode !== mode){
+          mode = saved.mode;
+          document.querySelectorAll('.mode-btn').forEach(b => {
+            const isSelected = b.dataset.mode === mode;
+            b.classList.toggle('selected', isSelected);
+            b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
+          });
+        }
+      }
+      const p2Input = document.getElementById('gsP2Name');
+      const p2Label = document.getElementById('gsP2Label');
+      if(mode === 'ai'){
+        p2Label.childNodes[0].textContent = 'White (AI) ';
+        p2Input.value = 'The AI'; p2Input.disabled = true;
+      } else {
+        p2Label.childNodes[0].textContent = 'White (Player 2) ';
+        p2Input.value = savedNames.p2Name || ''; p2Input.disabled = false;
+      }
+    } catch (err) { console.error('restorePersistedSettings error', err); }
+  })();
+
+  startGame();
+
+  // Aligns the top of the "Black (Player 1)" name field with the top of the "New Game"
+  // button, purely for visual balance between the two side panels - same technique
+  // Acey-Deucey uses, just anchored off the AI Opponent button (the last button in this
+  // panel, since Othello has no Game Options button).
+  function alignPlayer1WithNewGame(){
+    try {
+      const lastBtn = document.getElementById('gsAiBtn');
+      const p1Field = document.getElementById('gsP1Name');
+      const newGameBtn = document.getElementById('resetBtn');
+      if(!lastBtn || !p1Field || !newGameBtn) return;
+      lastBtn.style.marginBottom = '0px';
+      const currentGap = p1Field.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
+      const targetGap = newGameBtn.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
+      const neededMargin = Math.max(0, targetGap - currentGap);
+      lastBtn.style.marginBottom = neededMargin + 'px';
+    } catch (err) {
+      console.error('alignPlayer1WithNewGame error', err);
+    }
+  }
+  alignPlayer1WithNewGame();
+  window.addEventListener('load', alignPlayer1WithNewGame);
+  window.addEventListener('resize', alignPlayer1WithNewGame);
+
+})();
+
+/* Makes the app resizable: scales the whole .wrap down (via the zoom property) whenever its
+   natural content is taller than the available window height. Identical technique to
+   Acey-Deucey's fitAppToViewport(). */
+function fitAppToViewport(){
+  try {
+    const wrap = document.querySelector('.wrap');
+    if(!wrap) return;
+    wrap.style.zoom = 1;
+
+    const prevWrapHeight = wrap.style.height, prevWrapOverflow = wrap.style.overflow;
+    wrap.style.height = 'auto';
+    wrap.style.overflow = 'visible';
+
+    const naturalHeight = wrap.scrollHeight;
+
+    wrap.style.height = prevWrapHeight;
+    wrap.style.overflow = prevWrapOverflow;
+
+    const bodyStyle = getComputedStyle(document.body);
+    const available = window.innerHeight - parseFloat(bodyStyle.paddingTop) - parseFloat(bodyStyle.paddingBottom);
+    if(naturalHeight > available && naturalHeight > 0){
+      wrap.style.zoom = available / naturalHeight;
+    }
+  } catch (err) {
+    console.error('fitAppToViewport error', err);
+  }
+}
+fitAppToViewport();
+window.addEventListener('load', fitAppToViewport);
+window.addEventListener('resize', fitAppToViewport);
+
+(function(){
+  const screens = ['game', 'gameOver'].map(id => document.getElementById(id)).filter(Boolean);
+  if(!screens.length) return;
+  const observer = new MutationObserver(() => fitAppToViewport());
+  screens.forEach(el => observer.observe(el, { attributes: true, attributeFilter: ['class'] }));
+})();
+
+</script>
+
+<!-- -------------------------------------------------------------------------
+     Shared (cross-device) recorded scores via Firebase Realtime Database.
+     Same Firebase project Acey-Deucey and Yahtzee already use (perrys-stuff) -
+     just a separate database path (othelloScores) so this game's scores stay
+     independent of the others. -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onValue
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'othelloScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+</body>
+</html>
