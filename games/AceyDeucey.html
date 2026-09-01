@@ -1,5 +1,5 @@
 
-<!-- Revision 48 | Sunday, August 30, 2026 -->
+<!-- Revision 49 | Tuesday, September 1, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -2197,7 +2197,13 @@
         log(`${names[current]} rolls double ${d1}s again — that's three in a row! The double can't be used, and the turn ends.`, 'info');
         phase = 'moving';
         render();
-        afterDiceExhausted();
+        // Popup holds for 3 seconds (no buttons - it just times out on its own) before the
+        // turn actually ends, so the player sees why before play moves on.
+        showModal({ title: '', message: 'Doubles rolled for the third time\nTurn lost', buttons: [] });
+        setTimeout(() => {
+          document.getElementById('universalModal').style.display = 'none';
+          afterDiceExhausted();
+        }, 3000);
         return;
       }
       dice = [d1,d1,d1,d1];
