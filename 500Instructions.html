@@ -1,0 +1,306 @@
+
+<!-- Revision 2 | Wednesday, September 02, 2026 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>500 Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .meld-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meld-table th, .meld-table td {
+    border: 1px solid var(--table-border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .meld-table th {
+    background: var(--table-header-bg);
+    color: var(--heading-text);
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 1in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/500.html">Back to 500</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">500 Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>Objective</h2>
+      <p>Each partnership aims to make a contract by bidding and then to win enough tricks to fulfill that contract.</p>
+
+      <h2>Players</h2>
+      <p>The game is played by four players in two partnerships, with partners seated opposite each other.</p>
+      <p class="note">Note: For these instructions, West is Julie, North is Bob, East is Fred, and South is You, with partners seated opposite each other — Julie &amp; Fred versus Bob &amp; You.</p>
+
+      <h2>Cards</h2>
+      <p>Use a 43-card pack. Remove all twos, all threes, and the black fours from a standard 52-card deck, then add one joker.</p>
+      <p>The joker is always the highest trump. The jack of the trump suit, called the right bower, is the second-highest trump. The jack of the other suit of the same color, called the left bower, is the third-highest trump. Thus, if spades are trump, the trump ranking from highest to lowest is: joker, J♠, J♣, A♠, K♠, Q♠, 10♠, 9♠, 8♠, 7♠, 6♠, 5♠, 4♠.</p>
+      <p>In non-trump suits, the rank is: A (high), K, Q, J (if it is not the left bower), 10, 9, 8, 7, 6, 5, 4.</p>
+
+      <h2>Deal</h2>
+      <p>The first dealer is chosen randomly. The dealer gives ten cards to each player and places three cards face down in the middle of the table to form the kitty.</p>
+      <p>After the round is completed, the turn to deal passes to the player on the dealer's left.</p>
+
+      <h2>Bidding</h2>
+      <p>Bidding begins with the player to the dealer's left and proceeds clockwise. The minimum bid is six tricks. Each player has one opportunity to act, either by passing or by naming a contract with a higher scoring value than every previous bid. A contract names both the number of tricks and the denomination, such as "seven hearts" or "eight no-trump." The player who wins the contract is called the contractor. Use the bid table below to compare contracts.</p>
+
+      <table class="meld-table">
+        <tr><th>Suit</th><th>6 tricks</th><th>7 tricks</th><th>8 tricks</th><th>9 tricks</th><th>10 tricks</th></tr>
+        <tr><td>Spades</td><td>40</td><td>140</td><td>240</td><td>340</td><td>440</td></tr>
+        <tr><td>Clubs</td><td>60</td><td>160</td><td>260</td><td>360</td><td>460</td></tr>
+        <tr><td>Diamonds</td><td>80</td><td>180</td><td>280</td><td>380</td><td>480</td></tr>
+        <tr><td>Hearts</td><td>100</td><td>200</td><td>300</td><td>400</td><td>500</td></tr>
+        <tr><td>No-trump</td><td>120</td><td>220</td><td>320</td><td>420</td><td>520</td></tr>
+        <tr><td>Nullo</td><td>250</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+      </table>
+      <p class="note">Note: Nullo scores a flat 250 points and does not have a trick count.</p>
+
+      <p>Nullo is an optional bid to lose every trick at no-trump. It is worth 250 points. When a player contracts for nullo, the contractor's partner places their cards face down and does not play. If the contractor loses every trick, the contractor's team scores 250 points. If the contractor takes one or more tricks, the contractor's team loses 250 points, and the opposing team scores 10 points for each trick the contractor takes.</p>
+
+      <p>If all players pass, no score is recorded, the cards are gathered without play, and the next dealer deals. Otherwise, the highest bid becomes the contract.</p>
+
+      <h2>Play</h2>
+      <p>The high bidder, called the contractor, takes the kitty into their hand and then discards any three cards face down, restoring their hand to ten cards. The contractor leads the first trick.</p>
+      <p>Play proceeds in tricks. Each player must follow the suit led if able; otherwise, the player may play any card. The highest card of the suit led wins unless one or more trump cards are played, in which case the highest trump wins. The winner of each trick leads the next trick.</p>
+      <p>In a no-trump contract, the joker is the sole trump card and wins any trick on which it is played. A player may play the joker only when unable to follow the suit led. When leading the joker, its holder names a suit, and the other players must follow that suit if able.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Trump is spades. Bob (North) leads the trick with the K♥. Fred (East) has hearts and must follow suit, so he plays the 9♥. You (South) hold the A♥ and choose to play it. Julie (West) has no hearts, so she may play any card; she plays the J♠ — the left bower — and since it is the only trump played, it beats every heart on the table. Julie wins the trick and leads next.</p>
+      </div>
+
+      <h2>Scoring</h2>
+      <p>If the contractor's team wins at least as many tricks as it bid, it scores the value of the bid shown in the bid table. If it wins all ten tricks, it scores either the bid value or 250 points, whichever is greater. If the contractor's team is set—that is, if it fails to make the contract—the bid value is deducted from its score, so a team may have a negative score. Whether or not the contract is made, the opposing team scores 10 points for each trick it takes.</p>
+
+      <h2>Game</h2>
+      <p>The first team to reach 500 points wins the game. If both teams reach 500 on the same deal, the contractor's team wins. A team loses immediately if its score reaches &minus;500 points.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
