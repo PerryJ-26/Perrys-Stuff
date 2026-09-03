@@ -1,0 +1,2099 @@
+
+
+<!-- Revision 7 | Thursday, September 03, 2026 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>500</title>
+<style>
+  /* Playfair Display + Space Mono are only needed for the Exit-confirmation popup's
+     AceyDeucey/Pinochle-matching look (see #universalModal.exit-style rules below). */
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
+
+  /* ===================================================================
+     LAYOUT PHILOSOPHY — this is a direct re-skin of Pinochle.html's
+     board (same CSS-grid seating: N/W/felt/E/S, same corner boxes, same
+     modal/bubble/log system) with 500's own rules underneath and a
+     toned-down red/wine "felt" instead of Pinochle's green. There is no
+     meld system in 500, so anything meld-specific was dropped rather
+     than re-purposed, and the "Show Outlines" dev-debug toggle was
+     dropped entirely as leftover scaffolding, not a real feature.
+     =================================================================== */
+  :root{
+    /* Muted brick/wine felt — deliberately desaturated so it reads as
+       "warm red room", not an alarming/neon red. */
+    --board-red: #7d2f36;
+    --board-red-dark: #5f2329;
+    --board-border: #1a1210;
+    --page-bg: #ece1db;
+    --card-bg: #fffdf8;
+    --card-border: #b8a9a4;
+    --ink: #24140f;
+    /* Suit-text red (hearts/diamonds) is deliberately a clearer, more
+       saturated red than the felt's wine tone so the two never visually
+       collide — felt leans purple/brick, suit-red leans orange/true-red. */
+    --red: #c81e2c;
+
+    --cream: #fdf6e8;
+    --cream-border: #2a1810;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+    --pass-btn-bg: #3c3c3c;
+    --pass-btn-border: #171717;
+
+    --bubble-bg: #fffaf2;
+    --bubble-border: #24140f;
+
+    /* Card backs: cream base with a green diamond lattice, so they read
+       clearly (and distinctly from the red felt) at a glance. */
+    --cardback-1: #f4e8d3;
+    --cardback-2: #1f6b3a;
+    --cardback-border: #123f22;
+
+    --shadow-soft: rgba(255,255,255,.45);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+    --glow-active: rgba(255,255,255,.6);
+  }
+  *{ box-sizing: border-box; }
+  html, body{ height: 100%; margin:0; }
+  body{
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #3a1418;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup{
+    position: fixed;
+    top: 10px; left: 10px;
+    z-index: 70;
+    display:flex;
+    flex-direction: column;
+    gap:6px;
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor:pointer;
+    font-size:.8rem;
+    font-weight:700;
+    white-space: nowrap;
+  }
+  #buttonGroup button:hover{ background:#fff; }
+
+  /* ---------- The board ---------- */
+  #table-wrap{
+    display:grid;
+    grid-template-columns: clamp(105px,10vw,140px) 416px clamp(105px,10vw,140px);
+    justify-content: center;
+    grid-template-rows:
+      minmax(clamp(122px,16vh,195px), 195px)
+      minmax(clamp(165px,20vh,211px), 211px)
+      minmax(clamp(183px,30vh,350px), 1fr);
+    gap: 6px;
+    padding: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--board-red);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    margin: 0.05in clamp(0.2in, 7vw, 2.0in) 0.1in 165px;
+    position: relative;
+  }
+
+  #pauseOverlay{
+    display:none;
+    position:absolute; inset:0; z-index:50;
+    background: rgba(0,0,0,.15);
+    pointer-events:auto;
+    align-items:flex-start; justify-content:center;
+    padding-top: 16px;
+  }
+  #pauseOverlay .pause-badge{
+    background: rgba(0,0,0,.75);
+    color:#fff;
+    font-size:1.3rem;
+    font-weight:700;
+    padding: 10px 22px;
+    border-radius: 10px;
+    text-align:center;
+  }
+
+  .seat{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 6px;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .seat.active .name{
+    text-shadow: 0 0 8px var(--glow-active), 0 1px 2px rgba(0,0,0,.6);
+  }
+  .seat .name{
+    font-weight:700;
+    font-size: calc(.9rem + 2px);
+    color:#fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
+  .name-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    width:100%;
+    margin-top:2px;
+    flex-shrink:0;
+  }
+  #seat-N .name-row, #seat-S .name-row{ justify-content:center; }
+  #seat-W .name-row{ justify-content:center; }
+  #seat-E .name-row{ justify-content:center; }
+  .meta-line{
+    font-size:.68rem;
+    font-weight:700;
+    min-height: 1em;
+    text-align:center;
+    white-space: nowrap;
+    flex-shrink:0;
+  }
+  .meta-line .tag{ color: #f4d6a8; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+  .meta-line .tricks{ color:#fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  .meta-line .sep{ color:#fff; opacity:.6; margin: 0 3px; }
+
+  .bubble{
+    display:none;
+    position:relative;
+    background: var(--bubble-bg);
+    border: 2px solid var(--bubble-border);
+    border-radius: 16px;
+    padding: 9px 16px;
+    font-size:1.05rem;
+    font-weight:600;
+    color: var(--ink);
+    max-width: 190px;
+    text-align:center;
+    pointer-events:none;
+    z-index: 10;
+  }
+  .bubble.visible{ display:block; }
+  #bubble-N, #bubble-S, #bubble-W, #bubble-E{
+    font-size: .85rem;
+    padding: 6px 10px;
+  }
+  #bubble-W, #bubble-E{
+    max-width: 130px;
+  }
+  #bubble-N, #bubble-S{
+    margin-left: 12px;
+  }
+  .bubble.tail-top::before, .bubble.tail-top::after{
+    content:''; position:absolute; left:22px; border:9px solid transparent;
+  }
+  .bubble.tail-top::before{ top:-18px; border-bottom-color: var(--bubble-border); }
+  .bubble.tail-top::after{ top:-15px; border-bottom-color: var(--bubble-bg); }
+  .bubble.tail-bottom::before, .bubble.tail-bottom::after{
+    content:''; position:absolute; left:22px; border:9px solid transparent;
+  }
+  .bubble.tail-bottom::before{ bottom:-18px; border-top-color: var(--bubble-border); }
+  .bubble.tail-bottom::after{ bottom:-15px; border-top-color: var(--bubble-bg); }
+  .bubble.tail-left::before, .bubble.tail-left::after{
+    content:''; position:absolute; top:50%; transform:translateY(-50%); border:9px solid transparent;
+  }
+  .bubble.tail-left::before{ left:-18px; border-right-color: var(--bubble-border); }
+  .bubble.tail-left::after{ left:-15px; border-right-color: var(--bubble-bg); }
+  .bubble.tail-right::before, .bubble.tail-right::after{
+    content:''; position:absolute; top:50%; transform:translateY(-50%); border:9px solid transparent;
+  }
+  .bubble.tail-right::before{ right:-18px; border-left-color: var(--bubble-border); }
+  .bubble.tail-right::after{ right:-15px; border-left-color: var(--bubble-bg); }
+
+  .cardback-row{ display:flex; margin-top:6px; }
+  #seat-W .cardback-row, #seat-E .cardback-row{ margin-top:-6px; }
+  .cardback-row.vertical{ flex-direction:column; align-items:center; }
+  .cardback{
+    width:84px; height:118px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius:6px;
+    margin-left:-60px;
+  }
+  .cardback-row .cardback:first-child{ margin-left:0; }
+  .cardback-row.vertical .cardback{ margin-left:0; margin-top:-113px; transform: rotate(90deg); }
+  .cardback-row.vertical .cardback:first-child{ margin-top:0; }
+
+  #dealDeck{
+    display:none;
+    position:absolute;
+    top:50%; left:50%;
+    width:40px; height:56px;
+    transform:translate(-50%,-50%);
+    z-index:5;
+  }
+  #dealDeck .deal-deck-card{
+    position:absolute;
+    top:0; left:0;
+    width:40px; height:56px;
+    border-radius:5px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+  }
+  #dealDeck .deal-deck-card:nth-child(2){ transform: translate(2px,-2px); }
+  #dealDeck .deal-deck-card:nth-child(3){ transform: translate(4px,-4px); }
+
+  /* The 3-card kitty, face down in the middle of the felt as soon as a hand
+     is dealt — same look/size as the deal-deck pile above. Hidden again
+     once the contractor takes it into their hand (state.kitty empties out;
+     see updateKittyPileVisibility()). Sits at the same dead-center spot
+     #trickArea's own unused middle cell occupies, but as its own element
+     so it isn't tied to #trickArea's play-phase-only visibility. */
+  #kittyPile{
+    display:none;
+    position:absolute;
+    top:50%; left:50%;
+    width:40px; height:56px;
+    transform:translate(-50%,-50%);
+    z-index:4;
+  }
+  #kittyPile .kitty-card{
+    position:absolute;
+    top:0; left:0;
+    width:40px; height:56px;
+    border-radius:5px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+  }
+  #kittyPile .kitty-card:nth-child(2){ transform: translate(2px,-2px); }
+  #kittyPile .kitty-card:nth-child(3){ transform: translate(4px,-4px); }
+
+  #seat-N{ grid-column:2; grid-row:1; }
+  #seat-W{ grid-column:1; grid-row:2; align-self:start; }
+  #seat-E{ grid-column:3; grid-row:2; align-self:start; }
+  #seat-S{ grid-column:1 / span 3; grid-row:3; justify-content:flex-start; }
+
+  #felt{
+    grid-column:2; grid-row:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    position:relative;
+    overflow: hidden;
+    min-height: 0;
+    max-width: 320px;
+    width: 100%;
+    margin: 0 auto;
+    align-self: center;
+    min-height: 152px;
+    box-shadow: 0 0 0 2px var(--board-red), 0 0 0 4px var(--red);
+  }
+  #trickArea{
+    display:grid;
+    grid-template-areas:
+      ".    n    ."
+      "w    c    e"
+      ".    s    .";
+    grid-template-columns: 59px 59px 59px;
+    grid-template-rows: 2px 83px 2px;
+    gap: 0;
+  }
+  .trick-slot{ display:flex; align-items:center; justify-content:center; overflow:visible; }
+  .trick-slot .card{ transform: scale(0.7); }
+  #tc-N{ grid-area:n; z-index:1; }
+  #tc-W{ grid-area:w; z-index:2; }
+  #tc-S{ grid-area:s; z-index:3; }
+  #tc-E{ grid-area:e; z-index:4; }
+  #bubble-W{ grid-column:1; grid-row:2; justify-self:start; align-self:start; margin-top:2px; z-index:20; }
+  #bubble-E{ grid-column:3; grid-row:2; justify-self:end; align-self:start; margin-top:2px; z-index:20; }
+
+  #trumpBadge{
+    grid-column: 3; grid-row: 1;
+    justify-self: start; align-self: start;
+    margin-top: 8px;
+    position:relative; z-index:15;
+    background: var(--shadow-soft);
+    color:#1b1b1b;
+    border: 2px solid rgba(0,0,0,.35);
+    border-radius: 12px;
+    padding: 8px 20px;
+    font-size:1.35rem;
+    font-weight:700;
+    white-space: nowrap;
+  }
+
+  /* ---------- Card visuals ---------- */
+  .card{
+    position: relative;
+    width:84px; height:118px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-between;
+    padding: 4px;
+    font-weight:800;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    color: var(--ink);
+    user-select:none;
+  }
+  .card.red{ color: var(--red); }
+  .card.joker{ border: 2px solid #a5730f; }
+  /* Badge showing the suit named when the Joker is led under a no-trump
+     contract — everyone else must follow that suit for the rest of the
+     trick, so it needs to be visible right next to the card that's
+     standing in for it. */
+  .joker-suit-badge{
+    position:absolute;
+    top:-11px; right:-11px;
+    width:26px; height:26px;
+    border-radius:50%;
+    background:#fff;
+    border:2px solid var(--board-border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.05rem;
+    font-weight:800;
+    color: var(--ink);
+    box-shadow: 0 1px 3px var(--shadow-medium);
+    z-index:2;
+  }
+  .joker-suit-badge.red{ color: var(--red); }
+  .card .corner{ font-size:1.1rem; line-height:1; }
+  .card .center-suit{ font-size:2.6rem; text-align:center; }
+  .card.mini{ width:66px; height:91px; padding:2px; }
+  .card.mini .corner{ font-size:1.1rem; }
+  .card.mini .center-suit{ font-size:2.6rem; }
+
+  #south-hand{
+    display:flex;
+    justify-content:center;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    margin-top: 2px;
+    padding: 20px 4px 6px;
+    width: 100%;
+    min-height: 0;
+  }
+  #south-hand .cardWrap{
+    flex-shrink: 0;
+    margin-left: -50px;
+    position: relative;
+  }
+  #south-hand .cardWrap:first-child{ margin-left: 0; }
+  /* Grows briefly to 13 cards during the contractor's kitty-review/discard
+     step (10 in hand + 3 from the kitty) — tighter overlap so all 13 still
+     fit the same fan width instead of overflowing. */
+  #south-hand.crowded .cardWrap{ margin-left: -59px; }
+  #south-hand.crowded .cardWrap:first-child{ margin-left: 0; }
+  #south-hand .card{
+    cursor:pointer;
+    transition: transform .12s;
+  }
+  #south-hand .card:hover{ transform: translateY(-8px); }
+  #south-hand.no-transition .card{ transition: none !important; }
+  #south-hand .card.disabled{
+    opacity:.35;
+    cursor: not-allowed;
+  }
+  #south-hand .card.disabled:hover{ transform:none; }
+  #south-hand .cardWrap.selected .card{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+
+  /* ---------- Bid / Discard / Joker-suit control panels ---------- */
+  .control-panel{
+    display:none;
+    gap:6px;
+    flex-wrap:wrap;
+    justify-content:center;
+    align-items:center;
+    background: var(--cream);
+    border: 2px solid var(--cream-border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-top:4px;
+    width: 100%;
+    max-width: 380px;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .control-panel.wide-panel{ max-width: 520px; }
+  /* The bid panel's 5-suit x 5-trick-count table needs more width than the
+     felt's own 320px column can give it without either clipping or
+     spilling sideways over the seat columns — floated as its own fixed,
+     centered overlay instead, the same technique Pinochle uses for its
+     (also oversized) meld panel. */
+  #bidPanel{
+    position: fixed;
+    top: 68px;
+    left: 50%;
+    /* Shifted 0.5in right of dead-center so West's speech bubble (just
+       left of the felt's middle) isn't hidden behind the panel. */
+    transform: translateX(calc(-50% + 0.5in));
+    z-index: 60;
+    width: 94%;
+    max-width: 640px;
+    /* Was 82vh, tall enough to reach down over the player's own hand at
+       the bottom of the felt. Capped shorter so it stays clear of the
+       hand. The table itself is also sized more compactly below (smaller
+       fonts/padding) so the whole panel fits inside this height without
+       needing to scroll at a normal window size. */
+    max-height: 50vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  }
+  /* Compact sizing specific to the bid panel's 5x5 table, so the full
+     panel (title + status line + table + Nullo/Pass row) fits within
+     #bidPanel's max-height above without a scrollbar. */
+  #bidPanel h3{ margin: 0 0 2px; font-size: .8rem; }
+  #bidPanel .bidStatus{ font-size: .8rem; margin-bottom: 2px; }
+  #bidPanel table{ font-size: .74rem; margin-bottom: 3px; }
+  #bidPanel td, #bidPanel th{ padding: 1px 5px; }
+  #bidPanel button.bid-cell-btn{ padding: 1px 4px; font-size: .74rem; }
+  #bidPanel .nullo-row{ margin: 2px 0; gap: 8px; }
+  #bidPanel .nullo-row button{ padding: 3px 10px; font-size: .8rem; }
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  .control-panel table{ width:100%; border-collapse:collapse; font-size:.85rem; margin-bottom:6px; }
+  .control-panel td, .control-panel th{ border:1px solid #a99184; padding:3px 8px; text-align:center; }
+  .control-panel th{ background: rgba(255,255,255,.35); }
+  .control-panel.wide-panel table{ font-size:.8rem; margin-bottom:4px; }
+  .control-panel.wide-panel td, .control-panel.wide-panel th{ padding:2px 7px; }
+  .control-panel.wide-panel h3{ margin: 0 0 4px; }
+  .control-panel h3{
+    width:100%; text-align:center; margin:0 0 2px;
+    font-size:.88rem; color:#3a1418;
+  }
+  .control-panel button{
+    background: #fff;
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  .control-panel button:hover{ background:#f2ece5; }
+  .control-panel button:disabled{ opacity:.35; cursor:not-allowed; }
+  .control-panel button.pass{ background:var(--pass-btn-bg); color:#fff; border-color:var(--pass-btn-border); }
+  .control-panel .bidStatus{ width:100%; text-align:center; font-size:calc(.78rem + 3px); color:#3a1418; margin-bottom:2px; }
+  .bid-table-wrap{ width:100%; overflow-x:auto; }
+  .bid-table-wrap table{ min-width: 460px; }
+  .bid-table-wrap td.suit-cell{ text-align:left; font-weight:700; white-space:nowrap; }
+  .bid-table-wrap button.bid-cell-btn{ width:100%; padding:3px 6px; font-size:.82rem; }
+  .nullo-row{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%; margin: 4px 0; }
+
+  /* ---------- Score table (top-left corner) ---------- */
+  #scoreTable{
+    grid-column: 1; grid-row: 1;
+    justify-self: end; align-self: start;
+    margin-top: 8px;
+    position:relative; z-index:15;
+    background: var(--shadow-soft);
+    border: 2px solid rgba(0,0,0,.35);
+    border-radius: 10px;
+    padding: 7px 10px;
+    box-shadow: 0 2px 6px var(--shadow-medium);
+  }
+  #scoreTable table{ border-collapse: collapse; }
+  #scoreTable th, #scoreTable td{
+    padding: 3px 10px;
+    text-align:center;
+    white-space:nowrap;
+    color:#1b1b1b;
+  }
+  #scoreTable th{
+    font-size:calc(.68rem + 2px);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    border-bottom: 1px solid rgba(0,0,0,.3);
+  }
+  #scoreTable td{ font-size:calc(.85rem + 2px); font-weight:400; }
+  #scoreTable tr:not(:last-child) td{ border-bottom: 1px solid rgba(0,0,0,.15); }
+
+  /* ---------- This Session's Wins / Your Name (bottom corners) ---------- */
+  .corner-box{
+    grid-row: 3;
+    align-self: end;
+    position:relative; z-index:15;
+    box-sizing:border-box;
+    width:180px;
+    min-height:73px;
+    background:#d8c8a0;
+    border:2px solid #000000;
+    border-radius:8px;
+    padding:8px 12px;
+    font-family:Arial, Helvetica, sans-serif;
+    color:#000000;
+    text-align:left;
+  }
+  #sessionWinsBox{ grid-column: 1; justify-self: end; margin: 0 0 8px 0; }
+  #yourNameBox{ grid-column: 3; justify-self: start; margin: 0 0 8px 0; }
+  .corner-box-title{
+    font-weight:bold;
+    text-decoration:underline;
+    font-size:0.85rem;
+    margin-bottom:6px;
+    white-space:nowrap;
+  }
+  #yourNameBox .corner-box-title{ text-align:center; }
+  .corner-box-stats{ font-size:0.8rem; white-space:nowrap; }
+  .wins-row{ display:flex; justify-content:space-between; gap:10px; }
+  .wins-row + .wins-row{ margin-top:2px; }
+  .wins-value{ font-weight:700; text-align:right; }
+  #yourNameInput{
+    width:100%;
+    box-sizing:border-box;
+    padding:4px 8px;
+    border-radius:5px;
+    border:1px solid #000;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:0.8rem;
+    background:#fffdf5;
+    color:#000;
+  }
+
+  /* ---------- Log ---------- */
+  #logToggle{
+    opacity:0;
+    position:fixed; bottom:10px; left:10px;
+    background: var(--cream); color:var(--ink);
+    border:2px solid var(--board-border); border-radius:20px;
+    padding:8px 14px; cursor:pointer; font-size:.8rem; z-index:50;
+  }
+  #logPanel{
+    position:fixed; bottom:50px; left:10px; width:320px; max-height:50vh;
+    background: var(--cream); border:2px solid var(--board-border); border-radius:8px;
+    padding:10px; overflow-y:auto; font-size:.78rem; z-index:50; display:none;
+    color: var(--ink);
+  }
+  #logPanel div{ margin-bottom:4px; border-bottom:1px solid #cbb; padding-bottom:3px;}
+
+  /* ---------- Universal modal ---------- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+    align-items:center; justify-content:center;
+  }
+  #universalModal .modalBox{
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y:auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{
+    display:flex; gap:10px; justify-content:center; margin-top:16px;
+  }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  #universalModal .modalBox.exit-style{
+    background:#eee1c6;
+    color:#241608;
+    border-width:2px;
+    border-color:#c9a227;
+  }
+  #universalModal .modalBox.exit-style h2{
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+    color:#241608;
+  }
+  #universalModal .modalBox.exit-style .modalBody{
+    font-family:'Space Mono', monospace;
+    color:#241608;
+  }
+  #universalModal .modalBox.exit-style .modalBtns button{
+    background:#e6c65c;
+    color:#241608;
+    border:2px solid #c9a227;
+    font-family:'Playfair Display', serif;
+    font-weight:700;
+  }
+  #universalModal .modalBox.exit-style .modalBtns button:hover{
+    filter:brightness(1.06);
+  }
+  #universalModal .modalBox.exit-style .modalBtns button:last-child{
+    background:#d8c8a0;
+  }
+
+  #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
+  #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
+  #universalModal th:not(:first-child),
+  #universalModal td:not(:first-child){ text-align:center; }
+  #universalModal td:first-child,
+  #universalModal th:first-child{ width:150px; }
+
+  @media (max-width: 720px){
+    #table-wrap{
+      grid-template-columns: 80px 1fr 80px;
+      grid-template-rows: minmax(120px,140px) minmax(150px,1fr) minmax(180px,210px);
+      margin: 6px 16px 10px;
+    }
+    .card, .cardback{ width:44px; height:64px; }
+    .card .corner{ font-size:.62rem; }
+    .card .center-suit{ font-size:1.2rem; }
+    #south-hand .cardWrap{ margin-left: -22px; }
+    .cardback-row .cardback{ margin-left: -30px; }
+    .cardback-row.vertical .cardback{ margin-left:0; margin-top: -58px; }
+    #scoreTable th{ font-size:.62rem; }
+    #scoreTable td{ font-size:.8rem; }
+    #scoreTable th, #scoreTable td{ padding: 2px 8px; }
+    #pageTitle{ font-size:1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="buttonGroup">
+  <h1 id="pageTitle">500</h1>
+  <button id="newHandBtn">New Game</button>
+  <button id="rulesBtn">Instructions</button>
+  <button id="optionsBtn">Options</button>
+  <button id="exitBtn">Exit</button>
+</div>
+
+<div id="table-wrap">
+  <div id="pauseOverlay"><div class="pause-badge">⏸ PAUSED — press Space to resume</div></div>
+  <div class="seat" id="seat-N">
+    <div class="name-row">
+      <div class="name">Bob</div>
+      <div class="bubble tail-left" id="bubble-N"></div>
+    </div>
+    <div class="meta-line" id="meta-N"></div>
+    <div class="cardback-row" id="cards-N"></div>
+  </div>
+
+  <div class="seat" id="seat-W">
+    <div class="name-row">
+      <div class="name">Julie</div>
+    </div>
+    <div class="meta-line" id="meta-W"></div>
+    <div class="cardback-row vertical" id="cards-W"></div>
+  </div>
+
+  <div class="bubble tail-right" id="bubble-W"></div>
+
+  <div id="felt">
+    <div id="dealDeck"><div class="deal-deck-card"></div><div class="deal-deck-card"></div><div class="deal-deck-card"></div></div>
+    <div id="kittyPile"><div class="kitty-card"></div><div class="kitty-card"></div><div class="kitty-card"></div></div>
+    <div id="trickArea">
+      <div class="trick-slot" id="tc-N"></div>
+      <div class="trick-slot" id="tc-W"></div>
+      <div class="trick-slot" id="tc-S"></div>
+      <div class="trick-slot" id="tc-E"></div>
+    </div>
+    <div id="bidPanel" class="control-panel"></div>
+    <div id="discardPanel" class="control-panel"></div>
+    <div id="jokerSuitPanel" class="control-panel"></div>
+  </div>
+
+  <div class="bubble tail-left" id="bubble-E"></div>
+
+  <div class="seat" id="seat-E">
+    <div class="name-row">
+      <div class="name">Fred</div>
+    </div>
+    <div class="meta-line" id="meta-E"></div>
+    <div class="cardback-row vertical" id="cards-E"></div>
+  </div>
+
+  <div class="seat" id="seat-S">
+    <div id="south-hand"></div>
+    <div class="name-row">
+      <div class="name" id="south-name">You</div>
+      <div class="bubble tail-left" id="bubble-S"></div>
+    </div>
+    <div class="meta-line" id="meta-S"></div>
+  </div>
+
+  <div class="corner-box" id="sessionWinsBox">
+    <div class="corner-box-title">This Session's Wins</div>
+    <div class="corner-box-stats">
+      <div class="wins-row"><span id="sessionWinsNSLabel">You &amp; Bob =</span><span class="wins-value" id="sessionWinsNS">0</span></div>
+      <div class="wins-row"><span id="sessionWinsEWLabel">Julie &amp; Fred =</span><span class="wins-value" id="sessionWinsEW">0</span></div>
+    </div>
+  </div>
+
+  <div class="corner-box" id="yourNameBox">
+    <div class="corner-box-title">Your Name</div>
+    <div class="corner-box-stats">
+      <input type="text" id="yourNameInput" maxlength="16" placeholder="You">
+    </div>
+  </div>
+
+  <div id="scoreTable">
+    <table>
+      <tr><th>Team</th><th>Bid</th><th>Score</th></tr>
+      <tr>
+        <td id="team-ns-label">You &amp; Bob</td>
+        <td id="ns-bid">—</td>
+        <td id="ns-score">0</td>
+      </tr>
+      <tr>
+        <td id="team-ew-label">Julie &amp; Fred</td>
+        <td id="ew-bid">—</td>
+        <td id="ew-score">0</td>
+      </tr>
+    </table>
+  </div>
+
+  <div id="trumpBadge"><span style="font-weight:400;">Trump:</span></div>
+</div>
+
+<button id="logToggle">Game Log</button>
+<div id="logPanel"></div>
+
+<div id="universalModal">
+  <div class="modalBox">
+    <h2 id="modalTitle">Title</h2>
+    <div class="modalBody" id="modalBody">Body</div>
+    <div class="modalBtns" id="modalBtns"></div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   500 — standalone game
+   4 players (partnership): South = You, North = your partner (AI),
+   East & West = opponents (AI). 43-card deck (standard 52 minus all 2s,
+   3s, and the two black 4s, plus one Joker). Single go-around bidding —
+   each of the 4 players gets exactly one turn to pass or name a bid
+   strictly higher (by point value) than every bid named so far.
+   ===================================================================== */
+
+// ---------------------------------------------------------------------
+// CONSTANTS
+// ---------------------------------------------------------------------
+const SUITS = ['♠','♥','♦','♣'];
+const RED_SUITS = ['♥','♦'];
+const SISTER = { '♠':'♣', '♣':'♠', '♥':'♦', '♦':'♥' }; // same-color "other" suit, for left-bower purposes
+const BLACK_RANKS = ['5','6','7','8','9','10','J','Q','K','A'];   // no 4s in black suits (removed from the deck)
+const RED_RANKS   = ['4','5','6','7','8','9','10','J','Q','K','A'];
+const RANK_STRENGTH = { '4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10,'J':11,'Q':12,'K':13,'A':14 };
+
+const SEATS = ['S','W','N','E']; // turn order is clockwise; S sits at bottom, W left, N top, E right
+const SEAT_NAME = { S:'You', W:'Julie', N:'Bob', E:'Fred' };
+const TEAM = { S:'NS', N:'NS', W:'EW', E:'EW' };
+const PARTNER = { S:'N', N:'S', W:'E', E:'W' };
+function getTeamLabel(team){
+  return team === 'NS' ? `${SEAT_NAME.S} & ${SEAT_NAME.N}` : `${SEAT_NAME.W} & ${SEAT_NAME.E}`;
+}
+
+// Player's own name ("Your Name" box) - persisted in localStorage, same pattern as Pinochle/AceyDeucey/Yahtzee.
+const PLAYER_NAME_KEY = 'fiveHundredPlayerName_v1';
+try {
+  const savedPlayerName = localStorage.getItem(PLAYER_NAME_KEY);
+  if(savedPlayerName && savedPlayerName.trim()){
+    SEAT_NAME.S = savedPlayerName.trim();
+    document.getElementById('south-name').textContent = SEAT_NAME.S;
+    document.getElementById('yourNameInput').value = SEAT_NAME.S;
+  }
+} catch(e) { /* ignore */ }
+
+// "This Session's Wins" tally (lower-left corner box) - counts whole GAMES won by
+// each team this session (first to reach GAME_TARGET), persisted in sessionStorage.
+const SESSION_WINS_KEY = 'fiveHundredSessionWins_v1';
+let sessionWins = { NS:0, EW:0 };
+function loadSessionWins(){
+  try{
+    const raw = sessionStorage.getItem(SESSION_WINS_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(typeof parsed.NS === 'number' && typeof parsed.EW === 'number'){
+        sessionWins = parsed;
+      }
+    }
+  }catch(e){ /* sessionStorage unavailable - just keep the zeroed default */ }
+}
+function saveSessionWins(){
+  try{ sessionStorage.setItem(SESSION_WINS_KEY, JSON.stringify(sessionWins)); }catch(e){}
+}
+loadSessionWins();
+
+// Bid value table — exact scoring reference. Also drives which bid-panel
+// cells are enabled: a legal bid must have a value strictly greater than
+// the current highest bid's value.
+const BID_TABLE = {
+  '♠': {6:40,  7:140, 8:240, 9:340, 10:440},
+  '♣': {6:60,  7:160, 8:260, 9:360, 10:460},
+  '♦': {6:80,  7:180, 8:280, 9:380, 10:480},
+  '♥': {6:100, 7:200, 8:300, 9:400, 10:500},
+  'NT':{6:120, 7:220, 8:320, 9:420, 10:520},
+};
+const NULLO_VALUE = 250;
+const STRAIN_ORDER = ['♠','♣','♦','♥','NT'];
+const STRAIN_LABEL = { '♠':'Spades', '♣':'Clubs', '♦':'Diamonds', '♥':'Hearts', 'NT':'No-Trump' };
+const TRICK_COUNTS = [6,7,8,9,10];
+
+const GAME_TARGET = 500;
+const LOSE_TARGET = -500;
+
+// ---------------------------------------------------------------------
+// STATE
+// ---------------------------------------------------------------------
+let state = {
+  scores: { NS: 0, EW: 0 },
+  dealerIdx: 0,          // index into SEATS of current dealer
+  hands: { S:[], N:[], E:[], W:[] },
+  kitty: [],
+  trump: null,            // suit char for a suit contract, null for No-Trump / Nullo
+  contract: null,         // { type:'suit'|'nt'|'nullo', suit, tricks, value, bidder }
+  currentHighBid: null,   // live during bidding: same shape as contract
+  bidHistory: [],
+  biddingOrder: [],
+  biddingTurn: 0,
+  phase: 'deal',          // deal | bidding | kitty | play | scoring
+  trick: {},               // seat -> card currently on the felt
+  trickResolving: false,   // true from the moment a trick is first detected complete
+                            // until it's actually cleared - guards against resolving it twice
+  trickLeader: null,
+  trickNamedSuit: null,    // set when the Joker is LED under a no-trump contract
+  tricksTaken: { S:0, N:0, E:0, W:0 },
+  sittingOut: null,         // contractor's partner's seat during a Nullo hand, else null
+
+  discardSelection: [],     // card ids picked so far for the post-kitty discard
+
+  teamBidInfo: { NS: { label:'—' }, EW: { label:'—' } }, // score table's Bid column
+
+  viewAllCards: false,
+  spacebarPauseEnabled: false,
+  paused: false
+};
+
+// Game Options (View All Cards / Spacebar to Pause) - persisted in localStorage,
+// same pattern as "Your Name", so choices survive a page reload.
+const GAME_OPTIONS_KEY = 'fiveHundredGameOptions_v1';
+try {
+  const savedOptions = JSON.parse(localStorage.getItem(GAME_OPTIONS_KEY));
+  if(savedOptions){
+    if(typeof savedOptions.viewAllCards === 'boolean') state.viewAllCards = savedOptions.viewAllCards;
+    if(typeof savedOptions.spacebarPauseEnabled === 'boolean') state.spacebarPauseEnabled = savedOptions.spacebarPauseEnabled;
+  }
+} catch(e) { /* ignore */ }
+
+let log = [];
+let _lastSouthHandHtml = '';
+let dealAnimId = 0;
+
+// ---------------------------------------------------------------------
+// DECK / DEAL
+// ---------------------------------------------------------------------
+function buildDeck(){
+  const deck = [];
+  SUITS.forEach(suit=>{
+    const ranks = RED_SUITS.includes(suit) ? RED_RANKS : BLACK_RANKS;
+    ranks.forEach(rank=> deck.push({ suit, rank, id: suit+rank }));
+  });
+  deck.push({ suit:null, rank:'JK', id:'JOKER' }); // 43rd card
+  return deck;
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+function sortHand(cards){
+  const suitOrder = ['♠','♥','♣','♦'];
+  return [...cards].sort((a,b)=>{
+    if(a.rank==='JK') return -1;
+    if(b.rank==='JK') return 1;
+    if(a.suit !== b.suit) return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+    return RANK_STRENGTH[a.rank] - RANK_STRENGTH[b.rank];
+  });
+}
+
+function pausableTimeout(fn, delay){
+  const wrapped = () => {
+    if(state.paused){
+      setTimeout(wrapped, 200);
+    } else {
+      try {
+        fn();
+      } catch(err){
+        console.error('pausableTimeout: game-progression step failed', err);
+        addLog('⚠ Something went wrong resuming the game. If it looks stuck, try New Game.');
+        render();
+      }
+    }
+  };
+  setTimeout(wrapped, delay);
+}
+
+function dealNewHand(){
+  try {
+    dealNewHandInner();
+  } catch(err){
+    console.error('dealNewHand failed', err);
+    addLog('⚠ Something went wrong starting the new hand. If the board looks stuck, try Exit and reopen, or use New Game from the menu.');
+    render();
+  }
+}
+function dealNewHandInner(){
+  const deck = shuffle(buildDeck());
+  state.hands = { S:[], N:[], E:[], W:[] };
+  for(let i=0;i<40;i++){
+    const seat = SEATS[i % 4];
+    state.hands[seat].push(deck[i]);
+  }
+  state.kitty = deck.slice(40,43);
+  SEATS.forEach(s => state.hands[s] = sortHand(state.hands[s]));
+
+  state.trump = null;
+  document.getElementById('trumpBadge').innerHTML = '<span style="font-weight:400;">Trump:</span>';
+  state.contract = null;
+  state.currentHighBid = null;
+  state.bidHistory = [];
+  state.trick = {};
+  state.trickResolving = false;
+  state.trickLeader = null;
+  state.trickNamedSuit = null;
+  state.tricksTaken = { S:0, N:0, E:0, W:0 };
+  state.sittingOut = null;
+  state.discardSelection = [];
+  state.teamBidInfo = { NS: { label:'—' }, EW: { label:'—' } };
+  hideAllBubbles();
+
+  const startIdx = (state.dealerIdx + 1) % 4;
+  state.biddingOrder = [0,1,2,3].map(i => SEATS[(startIdx+i)%4]);
+  state.biddingTurn = 0;
+  state.phase = 'bidding';
+
+  addLog(`New hand dealt. Dealer: ${SEAT_NAME[SEATS[state.dealerIdx]]}. Bidding starts with ${SEAT_NAME[state.biddingOrder[0]]}.`);
+  render();
+  animateDealIn();
+}
+
+// ---------------------------------------------------------------------
+// DEAL ANIMATION — same technique as Pinochle: fly each already-rendered
+// element back to a fake deck pile via a transform, then transition it
+// home. 10 cards per seat here (not 12) since 500 deals 10+10+10+10+3.
+// ---------------------------------------------------------------------
+function animateDealIn(){
+  const myId = ++dealAnimId;
+
+  if(state.viewAllCards){
+    processBiddingTurn();
+    return;
+  }
+
+  const seatEls = {
+    S: Array.from(document.querySelectorAll('#south-hand .cardWrap')),
+    N: Array.from(document.querySelectorAll('#cards-N .cardback')),
+    W: Array.from(document.querySelectorAll('#cards-W .cardback')),
+    E: Array.from(document.querySelectorAll('#cards-E .cardback')),
+  };
+  if(!SEATS.every(s => seatEls[s].length === 10)){
+    processBiddingTurn();
+    return;
+  }
+
+  const nextIdx = { S:0, N:0, W:0, E:0 };
+  const flat = [];
+  for(let round=0; round<10; round++){
+    SEATS.forEach(seat => flat.push({ seat, el: seatEls[seat][nextIdx[seat]++] }));
+  }
+
+  const feltRect = document.getElementById('felt').getBoundingClientRect();
+  const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
+  const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
+  const FLIGHT_MS = 380, STAGGER_MS = 34;
+
+  const overflowEls = [
+    document.getElementById('table-wrap'),
+    document.getElementById('seat-N'),
+    document.getElementById('seat-W'),
+    document.getElementById('seat-E'),
+    document.getElementById('seat-S'),
+    document.getElementById('south-hand'),
+  ];
+  overflowEls.forEach(el => { el.style.overflow = 'visible'; });
+
+  const deckPile = document.getElementById('dealDeck');
+  deckPile.style.display = 'block';
+
+  flat.forEach(({seat, el}) => {
+    const r = el.getBoundingClientRect();
+    const dx = deckCenter.x - (r.left + r.width/2);
+    const dy = deckCenter.y - (r.top + r.height/2);
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = `translate(${dx}px, ${dy}px) ${ROTATE[seat]} scale(0.8)`;
+  });
+
+  flat.forEach(({seat, el}, i) => {
+    pausableTimeout(() => {
+      if(dealAnimId !== myId) return;
+      void el.offsetWidth;
+      el.style.transition = 'transform 0.38s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
+      requestAnimationFrame(() => {
+        if(dealAnimId !== myId) return;
+        el.style.opacity = '1';
+        el.style.transform = `translate(0,0) ${ROTATE[seat]} scale(1)`;
+      });
+    }, i * STAGGER_MS);
+  });
+
+  pausableTimeout(() => {
+    if(dealAnimId !== myId) return;
+    deckPile.style.display = 'none';
+    overflowEls.forEach(el => { el.style.overflow = ''; });
+    flat.forEach(({el}) => {
+      el.style.transition = '';
+      el.style.opacity = '';
+      el.style.transform = '';
+    });
+    processBiddingTurn();
+  }, (flat.length - 1) * STAGGER_MS + FLIGHT_MS + 80);
+}
+
+// ---------------------------------------------------------------------
+// TRUMP / BOWER MECHANICS
+// effectiveSuit/effectiveRank are the single source of truth used both
+// for follow-suit legality and for trick-winner comparison.
+// ---------------------------------------------------------------------
+function effectiveSuit(card, trump){
+  if(card.rank === 'JK') return trump || 'JOKER'; // Joker is always trump in a suit contract; in no-trump it belongs to no suit at all
+  if(trump){
+    if(card.rank === 'J' && card.suit === trump) return trump;             // right bower
+    if(card.rank === 'J' && SISTER[trump] === card.suit) return trump;     // left bower — its printed suit no longer applies
+  }
+  return card.suit;
+}
+function effectiveRank(card, trump){
+  if(card.rank === 'JK') return 1000; // never actually needed for comparison — the Joker always wins outright, see currentTrickWinner()
+  if(trump && card.rank === 'J' && card.suit === trump) return 100;         // right bower: 2nd highest trump
+  if(trump && card.rank === 'J' && SISTER[trump] === card.suit) return 99;  // left bower: 3rd highest trump
+  return RANK_STRENGTH[card.rank];
+}
+function suitName(s){ return STRAIN_LABEL[s] || s; }
+
+// ---------------------------------------------------------------------
+// BIDDING — single go-around: each of the 4 seats acts exactly once,
+// in bidding order. If nobody ever bids, the hand is redealt with the
+// next dealer.
+// ---------------------------------------------------------------------
+function contractLabel(bid){
+  if(bid.type === 'nullo') return 'Nullo';
+  const s = bid.suit == null ? 'NT' : bid.suit;
+  return `${bid.tricks}${s}`;
+}
+function bidSpokenLabel(bid){
+  if(bid.type === 'nullo') return `Nullo (${bid.value})`;
+  const suitTxt = bid.suit == null ? 'No-Trump' : suitName(bid.suit);
+  return `${bid.tricks} ${suitTxt} (${bid.value})`;
+}
+
+function processBiddingTurn(){
+  if(state.phase !== 'bidding') return;
+  if(state.biddingTurn >= 4){ finishBiddingRound(); return; }
+  const seat = state.biddingOrder[state.biddingTurn];
+  highlightActiveSeat(seat);
+  if(seat === 'S'){
+    renderBidPanel();
+  } else {
+    pausableTimeout(()=> aiBid(seat), 700);
+  }
+}
+
+function placeBid(seat, bid){
+  const full = { ...bid, bidder: seat };
+  state.currentHighBid = full;
+  state.bidHistory.push(`${SEAT_NAME[seat]}: ${bidSpokenLabel(full)}`);
+  state.teamBidInfo[TEAM[seat]] = { label: contractLabel(full) };
+  addLog(`${SEAT_NAME[seat]} bids ${bidSpokenLabel(full)}.`);
+  showBubble(seat, bidSpokenLabel(full), true);
+  state.biddingTurn++;
+  render();
+  pausableTimeout(processBiddingTurn, 350);
+}
+function placePass(seat){
+  state.bidHistory.push(`${SEAT_NAME[seat]}: Pass`);
+  addLog(`${SEAT_NAME[seat]} passes.`);
+  showBubble(seat, 'Pass', true);
+  state.biddingTurn++;
+  render();
+  pausableTimeout(processBiddingTurn, 350);
+}
+
+function renderBidPanel(){
+  const panel = document.getElementById('bidPanel');
+  panel.style.display = 'flex';
+  const highValue = state.currentHighBid ? state.currentHighBid.value : 0;
+
+  let rows = '';
+  STRAIN_ORDER.forEach(strain=>{
+    let cells = '';
+    TRICK_COUNTS.forEach(t=>{
+      const value = BID_TABLE[strain][t];
+      const legal = value > highValue;
+      cells += `<td><button class="bid-cell-btn" ${legal?'':'disabled'} onclick="humanBidSuit('${strain}',${t})">${value}</button></td>`;
+    });
+    rows += `<tr><td class="suit-cell">${strain==='NT'?'No-Trump':strain+' '+STRAIN_LABEL[strain]}</td>${cells}</tr>`;
+  });
+
+  const nulloLegal = NULLO_VALUE > highValue;
+  const statusHtml = state.currentHighBid
+    ? `<div class="bidStatus">Current high bid: ${bidSpokenLabel(state.currentHighBid)} — ${SEAT_NAME[state.currentHighBid.bidder]}</div>`
+    : `<div class="bidStatus">You're first to bid — minimum bid is 6 tricks.</div>`;
+
+  panel.innerHTML = `
+    <h3>What is your bid?</h3>
+    ${statusHtml}
+    <div class="bid-table-wrap">
+      <table>
+        <tr><th></th>${TRICK_COUNTS.map(t=>`<th>${t} tricks</th>`).join('')}</tr>
+        ${rows}
+      </table>
+    </div>
+    <div class="nullo-row">
+      <button ${nulloLegal?'':'disabled'} onclick="humanBidNullo()">Nullo (${NULLO_VALUE})</button>
+      <button class="pass" onclick="humanPass()">Pass</button>
+    </div>
+  `;
+}
+
+function humanBidSuit(strain, tricks){
+  const suit = strain === 'NT' ? null : strain;
+  const value = BID_TABLE[strain][tricks];
+  document.getElementById('bidPanel').style.display = 'none';
+  placeBid('S', { type: strain==='NT' ? 'nt' : 'suit', suit, tricks, value });
+}
+function humanBidNullo(){
+  document.getElementById('bidPanel').style.display = 'none';
+  placeBid('S', { type:'nullo', suit:null, tricks:null, value: NULLO_VALUE });
+}
+function humanPass(){
+  document.getElementById('bidPanel').style.display = 'none';
+  placePass('S');
+}
+
+// ---- AI bidding heuristic --------------------------------------------
+// Estimates, per strain, roughly how many tricks this single hand could
+// take on its own (Joker/bowers/aces weighted heavily, plus a length
+// bonus for a long trump suit), adds a modest flat allowance for the
+// unseen partner, then bids the highest LEGAL raise it can support. A
+// separate, simpler check offers Nullo when the hand is nearly free of
+// high cards. This is a reasonable, good-faith opponent, not a
+// tournament-strength bidder.
+const PARTNER_BASELINE_TRICKS = 1.1;
+
+function handPower(hand, trump){
+  let power = 0;
+  hand.forEach(c=>{
+    if(c.rank === 'JK'){ power += 1.05; return; }
+    const isTrumpSuit = trump && c.suit === trump;
+    const isSisterSuit = trump && SISTER[trump] === c.suit;
+    if(c.rank === 'J' && isTrumpSuit){ power += 0.95; return; }
+    if(c.rank === 'J' && isSisterSuit){ power += 0.85; return; }
+    if(c.rank === 'A') power += isTrumpSuit ? 0.9 : 0.5;
+    else if(c.rank === 'K') power += isTrumpSuit ? 0.75 : 0.12;
+    else if(c.rank === 'Q') power += isTrumpSuit ? 0.55 : 0.04;
+    else if(c.rank === '10') power += isTrumpSuit ? 0.4 : 0.02;
+  });
+  if(trump){
+    const len = hand.filter(c=> c.suit===trump || (c.rank==='J' && SISTER[trump]===c.suit)).length;
+    if(len > 4) power += (len-4)*0.45;
+  }
+  return power;
+}
+
+function aiDecideBid(seat){
+  const hand = state.hands[seat];
+  const highValue = state.currentHighBid ? state.currentHighBid.value : 0;
+  const jitter = () => (Math.random()*0.5 - 0.25);
+  let candidates = [];
+  STRAIN_ORDER.forEach(strain=>{
+    const trump = strain === 'NT' ? null : strain;
+    const power = handPower(hand, trump) + PARTNER_BASELINE_TRICKS + jitter();
+    const estTricks = Math.max(0, Math.min(10, Math.round(power)));
+    if(estTricks < 6) return;
+    for(let t=Math.min(10,estTricks); t>=6; t--){
+      const value = BID_TABLE[strain][t];
+      if(value > highValue){
+        candidates.push({ type: strain==='NT' ? 'nt' : 'suit', suit: strain==='NT'?null:strain, tricks:t, value });
+        break;
+      }
+    }
+  });
+  const highRiskCount = hand.filter(c=> ['A','K','Q','JK'].includes(c.rank)).length;
+  if(highRiskCount <= 1 && NULLO_VALUE > highValue){
+    candidates.push({ type:'nullo', suit:null, tricks:null, value: NULLO_VALUE });
+  }
+  if(!candidates.length) return null;
+  candidates.sort((a,b)=> b.value - a.value);
+  return candidates[0];
+}
+
+function aiBid(seat){
+  const bid = aiDecideBid(seat);
+  if(bid) placeBid(seat, bid); else placePass(seat);
+}
+
+function finishBiddingRound(){
+  document.getElementById('bidPanel').style.display = 'none';
+  hideAllBubbles();
+  clearActiveSeat();
+  if(!state.currentHighBid){
+    addLog('All four players passed. Redealing with the next dealer.');
+    nextHand();
+    return;
+  }
+  state.contract = state.currentHighBid;
+  state.trump = state.contract.type === 'suit' ? state.contract.suit : null;
+  state.teamBidInfo[TEAM[state.contract.bidder]] = { label: contractLabel(state.contract) };
+  addLog(`Bidding won by ${SEAT_NAME[state.contract.bidder]} — ${bidSpokenLabel(state.contract)}.`);
+  updateTrumpBadge();
+  state.phase = 'kitty';
+  render();
+  startKittyPhase();
+}
+
+function updateTrumpBadge(){
+  const el = document.getElementById('trumpBadge');
+  if(!state.contract){ el.innerHTML = '<span style="font-weight:400;">Trump:</span>'; return; }
+  if(state.contract.type === 'nullo'){
+    el.innerHTML = `<span style="font-weight:400;">Contract:</span> Nullo (No-Trump)`;
+    return;
+  }
+  if(state.contract.type === 'nt'){
+    el.innerHTML = `<span style="font-weight:400;">Trump:</span> No-Trump`;
+    return;
+  }
+  const suit = state.contract.suit;
+  const isRed = RED_SUITS.includes(suit);
+  const color = isRed ? 'var(--red)' : 'var(--ink)';
+  el.innerHTML = `<span style="font-weight:400;">Trump:</span> <span style="color:${color}">${suit} ${suitName(suit)}</span>`;
+}
+
+// ---------------------------------------------------------------------
+// KITTY / DISCARD — the contractor takes the 3-card kitty into hand
+// (13 cards) and discards any 3 back down to 10 before the first lead.
+// ---------------------------------------------------------------------
+function cardShort(card){ return card.rank === 'JK' ? 'Joker' : card.rank + card.suit; }
+function cardShortColored(card){
+  if(card.rank === 'JK') return '<span style="color:#a5730f;font-weight:700;">🃏 Joker</span>';
+  const isRed = RED_SUITS.includes(card.suit);
+  return `<span style="color:${isRed?'#c81e2c':'#000'};font-weight:700;">${card.rank}${card.suit}</span>`;
+}
+
+function startKittyPhase(){
+  const bidder = state.contract.bidder;
+  const kittyCards = state.kitty;
+  state.hands[bidder] = sortHand(state.hands[bidder].concat(kittyCards));
+  state.kitty = [];
+  addLog(`${SEAT_NAME[bidder]} takes the kitty (${kittyCards.map(cardShort).join(', ')}).`);
+  render();
+
+  if(bidder === 'S'){
+    const body = `<p>You won the bid: <b>${bidSpokenLabel(state.contract)}</b>!</p>
+      <p>Kitty: ${kittyCards.map(cardShortColored).join(', ')}</p>
+      <p>Select 3 cards from your hand to discard, bringing you back down to 10.</p>`;
+    showModal('You Won the Bid!', body, `<button onclick="closeModal(); startDiscardSelection();">Continue</button>`, false);
+  } else {
+    const discard = aiChooseDiscard(bidder, state.contract);
+    applyDiscard(bidder, discard);
+    afterDiscard();
+  }
+}
+
+// ---- discard weighting -------------------------------------------------
+function cardKeepValue(card, trump){
+  if(card.rank === 'JK') return 100;
+  const isTrumpSuit = trump && card.suit === trump;
+  const isSisterSuit = trump && SISTER[trump] === card.suit;
+  if(card.rank === 'J' && isTrumpSuit) return 95;
+  if(card.rank === 'J' && isSisterSuit) return 90;
+  const base = RANK_STRENGTH[card.rank];
+  return isTrumpSuit ? base + 20 : base;
+}
+function nulloRisk(card){
+  if(card.rank === 'JK') return 1000;
+  return RANK_STRENGTH[card.rank];
+}
+function aiChooseDiscard(seat, contract){
+  const hand = state.hands[seat];
+  if(contract.type === 'nullo'){
+    // Shed the highest-risk (most likely to win a trick) cards first —
+    // opposite of the normal doctrine, since a Nullo contractor wants
+    // to be holding only safe, low cards.
+    return [...hand].sort((a,b)=> nulloRisk(b)-nulloRisk(a)).slice(0,3);
+  }
+  const trump = contract.type === 'suit' ? contract.suit : null;
+  return [...hand].sort((a,b)=> cardKeepValue(a,trump)-cardKeepValue(b,trump)).slice(0,3);
+}
+
+function applyDiscard(seat, cards){
+  const ids = cards.map(c=>c.id);
+  state.hands[seat] = state.hands[seat].filter(c=>!ids.includes(c.id));
+  addLog(`${SEAT_NAME[seat]} discards ${cards.map(cardShort).join(', ')}.`);
+}
+function beginNulloSitOutIfNeeded(){
+  state.sittingOut = state.contract.type === 'nullo' ? PARTNER[state.contract.bidder] : null;
+  if(state.sittingOut){
+    addLog(`${SEAT_NAME[state.sittingOut]} sits out this hand — Nullo is played 3-handed.`);
+    showBubble(state.sittingOut, 'Sitting Out', true);
+  }
+}
+function afterDiscard(){
+  beginNulloSitOutIfNeeded();
+  render();
+  startPlay();
+}
+
+function startDiscardSelection(){
+  state.phase = 'kitty';
+  state.discardSelection = [];
+  render();
+  renderDiscardPanel();
+}
+function toggleDiscardSelection(cardId){
+  const idx = state.discardSelection.indexOf(cardId);
+  if(idx >= 0){
+    state.discardSelection.splice(idx,1);
+  } else {
+    if(state.discardSelection.length >= 3) return;
+    state.discardSelection.push(cardId);
+  }
+  render();
+  renderDiscardPanel();
+}
+function renderDiscardPanel(){
+  const panel = document.getElementById('discardPanel');
+  panel.style.display = 'flex';
+  const n = state.discardSelection.length;
+  panel.innerHTML = `
+    <div class="bidStatus">Select 3 cards to discard (${n}/3 selected)</div>
+    <button ${n !== 3 ? 'disabled' : ''} onclick="confirmHumanDiscard()">Discard Selected</button>
+  `;
+}
+function confirmHumanDiscard(){
+  const cards = state.hands.S.filter(c => state.discardSelection.includes(c.id));
+  state.discardSelection = [];
+  document.getElementById('discardPanel').style.display = 'none';
+  applyDiscard('S', cards);
+  afterDiscard();
+}
+
+// ---------------------------------------------------------------------
+// TRICK PLAY
+// ---------------------------------------------------------------------
+function activeSeats(){ return SEATS.filter(s => s !== state.sittingOut); }
+function rotateFrom(seat){
+  const order = activeSeats();
+  const i = order.indexOf(seat);
+  if(i < 0) return order.slice();
+  return order.map((_,k)=> order[(i+k)%order.length]);
+}
+
+function startPlay(){
+  state.phase = 'play';
+  state.trick = {};
+  state.trickResolving = false;
+  state.trickNamedSuit = null;
+  state.trickLeader = state.contract.bidder;
+  addLog(`${SEAT_NAME[state.trickLeader]} leads the first trick.`);
+  render();
+  advanceTrick();
+}
+
+function legalPlays(seat, leadSuit){
+  const hand = state.hands[seat];
+  if(!leadSuit) return hand.slice(); // leading — anything goes, including the Joker
+  const followers = hand.filter(c => effectiveSuit(c, state.trump) === leadSuit);
+  if(followers.length) return followers;
+  return hand.slice(); // void in the led suit — anything goes, including trump
+}
+
+function advanceTrick(){
+  const active = activeSeats();
+  const playedSeats = Object.keys(state.trick);
+  if(playedSeats.length === active.length){
+    // Each card play schedules its own advanceTrick() call 500ms later. If
+    // plays happen faster than that (e.g. clicking a card the instant it
+    // becomes legal, ahead of the game's own pacing), more than one of
+    // those calls can land after the trick is already complete but before
+    // it's cleared below — this guard makes sure only the first one
+    // actually resolves it, instead of the trick getting counted twice.
+    if(state.trickResolving) return;
+    state.trickResolving = true;
+    resolveTrick();
+    return;
+  }
+  const order = rotateFrom(state.trickLeader);
+  const seat = order.find(s => !state.trick[s]);
+  highlightActiveSeat(seat);
+
+  if(seat === 'S'){
+    render();
+  } else {
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 650);
+  }
+}
+
+function leadSuitOfTrick(){
+  if(!state.trickLeader || !state.trick[state.trickLeader]) return null;
+  const leadCard = state.trick[state.trickLeader];
+  if(state.trump === null && leadCard.rank === 'JK'){
+    return state.trickNamedSuit; // no-trump Joker lead — the named suit governs the whole trick
+  }
+  return effectiveSuit(leadCard, state.trump);
+}
+
+function cardBeats(c, current, leadSuit, trump){
+  const cEff = effectiveSuit(c, trump), curEff = effectiveSuit(current, trump);
+  const cTrump = !!trump && cEff === trump;
+  const curTrump = !!trump && curEff === trump;
+  if(cTrump && !curTrump) return true;
+  if(!cTrump && curTrump) return false;
+  if(cTrump && curTrump) return effectiveRank(c,trump) > effectiveRank(current,trump);
+  if(cEff === leadSuit && curEff === leadSuit) return RANK_STRENGTH[c.rank] > RANK_STRENGTH[current.rank];
+  if(cEff === leadSuit) return true;
+  return false;
+}
+
+function currentTrickWinner(){
+  const seats = Object.keys(state.trick);
+  if(!seats.length) return null;
+  // The Joker is unconditionally the highest card whenever it's played,
+  // in every contract type — this single check covers both "highest
+  // trump" (suit contracts) and "always wins" (no-trump contracts).
+  const jokerSeat = seats.find(s => state.trick[s].rank === 'JK');
+  if(jokerSeat) return jokerSeat;
+  const leadSuit = leadSuitOfTrick();
+  let winner = seats[0];
+  seats.forEach(s=>{
+    if(cardBeats(state.trick[s], state.trick[winner], leadSuit, state.trump)) winner = s;
+  });
+  return winner;
+}
+function beatsCurrentTrick(card, leadSuit){
+  const seats = Object.keys(state.trick);
+  if(!seats.length) return true;
+  const winnerSeat = currentTrickWinner();
+  if(state.trick[winnerSeat].rank === 'JK') return false; // Joker's already down — nothing beats it
+  return cardBeats(card, state.trick[winnerSeat], leadSuit, state.trump);
+}
+
+// ---- rank-sort helpers for AI play -------------------------------------
+function rankVal(c){ return c.rank === 'JK' ? 1000 : RANK_STRENGTH[c.rank]; }
+function effRankVal(c, trump){ return c.rank === 'JK' ? 1000 : effectiveRank(c, trump); }
+function sortByRankAsc(cards){ return [...cards].sort((a,b)=> rankVal(a)-rankVal(b)); }
+function sortByRankDesc(cards){ return [...cards].sort((a,b)=> rankVal(b)-rankVal(a)); }
+function sortByEffRankAsc(cards, trump){ return [...cards].sort((a,b)=> effRankVal(a,trump)-effRankVal(b,trump)); }
+function sortByEffRankDesc(cards, trump){ return [...cards].sort((a,b)=> effRankVal(b,trump)-effRankVal(a,trump)); }
+
+function aiChooseJokerSuit(seat){
+  const hand = state.hands[seat];
+  const counts = {};
+  SUITS.forEach(s=> counts[s] = hand.filter(c=>c.suit===s).length);
+  return SUITS.reduce((best,s)=> counts[s] > counts[best] ? s : best, SUITS[0]);
+}
+
+function chooseAiCard(seat, options, leadSuit){
+  const trump = state.trump;
+  const isNulloContractor = state.contract && state.contract.type === 'nullo' && seat === state.contract.bidder;
+
+  if(!leadSuit){
+    // Leading
+    if(isNulloContractor) return sortByRankAsc(options)[0]; // lead low — minimize the chance of winning
+    if(trump){
+      const trumps = options.filter(c=> effectiveSuit(c,trump) === trump);
+      if(trumps.length >= 3) return sortByEffRankDesc(trumps, trump)[0];
+    }
+    const aces = options.filter(c=> c.rank === 'A');
+    if(aces.length) return aces[0];
+    return sortByRankDesc(options)[0];
+  }
+
+  // Following
+  const winningCandidates = options.filter(c=> beatsCurrentTrick(c, leadSuit));
+  if(isNulloContractor){
+    const losers = options.filter(c=> !winningCandidates.includes(c));
+    if(losers.length) return sortByRankDesc(losers)[0]; // play the highest card that still safely loses
+    return sortByEffRankAsc(winningCandidates, trump)[0]; // forced to win — take it as cheaply as possible
+  }
+  const currentWinner = currentTrickWinner();
+  const partnerWinning = PARTNER[seat] === currentWinner;
+  if(partnerWinning){
+    return sortByRankAsc(options)[0]; // no card-point value to feed — just play low
+  }
+  if(winningCandidates.length){
+    return sortByEffRankAsc(winningCandidates, trump)[0]; // win as cheaply as possible
+  }
+  return sortByRankAsc(options)[0];
+}
+
+function aiPlay(seat){
+  const leadSuit = leadSuitOfTrick();
+  const options = legalPlays(seat, leadSuit);
+  const card = chooseAiCard(seat, options, leadSuit);
+  if(!leadSuit && card.rank === 'JK' && state.trump === null){
+    state.trickNamedSuit = aiChooseJokerSuit(seat);
+    addLog(`${SEAT_NAME[seat]} leads the Joker and names ${suitName(state.trickNamedSuit)}.`);
+  }
+  playCard(seat, card);
+}
+
+function isSouthsTurn(){
+  const order = rotateFrom(state.trickLeader);
+  const nextToPlay = order.find(s => !state.trick[s]);
+  return nextToPlay === 'S';
+}
+
+function onSouthCardClick(cardId){
+  if(state.phase === 'play') humanPlay(cardId);
+  else if(state.phase === 'kitty') toggleDiscardSelection(cardId);
+}
+
+function humanPlay(cardId){
+  if(state.phase !== 'play' || !isSouthsTurn()) return;
+  const leadSuit = leadSuitOfTrick();
+  const legal = legalPlays('S', leadSuit);
+  const card = state.hands.S.find(c=>c.id===cardId);
+  if(!card || !legal.some(c=>c.id===cardId)) return;
+  if(!leadSuit && card.rank === 'JK' && state.trump === null){
+    promptJokerSuit(card);
+    return;
+  }
+  playCard('S', card);
+}
+function promptJokerSuit(card){
+  const panel = document.getElementById('jokerSuitPanel');
+  panel.style.display = 'flex';
+  const btns = SUITS.map(s=>`<button onclick="confirmJokerSuit('${s}','${card.id}')">${s} ${suitName(s)}</button>`).join('');
+  panel.innerHTML = `<h3>You're leading the Joker — name a suit:</h3>${btns}`;
+}
+function confirmJokerSuit(suit, cardId){
+  document.getElementById('jokerSuitPanel').style.display = 'none';
+  state.trickNamedSuit = suit;
+  const card = state.hands.S.find(c=>c.id===cardId);
+  playCard('S', card);
+}
+
+function playCard(seat, card){
+  if(!card || state.trick[seat]) return;
+  state.hands[seat] = state.hands[seat].filter(c=>c.id !== card.id);
+  state.trick[seat] = card;
+  addLog(`${SEAT_NAME[seat]} plays ${cardShort(card)}.`);
+  render();
+  pausableTimeout(advanceTrick, 500);
+}
+
+function resolveTrick(){
+  const winner = currentTrickWinner();
+  state.tricksTaken[winner]++;
+  addLog(`${SEAT_NAME[winner]} wins the trick.`);
+  render();
+
+  pausableTimeout(()=>{
+    state.trick = {};
+    state.trickResolving = false;
+    state.trickLeader = winner;
+    state.trickNamedSuit = null;
+    clearTrickArea();
+    const totalPlayed = Object.values(state.tricksTaken).reduce((a,b)=>a+b,0);
+    if(totalPlayed >= 10){
+      finishHand();
+    } else {
+      advanceTrick();
+    }
+  }, 900);
+}
+
+// ---------------------------------------------------------------------
+// SCORING / HAND END
+// ---------------------------------------------------------------------
+function checkGameEnd(){
+  const NS = state.scores.NS, EW = state.scores.EW;
+  const winThreshold = NS >= GAME_TARGET || EW >= GAME_TARGET;
+  const loseThreshold = NS <= LOSE_TARGET || EW <= LOSE_TARGET;
+  if(!winThreshold && !loseThreshold) return null;
+  const contractorTeam = state.contract ? TEAM[state.contract.bidder] : 'NS';
+  if(winThreshold){
+    if(NS >= GAME_TARGET && EW >= GAME_TARGET) return contractorTeam; // both crossed the same hand — contractor's team wins the tiebreak
+    return NS >= GAME_TARGET ? 'NS' : 'EW';
+  }
+  if(NS <= LOSE_TARGET && EW <= LOSE_TARGET) return contractorTeam;
+  return NS <= LOSE_TARGET ? 'EW' : 'NS'; // the OTHER team wins when a team busts to -500
+}
+
+function finishHand(){
+  state.phase = 'scoring';
+  const contract = state.contract;
+  const bidTeam = TEAM[contract.bidder];
+  const otherTeam = bidTeam === 'NS' ? 'EW' : 'NS';
+  const previousScores = { NS: state.scores.NS, EW: state.scores.EW };
+  const teamTricks = { NS: state.tricksTaken.N + state.tricksTaken.S, EW: state.tricksTaken.E + state.tricksTaken.W };
+  const netChange = { NS:0, EW:0 };
+  let noteHtml = '';
+
+  if(contract.type === 'nullo'){
+    const contractorTricks = state.tricksTaken[contract.bidder];
+    if(contractorTricks === 0){
+      netChange[bidTeam] = NULLO_VALUE;
+      noteHtml = `<p>${SEAT_NAME[contract.bidder]} took 0 tricks — Nullo made!</p>`;
+    } else {
+      netChange[bidTeam] = -NULLO_VALUE;
+      netChange[otherTeam] = 10 * contractorTricks;
+      noteHtml = `<p>${SEAT_NAME[contract.bidder]} took ${contractorTricks} trick${contractorTricks===1?'':'s'} — Nullo failed.</p>`;
+    }
+  } else {
+    const made = teamTricks[bidTeam] >= contract.tricks;
+    if(made){
+      const value = teamTricks[bidTeam] === 10 ? Math.max(contract.value, 250) : contract.value;
+      netChange[bidTeam] = value;
+      noteHtml = `<p>${getTeamLabel(bidTeam)} made their contract (${teamTricks[bidTeam]} tricks, needed ${contract.tricks}).</p>`;
+    } else {
+      netChange[bidTeam] = -contract.value;
+      noteHtml = `<p>${getTeamLabel(bidTeam)} was set (${teamTricks[bidTeam]} tricks, needed ${contract.tricks}).</p>`;
+    }
+    netChange[otherTeam] = 10 * teamTricks[otherTeam];
+  }
+
+  state.scores.NS += netChange.NS;
+  state.scores.EW += netChange.EW;
+  addLog(`Hand result — ${getTeamLabel('NS')}: ${state.scores.NS}, ${getTeamLabel('EW')}: ${state.scores.EW}.`);
+  render();
+
+  const winnerTeam = checkGameEnd();
+  const heading = winnerTeam ? `*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***` : 'Hand Complete';
+  const btnLabel = winnerTeam ? 'Start a new game' : 'Deal The Next Hand';
+  const row = (label, ns, ew) => `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
+
+  showModal(heading, `
+    ${noteHtml}
+    <table>
+      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+      ${row('Contract', bidTeam==='NS'?contractLabel(contract):'—', bidTeam==='EW'?contractLabel(contract):'—')}
+      ${row('Tricks Taken', teamTricks.NS, teamTricks.EW)}
+      ${row('Hand Score', netChange.NS, netChange.EW)}
+      ${row('Previous Score', previousScores.NS, previousScores.EW)}
+      ${row('Total Score', state.scores.NS, state.scores.EW)}
+    </table>
+  `, `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>`, false);
+
+  if(winnerTeam){
+    const titleEl = document.getElementById('modalTitle');
+    titleEl.style.color = 'red';
+    titleEl.classList.add('win-blink');
+    sessionWins[winnerTeam]++;
+    saveSessionWins();
+    updateSessionWinsDisplay();
+  }
+}
+
+function nextHand(){
+  if(checkGameEnd()){
+    showGameOverPanel();
+    return;
+  }
+  state.dealerIdx = (state.dealerIdx + 1) % 4;
+  dealNewHand();
+}
+
+function showGameOverPanel(){
+  const winnerTeam = checkGameEnd() || (state.scores.NS >= state.scores.EW ? 'NS' : 'EW');
+  showModal(`*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`, `
+    <table>
+      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+      <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
+    </table>
+  `, `<button onclick="closeModal(); newGame();">Start a new game</button>`, false);
+  const titleEl = document.getElementById('modalTitle');
+  titleEl.style.color = 'red';
+  titleEl.classList.add('win-blink');
+}
+
+function newGame(){
+  state.scores = { NS:0, EW:0 };
+  state.dealerIdx = Math.floor(Math.random()*4); // first dealer of a new game is random, per the rules
+  log = [];
+  document.getElementById('logPanel').innerHTML = '';
+  dealNewHand();
+}
+
+// ---------------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------------
+function cardHtml(card, mini, namedSuit){
+  if(card.rank === 'JK'){
+    const badge = namedSuit
+      ? `<div class="joker-suit-badge ${RED_SUITS.includes(namedSuit)?'red':''}">${namedSuit}</div>`
+      : '';
+    return `<div class="card joker ${mini?'mini':''}">
+      ${badge}
+      <div class="corner">JK</div>
+      <div class="center-suit">🃏</div>
+      <div class="corner corner-bottom" style="align-self:flex-end;">JK</div>
+    </div>`;
+  }
+  const isRed = RED_SUITS.includes(card.suit);
+  return `<div class="card ${isRed?'red':''} ${mini?'mini':''}">
+    <div class="corner">${card.rank}${card.suit}</div>
+    <div class="center-suit">${card.suit}</div>
+    <div class="corner corner-bottom" style="align-self:flex-end;">${card.rank}${card.suit}</div>
+  </div>`;
+}
+
+function cardTextGridHtml(hand, columns){
+  const cells = hand.map(c=>{
+    if(c.rank === 'JK') return `<span style="color:#a5730f;">JK🃏</span>`;
+    const isRed = RED_SUITS.includes(c.suit);
+    return `<span style="color:${isRed ? '#c81e2c' : '#000'};">${c.rank}${c.suit}</span>`;
+  }).join('');
+  return `<div style="display:grid; grid-column:1/-1; align-self:start; grid-template-columns:repeat(${columns},1fr); gap:clamp(2px,0.4vh,5px) clamp(4px,1vh,8px); font-size:clamp(10px,2.3vh,18px); font-weight:700; text-align:center; background:#fffdf8; border:1px solid #a99184; border-radius:6px; padding:clamp(2px,0.5vh,6px); width:100%; box-sizing:border-box;">${cells}</div>`;
+}
+
+function updateSessionWinsDisplay(){
+  document.getElementById('sessionWinsNSLabel').textContent = `${getTeamLabel('NS')} =`;
+  document.getElementById('sessionWinsEWLabel').textContent = `${getTeamLabel('EW')} =`;
+  document.getElementById('sessionWinsNS').textContent = sessionWins.NS;
+  document.getElementById('sessionWinsEW').textContent = sessionWins.EW;
+}
+
+function render(){
+  updateScoreTable();
+  updateSessionWinsDisplay();
+
+  const dealerSeat = SEATS[state.dealerIdx];
+  const contractPhases = ['kitty','play','scoring'];
+  SEATS.forEach(seat=>{
+    let tag = '';
+    if(state.sittingOut === seat) tag = 'Sitting Out';
+    else if(contractPhases.includes(state.phase) && state.contract && state.contract.bidder === seat) tag = 'Contractor';
+    else if(seat === dealerSeat) tag = 'Dealer';
+    const tagHtml = tag ? `<span class="tag">${tag}</span>` : '';
+    const showTricks = (state.phase==='play' || state.phase==='scoring') && state.sittingOut !== seat;
+    const tricksHtml = showTricks ? `<span class="tricks">Tricks: ${state.tricksTaken[seat]}</span>` : '';
+    const sep = (tagHtml && tricksHtml) ? `<span class="sep">•</span>` : '';
+    document.getElementById(`meta-${seat}`).innerHTML = tagHtml + sep + tricksHtml;
+  });
+
+  document.getElementById('trickArea').style.display = (state.phase === 'play') ? 'grid' : 'none';
+  // Face-down kitty stays visible on the felt from the moment it's dealt
+  // until the contractor actually takes it into their hand (at which point
+  // state.kitty is emptied out — see the bid-won reveal code).
+  document.getElementById('kittyPile').style.display = (state.kitty && state.kitty.length > 0) ? 'block' : 'none';
+
+  // These transient panels are only ever meant to be visible during their
+  // own specific phase — defaulting them to hidden here (their own
+  // render*Panel() re-shows the right one) means a leftover panel from an
+  // earlier phase can never linger on screen over a later one.
+  if (state.phase !== 'bidding') document.getElementById('bidPanel').style.display = 'none';
+  document.getElementById('discardPanel').style.display = 'none';
+  document.getElementById('jokerSuitPanel').style.display = 'none';
+
+  ['N','E','W'].forEach(seat=>{
+    const el = document.getElementById(`cards-${seat}`);
+    if(state.sittingOut === seat){
+      // Sitting out this Nullo hand — they never play a card, so don't leave
+      // a full hand of card-backs on screen looking like unplayed cards.
+      el.innerHTML = '';
+    } else if(state.viewAllCards){
+      el.innerHTML = cardTextGridHtml(state.hands[seat], seat === 'N' ? 4 : 2);
+    } else {
+      el.innerHTML = state.hands[seat].map(()=>'<div class="cardback"></div>').join('');
+    }
+  });
+
+  const southEl = document.getElementById('south-hand');
+  southEl.classList.toggle('crowded', state.hands.S.length > 10);
+  const leadSuit = state.phase==='play' ? leadSuitOfTrick() : null;
+  const legal = state.phase==='play' ? legalPlays('S', leadSuit).map(c=>c.id) : null;
+  const southHtml = state.hands.S.map(card=>{
+    let clickable = false, extraClass = '';
+    if(state.phase==='play'){
+      const isLegal = !legal || legal.includes(card.id);
+      clickable = isLegal && !state.trick['S'] && isSouthsTurn();
+    } else if(state.phase==='kitty'){
+      clickable = true;
+      if(state.discardSelection.includes(card.id)) extraClass = 'selected';
+    }
+    return `<div class="cardWrap ${extraClass}" ${clickable ? `onclick="onSouthCardClick('${card.id}')"` : ''}>
+      ${cardHtml(card, false)}
+    </div>`;
+  }).join('');
+  if(southHtml !== _lastSouthHandHtml){
+    southEl.classList.add('no-transition');
+    southEl.innerHTML = southHtml;
+    _lastSouthHandHtml = southHtml;
+    requestAnimationFrame(()=> requestAnimationFrame(()=>{
+      southEl.classList.remove('no-transition');
+    }));
+  }
+
+  ['N','E','S','W'].forEach(seat=>{
+    const slot = document.getElementById(`tc-${seat}`);
+    const trickCard = state.trick[seat];
+    // Named-suit badge only applies to the Joker's OWN card, and only when it was
+    // actually led (the seat that started this trick) — a Joker played later, when
+    // void, isn't the one that set the suit for everyone else to follow.
+    const namedSuit = (trickCard && trickCard.rank === 'JK' && seat === state.trickLeader)
+      ? state.trickNamedSuit
+      : null;
+    slot.innerHTML = trickCard ? cardHtml(trickCard, true, namedSuit) : '';
+  });
+
+  positionCornerBoxes();
+}
+
+function highlightActiveSeat(seat){
+  ['N','E','S','W'].forEach(s=>{
+    document.getElementById(`seat-${s}`).classList.toggle('active', s===seat);
+  });
+}
+function clearActiveSeat(){
+  ['N','E','S','W'].forEach(s=> document.getElementById(`seat-${s}`).classList.remove('active'));
+}
+function clearTrickArea(){
+  ['N','E','S','W'].forEach(seat=>{
+    document.getElementById(`tc-${seat}`).innerHTML = '';
+  });
+}
+
+function positionCornerBoxes(){
+  const scoreTable = document.getElementById('scoreTable');
+  const trumpBadge = document.getElementById('trumpBadge');
+  const winsBox = document.getElementById('sessionWinsBox');
+  const nameBox = document.getElementById('yourNameBox');
+  if(!scoreTable || !trumpBadge || !winsBox || !nameBox) return;
+  winsBox.style.transform = '';
+  nameBox.style.transform = '';
+  const scoreRect = scoreTable.getBoundingClientRect();
+  const trumpRect = trumpBadge.getBoundingClientRect();
+  const winsRect = winsBox.getBoundingClientRect();
+  const nameRect = nameBox.getBoundingClientRect();
+  winsBox.style.transform = `translateX(${scoreRect.left - winsRect.left}px)`;
+  nameBox.style.transform = `translateX(${trumpRect.right - nameRect.right}px)`;
+}
+window.addEventListener('resize', positionCornerBoxes);
+
+function positionSideBubble(seat){
+  if(seat !== 'W' && seat !== 'E') return;
+  const bubble = document.getElementById(`bubble-${seat}`);
+  const name = document.querySelector(`#seat-${seat} .name`);
+  const cards = document.getElementById(`cards-${seat}`);
+  if(!bubble || !name) return;
+  bubble.style.transform = '';
+  const nameRect = name.getBoundingClientRect();
+  const cardsRect = cards ? cards.getBoundingClientRect() : nameRect;
+  const bubbleRect = bubble.getBoundingClientRect();
+  const desiredGap = 6;
+  const outerEdge = seat === 'W'
+    ? Math.min(nameRect.left, cardsRect.left)
+    : Math.max(nameRect.right, cardsRect.right);
+  const dx = seat === 'W'
+    ? (outerEdge - desiredGap) - bubbleRect.right
+    : (outerEdge + desiredGap) - bubbleRect.left;
+  bubble.style.transform = `translateX(${dx}px)`;
+}
+window.addEventListener('resize', () => {
+  ['W','E'].forEach(seat=>{
+    const el = document.getElementById(`bubble-${seat}`);
+    if(el && el.classList.contains('visible')) positionSideBubble(seat);
+  });
+});
+
+function showBubble(seat, text, persist=false){
+  const el = document.getElementById(`bubble-${seat}`);
+  if(!el) return;
+  el.innerHTML = text;
+  el.classList.add('visible');
+  positionSideBubble(seat);
+  clearTimeout(el._hideTimer);
+  if(!persist){
+    el._hideTimer = setTimeout(()=> el.classList.remove('visible'), 2800);
+  }
+}
+function hideAllBubbles(){
+  ['N','E','S','W'].forEach(seat=>{
+    const el = document.getElementById(`bubble-${seat}`);
+    if(!el) return;
+    clearTimeout(el._hideTimer);
+    el.classList.remove('visible');
+  });
+}
+
+function updateScoreTable(){
+  document.getElementById('team-ns-label').textContent = getTeamLabel('NS');
+  document.getElementById('team-ew-label').textContent = getTeamLabel('EW');
+  document.getElementById('ns-bid').textContent = state.teamBidInfo.NS.label || '—';
+  document.getElementById('ew-bid').textContent = state.teamBidInfo.EW.label || '—';
+  document.getElementById('ns-score').textContent = state.scores.NS;
+  document.getElementById('ew-score').textContent = state.scores.EW;
+
+  const scoreWidth = document.getElementById('scoreTable').offsetWidth;
+  document.getElementById('trumpBadge').style.minWidth = scoreWidth + 'px';
+}
+
+function addLog(msg){
+  log.push(msg);
+  const panel = document.getElementById('logPanel');
+  const div = document.createElement('div');
+  div.textContent = msg;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ---------------------------------------------------------------------
+// MODAL SYSTEM
+// ---------------------------------------------------------------------
+function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+  const titleEl = document.getElementById('modalTitle');
+  titleEl.textContent = title;
+  titleEl.style.textAlign = '';
+  titleEl.style.color = '';
+  titleEl.classList.remove('win-blink');
+  document.getElementById('modalBody').innerHTML = bodyHtml;
+  document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+  document.getElementById('modalBtns').style.justifyContent = '';
+  const modal = document.getElementById('universalModal');
+  modal.style.display = 'flex';
+  modal.dataset.dismissable = dismissable ? '1' : '0';
+  const box = modal.querySelector('.modalBox');
+  if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+}
+function closeModal(){
+  document.getElementById('universalModal').style.display = 'none';
+}
+document.getElementById('universalModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+});
+
+// ---------------------------------------------------------------------
+// EVENT WIRING / INIT
+// ---------------------------------------------------------------------
+document.getElementById('rulesBtn').addEventListener('click', ()=>{
+  window.open('../500Instructions.html', '_blank');
+});
+document.getElementById('exitBtn').addEventListener('click', ()=>{
+  showModal('Exit 500', 'Are you sure you want to exit?', `
+    <button onclick="location.href='../index.html';">Yes</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, false, 'exit-style');
+});
+document.getElementById('optionsBtn').addEventListener('click', ()=>{
+  showModal('Options', `
+    <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
+    <div style="display:grid; grid-template-columns: auto 130px; row-gap:18px; column-gap:16px; align-items:center;">
+      <label for="viewAllCardsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">View All Cards:</label>
+      <input type="checkbox" id="viewAllCardsCheckbox" ${state.viewAllCards ? 'checked' : ''}
+        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+
+      <label for="spacebarPauseCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">Use Spacebar to Pause:</label>
+      <input type="checkbox" id="spacebarPauseCheckbox" ${state.spacebarPauseEnabled ? 'checked' : ''}
+        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+    </div>
+  `, `
+    <button onclick="saveOptions()">Save</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, true);
+});
+
+document.getElementById('yourNameInput').addEventListener('change', ()=>{
+  const input = document.getElementById('yourNameInput');
+  const newName = input.value.trim();
+  SEAT_NAME.S = newName || 'You';
+  document.getElementById('south-name').textContent = SEAT_NAME.S;
+  input.value = newName;
+  try {
+    if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+    else localStorage.removeItem(PLAYER_NAME_KEY);
+  } catch(e) {}
+  render();
+});
+
+function saveOptions(){
+  state.viewAllCards = document.getElementById('viewAllCardsCheckbox').checked;
+  state.spacebarPauseEnabled = document.getElementById('spacebarPauseCheckbox').checked;
+  try {
+    localStorage.setItem(GAME_OPTIONS_KEY, JSON.stringify({
+      viewAllCards: state.viewAllCards,
+      spacebarPauseEnabled: state.spacebarPauseEnabled
+    }));
+  } catch(e) { /* ignore */ }
+  if(!state.spacebarPauseEnabled && state.paused) togglePause();
+  render();
+  closeModal();
+}
+
+function togglePause(){
+  state.paused = !state.paused;
+  document.getElementById('pauseOverlay').style.display = state.paused ? 'flex' : 'none';
+}
+
+document.addEventListener('keydown', (e)=>{
+  if(e.code !== 'Space') return;
+  if(!state.spacebarPauseEnabled) return;
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+  e.preventDefault();
+  togglePause();
+});
+
+document.getElementById('newHandBtn').addEventListener('click', ()=>{
+  showModal('Start New Game?', 'This resets both scores to 0.', `
+    <button onclick="closeModal(); newGame();">Start New Game</button>
+    <button onclick="closeModal()">Cancel</button>
+  `, false);
+});
+document.getElementById('logToggle').addEventListener('dblclick', ()=>{
+  const p = document.getElementById('logPanel');
+  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+});
+
+state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
+dealNewHand();
+</script>
+</body>
+</html>
