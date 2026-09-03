@@ -1,5 +1,5 @@
 
-<!-- Revision 2 | Wednesday, September 02, 2026 -->
+<!-- Revision 7 | Thursday, September 03, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -187,8 +187,16 @@
   }
 
   /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  /* Margin reduced from 1in - gives every printed page more usable vertical
+     space, which is what actually keeps short lines/headings from being
+     orphaned across a page break. (A previous attempt used a negative
+     margin-top on the "Bidding" heading itself to claw back space instead -
+     that backfired: right at a forced page break, a negative top margin can
+     pull the heading backward across the break entirely, landing it alone
+     at the bottom of the PREVIOUS page instead of the top of the new one.
+     Padding the whole page out is the reliable way to do this.) */
   @page {
-    margin: 1in;
+    margin: 0.6in;
   }
 
   @media print {
@@ -266,7 +274,7 @@
       <p>The first dealer is chosen randomly. The dealer gives ten cards to each player and places three cards face down in the middle of the table to form the kitty.</p>
       <p>After the round is completed, the turn to deal passes to the player on the dealer's left.</p>
 
-      <h2>Bidding</h2>
+      <h2 class="print-page-break">Bidding</h2>
       <p>Bidding begins with the player to the dealer's left and proceeds clockwise. The minimum bid is six tricks. Each player has one opportunity to act, either by passing or by naming a contract with a higher scoring value than every previous bid. A contract names both the number of tricks and the denomination, such as "seven hearts" or "eight no-trump." The player who wins the contract is called the contractor. Use the bid table below to compare contracts.</p>
 
       <table class="meld-table">
