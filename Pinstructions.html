@@ -1,0 +1,332 @@
+
+<!-- Revision 3 | Thursday, September 3, 2026 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pinochle Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .meld-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meld-table th, .meld-table td {
+    border: 1px solid var(--table-border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .meld-table th {
+    background: var(--table-header-bg);
+    color: var(--heading-text);
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 1in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/Pinochle.html">Back to Pinochle</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Pinochle Instructions</h2>
+    <div class="instructions-card">
+
+      <p>Pinochle is a trick-taking and melding game popular in the United States. The game developed from a variation of Bezique and was brought to America by German immigrants. The name "Pinochle" is thought to come from the French word "Binochle," meaning "eyeglasses" or "two eyes," a reference to the meld called Pinochle, which consists of a queen and a jack. According to one explanation, the name refers to older card designs in which the queen of spades and jack of diamonds were shown in profile, together showing two eyes.</p>
+
+      <p>There are multiple variations of Pinochle in existence, each with differing rules and traditions. These are the instructions and rules selected for this game.</p>
+
+      <hr style="border: none; border-top: 1px solid var(--card-border); margin: 24px 0;">
+
+      <p>Pinochle is played in partnerships, with partners sitting opposite of each other at the table. The game is played with 4 players and a deck of 48 cards. The deck contains two copies of the: A (highest), 10, K, Q, J, and 9 in ranking order.</p>
+      <p class="note">Note: The 10s outranks the K, Q, J, and 9.</p>
+
+      <p>A single round in Pinochle consists of 6 phases.</p>
+
+      <p>A round follows the same basic sequence each time: first players receive their cards, then they bid for the right to name trump. The winning bidder and their partner exchange cards, all players reveal and score melds, players take tricks, and the round ends with scoring.</p>
+
+      <ol>
+        <li>Dealing</li>
+        <li>Bidding</li>
+        <li>Exchanging</li>
+        <li>Melding</li>
+        <li>Trick-taking</li>
+        <li>Scoring</li>
+      </ol>
+
+      <h2 class="print-page-break">Dealing</h2>
+      <p class="note">Note: Before dealing, a scorekeeper must be selected.</p>
+      <p>The dealer gives each player 12 cards, dealing three at a time in a clockwise direction, starting with the player to the dealer's left.</p>
+      <p>At the end of each round, the dealership passes clockwise around the table.</p>
+
+      <h2>Bidding</h2>
+      <p>The player to the left of the dealer makes the first bid, and bidding continues clockwise. Bidding begins at 250 points. On each turn, a player may either raise the current bid by 10 or 20 points, or pass. Once a player passes, they may not bid again during that bidding round. Bidding ends when, at least one player has bid and the other three players have passed. The remaining player wins the bid, becomes the declarer, and names trump for the round.</p>
+      <p>If everybody passes on the first round of bidding, the next dealer deals the cards.</p>
+
+      <h2>Exchanging</h2>
+      <p>Next, the declarer's partner chooses four cards from their hand and passes them to the declarer. The declarer then passes four cards back to their partner. The team that lost the bidding does not exchange cards that round.</p>
+
+      <h2>Melding</h2>
+      <p><strong>Melds and scoring:</strong> During the melding phase, players score points by showing approved card combinations, called melds, from the cards in their own hands. Some cards may count toward more than one meld, but only when the combinations use the card in different ways. For example, a Q of hearts may count toward both a Marriage and Q Around, but it may not also count as part of a Run of Hearts if that same Q is already being used in the run. After all melds are shown face up, each player totals their meld points. Partners then combine their totals, and the team adds those points to its round score. Use the table below to score each player's melds.</p>
+
+      <p><strong>Meld table for each player's hand</strong></p>
+      <table class="meld-table">
+        <tr><th>Combo</th><th>Points</th></tr>
+        <tr><td>Run (A-10-K-Q-J of trump)</td><td>150 (1500 doubled)</td></tr>
+        <tr><td>Royal marriage (K+Q trump)</td><td>40 (80 doubled)</td></tr>
+        <tr><td>Marriage (K+Q off-suit)</td><td>20 (40 doubled)</td></tr>
+        <tr><td>Pinochle (J♦+Q♠)</td><td>40 (300 doubled)</td></tr>
+        <tr><td>Aces around (all 4 suits)</td><td>100 (1000 doubled)</td></tr>
+        <tr><td>Kings around</td><td>80 (800 doubled)</td></tr>
+        <tr><td>Queens around</td><td>60 (600 doubled)</td></tr>
+        <tr><td>Jacks around</td><td>40 (400 doubled)</td></tr>
+        <tr><td>Dix (9 of trump)</td><td>10 (20 doubled)</td></tr>
+      </table>
+
+      <h2>Trick taking</h2>
+      <p>Once melding concludes, trick taking starts. The declarer who won the bidding leads the first trick, and then the winner of each trick leads the next play. The player leading the trick can play any card they wish, but other players must follow the restrictions below:</p>
+      <p>Players must follow these restrictions in order:</p>
+      <ul>
+        <li>First, play a card in the same suit as the lead card if possible;</li>
+        <li>Second, if following suit, play a card higher than the highest card already played if possible;</li>
+        <li>Third, if unable to follow suit, play a trump card if possible;</li>
+        <li>Fourth, if unable to follow suit or play trump, play any card.</li>
+      </ul>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the Q of hearts. Lisa has neither hearts nor spades, so she may play any card from her hand. You have the 9, 10, and A of hearts, so you must follow suit and play either the 10 or the ace because both beat the Q. You must take the trick if you can, even if your partner is currently winning it. Mike has no hearts but has the Q of spades, so he must play trump and wins the trick with that Q.</p>
+      </div>
+
+      <p>The round ends when all 12 tricks have been taken.</p>
+
+      <h2>Scoring</h2>
+      <p>At the end of the round the players tally up their scores. Each A, 10, and K, as well as the last trick of the round is worth 10 points. Thus, a team can get a maximum of 250 points in the trick taking phase by getting all eight As, all eight 10s, all eight Ks, and the last trick of the round.</p>
+      <p>If the non-declaring team takes at least one scoring card or wins the last trick, they add both their meld points and trick points to their total score. If they take no scoring cards and do not win the last trick, they lose their meld points and record 0 points for the round.</p>
+      <p>If the declarer's team earns enough points from their melds and trick taking to match or exceed their bid then all their points are added to the total score. If they fail to meet their bid, then they have "gone set" and earn no points that round. In addition, their bid is subtracted from their total score.</p>
+
+      <h2>Winning the game</h2>
+      <p>The game is won when either team has a total score of 1500 or greater at the end of a round. If both teams cross the finish line in the same round, then the declaring team wins regardless of the actual point values.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
