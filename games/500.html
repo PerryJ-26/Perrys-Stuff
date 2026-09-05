@@ -1,6 +1,5 @@
 
-
-<!-- Revision 7 | Thursday, September 03, 2026 -->
+<!-- Revision 11 | Friday, September 04, 2026 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -669,6 +668,27 @@
   #universalModal td:first-child,
   #universalModal th:first-child{ width:150px; }
 
+  /* Recorded Scores table: its first column is just a short rank number
+     ("1.", "2.", ...), not a row label like the Hand Complete tables use
+     their first column for - so it doesn't need that shared 150px width,
+     which would push the number away from "Winner" and leave the table
+     looking off-center in the popup. Narrowing the rank column back down
+     to its own content and centering the table as a block (instead of
+     stretching it to the popup's full width) pulls the number snug
+     against "Winner" and centers the whole table. Same fix already
+     applied to Pinochle's Recorded Scores table. */
+  #universalModal table.scores-table{ width:auto; margin:0 auto; }
+  #universalModal table.scores-table td:first-child,
+  #universalModal table.scores-table th:first-child{
+    width:auto;
+    text-align:right;
+    padding-right:2px;
+  }
+  #universalModal table.scores-table td:not(:first-child),
+  #universalModal table.scores-table th:not(:first-child){
+    padding-left:14px;
+  }
+
   @media (max-width: 720px){
     #table-wrap{
       grid-template-columns: 80px 1fr 80px;
@@ -694,6 +714,7 @@
   <h1 id="pageTitle">500</h1>
   <button id="newHandBtn">New Game</button>
   <button id="rulesBtn">Instructions</button>
+  <button id="scoresBtn">Recorded Scores</button>
   <button id="optionsBtn">Options</button>
   <button id="exitBtn">Exit</button>
 </div>
@@ -1710,25 +1731,44 @@ function finishHand(){
   const btnLabel = winnerTeam ? 'Start a new game' : 'Deal The Next Hand';
   const row = (label, ns, ew) => `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
 
-  showModal(heading, `
-    ${noteHtml}
-    <table>
-      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
-      ${row('Contract', bidTeam==='NS'?contractLabel(contract):'—', bidTeam==='EW'?contractLabel(contract):'—')}
-      ${row('Tricks Taken', teamTricks.NS, teamTricks.EW)}
-      ${row('Hand Score', netChange.NS, netChange.EW)}
-      ${row('Previous Score', previousScores.NS, previousScores.EW)}
-      ${row('Total Score', state.scores.NS, state.scores.EW)}
-    </table>
-  `, `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>`, false);
+  // Wrapped in its own function (and stashed in modalReopenFn) purely so this
+  // exact summary can be redrawn if the player clicks Quit and then Cancel -
+  // see confirmExit(). Only the drawing/styling lives here; the one-time
+  // side effects below (session wins, recorded score) must NOT re-run just
+  // because the popup gets redrawn, so they stay outside this function.
+  function showHandSummary(){
+    showModal(heading, `
+      ${noteHtml}
+      <table>
+        <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+        ${row('Contract', bidTeam==='NS'?contractLabel(contract):'—', bidTeam==='EW'?contractLabel(contract):'—')}
+        ${row('Tricks Taken', teamTricks.NS, teamTricks.EW)}
+        ${row('Hand Score', netChange.NS, netChange.EW)}
+        ${row('Previous Score', previousScores.NS, previousScores.EW)}
+        ${row('Total Score', state.scores.NS, state.scores.EW)}
+      </table>
+    `, `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>
+      <button onclick="confirmExit()">Quit</button>`, false);
+    if(winnerTeam){
+      const titleEl = document.getElementById('modalTitle');
+      titleEl.style.color = 'red';
+      titleEl.classList.add('win-blink');
+    }
+  }
+  modalReopenFn = showHandSummary;
+  showHandSummary();
 
   if(winnerTeam){
-    const titleEl = document.getElementById('modalTitle');
-    titleEl.style.color = 'red';
-    titleEl.classList.add('win-blink');
     sessionWins[winnerTeam]++;
     saveSessionWins();
     updateSessionWinsDisplay();
+
+    // Shared (cross-device) recorded score for this finished game - see the
+    // Firebase block near the end of the file. "Margin" is the winning
+    // team's final point lead over the losing team. Same pattern used in
+    // Pinochle's Recorded Scores feature.
+    const loserTeamForScore = winnerTeam === 'NS' ? 'EW' : 'NS';
+    recordScore(getTeamLabel(winnerTeam), state.scores[winnerTeam] - state.scores[loserTeamForScore], getTeamLabel(loserTeamForScore));
   }
 }
 
@@ -1743,15 +1783,23 @@ function nextHand(){
 
 function showGameOverPanel(){
   const winnerTeam = checkGameEnd() || (state.scores.NS >= state.scores.EW ? 'NS' : 'EW');
-  showModal(`*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`, `
-    <table>
-      <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
-      <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
-    </table>
-  `, `<button onclick="closeModal(); newGame();">Start a new game</button>`, false);
-  const titleEl = document.getElementById('modalTitle');
-  titleEl.style.color = 'red';
-  titleEl.classList.add('win-blink');
+  // Same reopen-on-Cancel pattern as finishHand()'s showHandSummary() - see
+  // confirmExit(). This screen has no one-time side effects of its own, so
+  // the whole thing can safely live inside the reopenable function.
+  function showSummary(){
+    showModal(`*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`, `
+      <table>
+        <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
+        <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
+      </table>
+    `, `<button onclick="closeModal(); newGame();">Start a new game</button>
+      <button onclick="confirmExit()">Quit</button>`, false);
+    const titleEl = document.getElementById('modalTitle');
+    titleEl.style.color = 'red';
+    titleEl.classList.add('win-blink');
+  }
+  modalReopenFn = showSummary;
+  showSummary();
 }
 
 function newGame(){
@@ -1986,6 +2034,60 @@ function addLog(msg){
 }
 
 // ---------------------------------------------------------------------
+// RECORDED SCORES (shared, cross-device, via Firebase — see the
+// <script type="module"> block near the end of the file). Same pattern
+// Pinochle already uses: null means "haven't heard from Firebase yet (or
+// it's unreachable)", so the modal can say so explicitly instead of
+// showing stale/empty data.
+// ---------------------------------------------------------------------
+const MAX_RECORDED_SCORES = 15;
+let sharedScores = null;
+window.onSharedScoresUpdate = function(list){
+  sharedScores = list;
+  // If the Scores modal happens to already be open when a live update
+  // arrives (e.g. someone on another device just finished a game),
+  // refresh what's showing instead of leaving it stale.
+  const modal = document.getElementById('universalModal');
+  if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+    showScoresModal();
+  }
+};
+
+function recordScore(name, margin, opponent){
+  try {
+    const entry = { name, margin, opponent, date: new Date().toLocaleDateString() };
+    if(window.pushSharedScore) window.pushSharedScore(entry);
+  } catch (err) { console.error('recordScore error', err); }
+}
+
+function formatScoreRow(entry, rank){
+  const opponentName = entry.opponent || 'Unknown';
+  return `<tr><td>${rank}.</td><td>${entry.name}</td><td>${entry.margin}</td><td>${opponentName}</td><td>${entry.date}</td></tr>`;
+}
+
+function showScoresModal(){
+  let body;
+  if(sharedScores === null){
+    body = `<p style="text-align:center;">Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+  } else {
+    const list = [...sharedScores].sort((a,b)=> b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
+    if(list.length === 0){
+      body = `<p style="text-align:center;">No scores recorded yet. Play a game to add one!</p>`;
+    } else {
+      body = `
+        <p style="text-align:center;font-size:.8rem;margin-top:-4px;">Margin = The winning team's final point lead over the opponent.</p>
+        <table class="scores-table">
+          <tr><th></th><th>Winner</th><th>Margin</th><th>Opponent</th><th>Date</th></tr>
+          ${list.map((entry, i) => formatScoreRow(entry, i+1)).join('')}
+        </table>`;
+    }
+  }
+  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true);
+}
+
+document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+// ---------------------------------------------------------------------
 // MODAL SYSTEM
 // ---------------------------------------------------------------------
 function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
@@ -2016,12 +2118,27 @@ document.getElementById('universalModal').addEventListener('click', (e)=>{
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
   window.open('../500Instructions.html', '_blank');
 });
-document.getElementById('exitBtn').addEventListener('click', ()=>{
+// Set (to showHandSummary/showSummary) whenever the Hand Complete or game-
+// over popup is drawn - lets confirmExit() below put that exact popup back
+// if the player backs out of quitting, instead of Cancel just closing to a
+// frozen, cards-already-cleared board with no "Deal the Next Hand" button
+// left on screen to recover with.
+let modalReopenFn = null;
+
+// Shared exit-confirmation popup - used by the header's Exit button and by
+// the "Quit" button on the Hand Complete / game-over popup, so both paths
+// show the exact same confirmation instead of two separately-maintained copies.
+function confirmExit(){
+  // Only reached via Quit while that summary popup is the one on screen -
+  // the header's Exit button is only clickable when no modal is open, so
+  // this is false in that case and Cancel just closes as before.
+  const returningToSummary = document.getElementById('universalModal').style.display === 'flex' && typeof modalReopenFn === 'function';
   showModal('Exit 500', 'Are you sure you want to exit?', `
     <button onclick="location.href='../index.html';">Yes</button>
-    <button onclick="closeModal()">Cancel</button>
+    <button onclick="${returningToSummary ? 'modalReopenFn()' : 'closeModal()'}">Cancel</button>
   `, false, 'exit-style');
-});
+}
+document.getElementById('exitBtn').addEventListener('click', confirmExit);
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
     <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
@@ -2094,6 +2211,51 @@ document.getElementById('logToggle').addEventListener('dblclick', ()=>{
 
 state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
 dealNewHand();
+</script>
+
+<!-- -------------------------------------------------------------------------
+     Shared (cross-device) recorded scores via Firebase Realtime Database.
+     Same Firebase project AceyDeucey/Yahtzee/Pinochle already use
+     (perrys-stuff) - just its own database path (500Scores) so this game's
+     scores stay independent. Loaded as a separate <script type="module">
+     because Firebase's SDK is distributed as native ES modules - this
+     doesn't touch or replace any of the local-storage machinery above, it
+     just adds a second, shared source that the classic script reads from
+     and writes to via a couple of small window.* functions. -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onValue
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, '500Scores');
+
+  // Adds one finished game's score to the shared leaderboard. Fire-and-forget - the classic
+  // script calls this but doesn't wait on it, so a slow/offline connection never blocks gameplay.
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+
+  // Live subscription: fires immediately with whatever's currently in the database, then again
+  // every time anyone (on any device) adds a score. Converts Firebase's object-of-objects shape
+  // into a plain array and hands it to the classic script's onSharedScoresUpdate.
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
 </body>
 </html>
