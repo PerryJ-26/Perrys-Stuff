@@ -1,5 +1,5 @@
 
-<!-- Revision 5 | Sunday, September 06, 2026 | Brought the thumbnail box height down to 72px to match its original ~1.78:1 width:height ratio (was stuck at 90px after the width-only resize), so object-fit:cover stops over-cropping the screenshots. -->
+<!-- Revision 6 | Sunday, September 06, 2026 | Changed .game-thumb img from object-fit:cover to object-fit:contain so screenshots are never cropped, regardless of their aspect ratio. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -154,7 +154,7 @@
   .game-thumb img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
   }
 
   .game-title {
