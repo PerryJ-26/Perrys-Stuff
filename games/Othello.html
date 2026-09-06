@@ -1,5 +1,5 @@
 
-<!-- Revision 9 | Monday, August 31, 2026 -->
+<!-- Revision 10 | Sunday, September 06, 2026 | Renamed "The AI" to "AI" (setup field, live game, and Recorded Scores list); fixed column alignment in the Recorded Scores list by preserving spaces (white-space:pre) instead of collapsing them. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -463,6 +463,7 @@
     font-family:'Space Mono', monospace;
     font-size:0.8rem;
     text-align:left;
+    white-space:pre;
     display:inline-block;}
 
   #universalModalButtons{
@@ -652,7 +653,7 @@
             </div>
             <div class="gs-field">
               <label id="gsP2Label" for="gsP2Name">White (AI)</label>
-              <input type="text" id="gsP2Name" value="The AI" maxlength="16" disabled>
+              <input type="text" id="gsP2Name" value="AI" maxlength="16" disabled>
             </div>
           </div>
         </div>
@@ -1236,7 +1237,7 @@
   // user types, instead of only updating them the next time startGame() runs.
   function updateSessionWinsNameLabels(){
     const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
-    const p2 = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'The AI' : 'Player 2');
+    const p2 = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'AI' : 'Player 2');
     document.getElementById('sessionWinsP1Name').textContent = p1;
     document.getElementById('sessionWinsP2Name').textContent = p2;
   }
@@ -1262,7 +1263,7 @@
       const p2Label = document.getElementById('gsP2Label');
       if(mode === 'ai'){
         p2Label.childNodes[0].textContent = 'White (AI) ';
-        p2Input.value = 'The AI'; p2Input.disabled = true;
+        p2Input.value = 'AI'; p2Input.disabled = true;
       } else {
         p2Label.childNodes[0].textContent = 'White (Player 2) ';
         let savedP2 = '';
@@ -1325,11 +1326,12 @@
       const extra = Math.max(0, len - str.length);
       return str + ' '.repeat(extra);
     };
+    const normalizeName = (n) => n === 'The AI' ? 'AI' : n;
     const rankStr = String(rank).padStart(2, ' ') + '.';
-    const nameStr = pad(entry.name, 9);
+    const nameStr = pad(normalizeName(entry.name), 9);
     const marginStr = String(entry.margin).padStart(2, ' ');
     const ptsStr = pad(`${marginStr} discs`, 10);
-    const opponentName = entry.opponent || 'Unknown';
+    const opponentName = normalizeName(entry.opponent || 'Unknown');
     const vsStr = pad('vs ' + opponentName, 12);
     return `${rankStr} ${nameStr} ${ptsStr} ${vsStr} ${entry.date}`;
   }
@@ -1408,7 +1410,7 @@
     updateLabelsVisibility();
 
     names.black = document.getElementById('gsP1Name').value.trim() || 'Player 1';
-    names.white = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'The AI' : 'Player 2');
+    names.white = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'AI' : 'Player 2');
     isAI.black = false;
     isAI.white = (mode === 'ai');
 
@@ -1456,7 +1458,7 @@
       const p2Label = document.getElementById('gsP2Label');
       if(mode === 'ai'){
         p2Label.childNodes[0].textContent = 'White (AI) ';
-        p2Input.value = 'The AI'; p2Input.disabled = true;
+        p2Input.value = 'AI'; p2Input.disabled = true;
       } else {
         p2Label.childNodes[0].textContent = 'White (Player 2) ';
         p2Input.value = savedNames.p2Name || ''; p2Input.disabled = false;
