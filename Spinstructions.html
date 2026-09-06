@@ -1,0 +1,336 @@
+
+
+<!-- Revision 6 | Sunday, September 06, 2026 | Added a Bagging section (rule + example) and updated the Scoring example to name "bags", per the highlighted text Perry supplied. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spades Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .meld-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meld-table th, .meld-table td {
+    border: 1px solid var(--table-border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .meld-table th {
+    background: var(--table-header-bg);
+    color: var(--heading-text);
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  /* Top margin trimmed slightly (1in -> 0.9in) so the last line of the
+     "Ann leads with hearts..." example ("...choose to play clubs or
+     diamonds.") stays on the same printed page as the rest of that
+     example instead of spilling alone onto the next page. Left/right/
+     bottom stay at the full 1in. */
+  @page {
+    margin: 1in;
+    margin-top: 0.9in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/Spades.html">Back to Spades</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Spades Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>Players</h2>
+      <p>4 players in two partnerships. Partners sit across the table from each other.</p>
+      <p class="note">Note: In this game, West is Ann, North is Nick, East is Sue, and South is You, with partners seated opposite each other &mdash; Ann &amp; Sue versus Nick &amp; You.</p>
+
+      <h2>Deck</h2>
+      <p>Standard 52-card deck. The first dealer is randomly chosen. The next dealer is to the left of the current dealer and continues to pass clockwise after each round. Each player is dealt 13 cards. The cards rank: Ace (high), K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2 (low). Spades are always trump.</p>
+
+      <h2>Goal</h2>
+      <p>To be the first partnership to reach 500 points.</p>
+
+      <h2>Bidding</h2>
+      <p>The player to the dealer's left bids first. Each player bids the exact number of tricks they expect to win. The bids of the partners are added together to form a team contract.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If you bid 3 and your partner bids 4, then your team needs to win 7 tricks.</p>
+      </div>
+
+      <p>Any number from 0 ("Nil") to 13 is a legal bid. Players are not allowed to pass, bids do not have to increase with each player, and there is only one round of bidding.</p>
+
+      <h2 class="print-page-break">Bidding Nil</h2>
+      <p>A player who bids Nil (zero) is claiming that they won't win any tricks during the hand.</p>
+      <p>If a player bids Nil and their partner bids a number, then the partner must still try to win that number of tricks.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Sue bids 4. Ann, her partner, bids Nil. Sue will play the hand trying not to win any tricks. However, Ann needs to win at least four tricks.</p>
+      </div>
+
+      <p class="note">Note: It's legal for partners to both bid Nil. If both are successful, the partnership earns 200 points. However, if both partners fail, the partnership receives a 200-point penalty. If one partner succeeds and the other fails, the bonus and penalty wipe each other out; the net effect is 0 points.</p>
+
+      <p>After a player has bid Nil, they discard three cards from their hand, face down on the table. If their partner has already made a bid, they give the player three cards from their hand and pick up the three discards; otherwise, the player must wait until after the partner has bid to exchange cards. If both partners bid Nil, no exchange of cards occurs.</p>
+
+      <h2>Gameplay</h2>
+      <p>The player to the dealer's left plays first ("leads"). They may not lead with a spade unless their hand only includes Spades. In fact, unless a player has no option, Spades may never be led until they are "broken". Spades are broken when a player cannot follow suit and chooses to play a spade. When a player cannot follow suit, they may choose to play a Spade but are not required to.</p>
+      <p class="note">Note: Spades are also broken if a player has no option and leads with Spades.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Ann leads with hearts. Nick and Sue both play hearts as well. You don't have any hearts, so you could choose to play Spades instead. But you could also choose to play clubs or diamonds.</p>
+      </div>
+
+      <p>Play continues clockwise. Each player must follow suit (i.e. play the same suit that was led) if possible.</p>
+      <p>Each trick is won by the player who played the highest rank of the suit led. However, if one or more players played Spades, the trick is won by the player who played the highest rank of Spades. The game displays the number of tricks each player has won. The player who won the trick then leads the next trick.</p>
+
+      <h2>Scoring</h2>
+      <p>Each trick in a bid counts for 10 points if a partnership meets its bid. Tricks won above the bid are worth 1 point each.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Ann and Sue bid 5 tricks and they won 7 tricks. They score 52 points (50 for the tricks bid, plus 2 for the extras, which are known as "bags").</p>
+      </div>
+
+      <p>If a partnership does not meet its bid, it scores -10 points for each trick it bid.</p>
+      <p>A player who bids Nil is claiming they won't take any tricks. If they are successful, their partnership earns 100 points. However, if the player wins 1 or more tricks, their partnership receives a 100-point penalty.</p>
+      <p>When a player bidding Nil fails, tricks won by that player don't count toward making their partner's bid.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If the partner bid 4 and only won 3 tricks, they are short by 1, so the team would take both the -40 for a failed bid of 4 <strong>and</strong> the -100 Nil penalty.</p>
+      </div>
+
+      <h2>Bagging</h2>
+      <p>A Partnership should avoid winning too many tricks above its bid. Each time a partnership wins 10 bags (cumulative through a game), that partnership receives a 100-point penalty.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Ann and Sue bid 4 tricks and win 7, then they bid 3 and win 6, then they bid 4 and win 9. They now have 11 bags (3+3+5) and receive a 100-point penalty. The additional bag carries over for the duration of the game. If Ann &amp; Sue win 9 more bags, they receive another penalty.</p>
+      </div>
+
+      <h2>Continuing Play</h2>
+      
+      <p>After scoring a hand, if neither partnership has reached 500 points, the player to the dealer's left becomes the new dealer.</p>
+
+      <h2>Winning</h2>
+      
+      <p>The first partnership to reach 500 points is the winner. If both partnerships reach 500 on the same hand, the partnership with the highest score is the winner. If one partnership reaches or falls below a score of -500, they lose the game.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
