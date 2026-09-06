@@ -1,5 +1,5 @@
 
-<!-- Revision 3 | Thursday, September 03, 2026 -->
+<!-- Revision 4 | Sunday, September 06, 2026 | Added a 4th column (Spades, then Hearts as a Coming Soon placeholder) and narrowed the game-thumb boxes ~20% (160px -> 128px) to fit it. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,10 +106,11 @@
     padding: 0 20px;
   }
 
-  /* 3 columns x 2 rows - narrower cards so all games are visible without scrolling */
+  /* 4 columns x 2 rows - cards narrowed about 20% (game-thumb 160px -> 128px)
+     to fit the new 4th column at roughly the same overall page width as before. */
   .game-list {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1px;
     background: var(--row-border);
     border: 1px solid var(--row-border);
@@ -136,7 +137,7 @@
   /* Thumbnail placeholder - swap the inner <span> text for an <img> once you have a screenshot */
   .game-thumb {
     width: 100%;
-    max-width: 160px;
+    max-width: 128px;
     height: 90px;
     background: var(--thumb-bg);
     border: 1px dashed var(--thumb-border);
@@ -215,6 +216,11 @@
         <div class="game-title">Othello</div>
       </a>
 
+      <a class="game-row" href="games/Spades.html">
+        <div class="game-thumb"><img src="images/Spades.jpg" alt="Spades game screenshot"></div>
+        <div class="game-title">Spades</div>
+      </a>
+
       <a class="game-row" href="games/AceyDeucey.html">
         <div class="game-thumb"><img src="images/AceyDeucey.jpg" alt="Acey Deucey game screenshot"></div>
         <div class="game-title">Acey Deucey</div>
@@ -229,6 +235,11 @@
         <div class="game-thumb"><img src="images/500.jpg" alt="500 game screenshot"></div>
         <div class="game-title">500</div>
       </a>
+
+      <div class="game-row disabled">
+        <div class="game-thumb"><span>Coming Soon</span></div>
+        <div class="game-title">Hearts</div>
+      </div>
 
     </div>
   </main>
