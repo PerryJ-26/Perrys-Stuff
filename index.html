@@ -1,5 +1,5 @@
 
-<!-- Revision 4 | Sunday, September 06, 2026 | Added a 4th column (Spades, then Hearts as a Coming Soon placeholder) and narrowed the game-thumb boxes ~20% (160px -> 128px) to fit it. -->
+<!-- Revision 5 | Sunday, September 06, 2026 | Brought the thumbnail box height down to 72px to match its original ~1.78:1 width:height ratio (was stuck at 90px after the width-only resize), so object-fit:cover stops over-cropping the screenshots. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -138,7 +138,7 @@
   .game-thumb {
     width: 100%;
     max-width: 128px;
-    height: 90px;
+    height: 72px;
     background: var(--thumb-bg);
     border: 1px dashed var(--thumb-border);
     border-radius: 6px;
