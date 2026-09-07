@@ -1,5 +1,5 @@
 
-<!-- Revision 8 | Sunday, August 30, 2026 -->
+<!-- Revision 9 | Monday, September 07, 2026 | Replaced the Sound toggle button with an Instructions button linking to Yzinstructions.html (sound effects still play, just no longer have a manual on/off button); enforced the Multiple Yahtzees joker-priority rule (matching Upper box, then Lower Section, then any open Upper box) when scoring a bonus Yahtzee, including when the original Yahtzee was zeroed out. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -475,7 +475,7 @@
         class="scoreBtn"> New Game
       </button>
       
-      <button id="soundToggleBtn" onclick="toggleSound()" class="scoreBtn"
+      <button id="instructionsBtn" onclick="window.location.href='../Yzinstructions.html'" class="scoreBtn"
         style="background:var(--exit-btn-bg);
         color:var(--exit-btn-text);
         font-weight:600;
@@ -485,7 +485,7 @@
         display:flex;
         align-items:center;
         justify-content:center;
-        box-sizing:border-box;">🔊 Sound: On"
+        box-sizing:border-box;">Instructions
       </button>
         
       <button id="exitBtn" onclick="handleExitClick()"
@@ -839,6 +839,26 @@ function renderScorecard(){
   try {
     scoreBody.innerHTML = '';
     const currentVals = dice.slice();
+
+    // Multiple Yahtzees joker rule (see Yzinstructions.html): once the Yahtzee box has already
+    // been used (50 or zeroed) and the player rolls another five-of-a-kind, they don't have a
+    // free choice of category - the matching Upper Section box must be used if it's still open;
+    // otherwise any open Lower Section box; only once every Lower Section box is filled too does
+    // an open Upper Section box become fair game again (for a forced 0).
+    let jokerRule = null;
+    const isYahtzeeRoll = rollsLeft !== 3 && new Set(currentVals).size === 1;
+    if(isYahtzeeRoll && scorecard['yahtzee'] !== null){
+      const upperIds = ['ones','twos','threes','fours','fives','sixes'];
+      const matchingUpperId = upperIds[currentVals[0] - 1];
+      if(scorecard[matchingUpperId] === null){
+        jokerRule = { mode:'matchOnly', matchingUpperId };
+      } else if(categories.some(c => c.type==='lower' && scorecard[c.id]===null)){
+        jokerRule = { mode:'lowerOnly' };
+      } else {
+        jokerRule = { mode:'upperOnly' };
+      }
+    }
+
     categories.forEach(cat=>{
       const tr = document.createElement('tr');
       const tdLabel = document.createElement('td'); tdLabel.textContent = cat.label;
@@ -860,6 +880,17 @@ function renderScorecard(){
         btn.onclick = ()=>applyScore(cat.id, potential);
         if(rollsLeft===3) { btn.disabled=true; btn.classList.add('disabled'); btn.title='Roll at least once before scoring'; }
         if(rolling) { btn.disabled=true; btn.classList.add('disabled'); btn.title='Wait for the dice to finish rolling'; }
+        if(jokerRule){
+          let jokerBlocks = false;
+          if(jokerRule.mode === 'matchOnly' && cat.id !== jokerRule.matchingUpperId) jokerBlocks = true;
+          else if(jokerRule.mode === 'lowerOnly' && cat.type !== 'lower') jokerBlocks = true;
+          else if(jokerRule.mode === 'upperOnly' && cat.type !== 'upper') jokerBlocks = true;
+          if(jokerBlocks){
+            btn.disabled = true;
+            btn.classList.add('disabled');
+            btn.title = 'Bonus Yahtzee: this roll must be used as a joker in an eligible category first (see Instructions).';
+          }
+        }
       }
       tdAction.appendChild(btn);
       tr.appendChild(tdLabel); tr.appendChild(tdScore); tr.appendChild(tdAction);
@@ -984,7 +1015,7 @@ const JOKER_SCORES = { fullHouse: 25, smallStraight: 30, largeStraight: 40 };
 function getCategoryScore(cat, vals){
   const normal = cat.calc(vals);
   const isYahtzeeRoll = new Set(vals).size === 1;
-  if(isYahtzeeRoll && scorecard['yahtzee'] === 50 && normal === 0 && JOKER_SCORES[cat.id] !== undefined){
+  if(isYahtzeeRoll && scorecard['yahtzee'] !== null && normal === 0 && JOKER_SCORES[cat.id] !== undefined){
     return JOKER_SCORES[cat.id];
   }
   return normal;
