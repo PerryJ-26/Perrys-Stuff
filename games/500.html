@@ -1,5 +1,5 @@
 
-<!-- Revision 13 | Sunday, September 06, 2026 | Fixed the freeze the Revision 12 resume fix introduced: resuming mid-bidding (or mid the kitty/discard or trick-play phases) rebuilt the board via render() but never the phase's own panel (bid panel, discard panel, round-end modal), leaving nothing clickable. tryRestoreResumeState() now re-enters whichever phase was saved, and it correctly finishes a trick that was resolved but not yet cleared at the moment of saving instead of risking a double-counted trick. -->
+<!-- Revision 14 | Monday, September 07, 2026 | Instructions now navigates in the same tab (like Othello/Acey Deucey/Yahtzee) instead of opening a new tab each time, per request - the new-tab behavior was leaving multiple tabs open and reading as multiple separate games. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2228,7 +2228,7 @@ document.getElementById('universalModal').addEventListener('click', (e)=>{
 // ---------------------------------------------------------------------
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
   saveResumeState();
-  window.open('../500Instructions.html', '_blank');
+  window.location.href = '../500Instructions.html';
 });
 // Set (to showHandSummary/showSummary) whenever the Hand Complete or game-
 // over popup is drawn - lets confirmExit() below put that exact popup back
