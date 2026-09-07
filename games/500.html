@@ -1,5 +1,5 @@
 
-<!-- Revision 11 | Friday, September 04, 2026 -->
+<!-- Revision 12 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game (which opens a new tab) and then Back to 500 in that tab started a brand new game instead of resuming the one still running in the original tab. Instructions now saves the current state/log to sessionStorage first (which the new tab inherits), and the page restores it on load instead of always dealing a fresh hand, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -859,6 +859,12 @@ try {
 
 // "This Session's Wins" tally (lower-left corner box) - counts whole GAMES won by
 // each team this session (first to reach GAME_TARGET), persisted in sessionStorage.
+// Lets an in-progress game survive Instructions (opens in a new tab, which inherits a copy of
+// this tab's sessionStorage) and Back to 500 in that tab - see saveResumeState /
+// tryRestoreResumeState below. Without this, Back to 500 always looked like a fresh page load
+// and silently dealt a brand new game over the one still running in the original tab.
+const RESUME_KEY = 'fiveHundredResumeState_v1';
+
 const SESSION_WINS_KEY = 'fiveHundredSessionWins_v1';
 let sessionWins = { NS:0, EW:0 };
 function loadSessionWins(){
@@ -1807,6 +1813,7 @@ function newGame(){
   state.dealerIdx = Math.floor(Math.random()*4); // first dealer of a new game is random, per the rules
   log = [];
   document.getElementById('logPanel').innerHTML = '';
+  try { sessionStorage.removeItem(RESUME_KEY); } catch (e) {}
   dealNewHand();
 }
 
@@ -2033,6 +2040,51 @@ function addLog(msg){
   panel.scrollTop = panel.scrollHeight;
 }
 
+/* Rebuilds the log panel's DOM from a restored `log` array (mirrors the DOM half of addLog,
+   without re-pushing into `log` itself) - used by tryRestoreResumeState below. */
+function rebuildLogPanel(){
+  const panel = document.getElementById('logPanel');
+  panel.innerHTML = '';
+  log.forEach(msg=>{
+    const div = document.createElement('div');
+    div.textContent = msg;
+    panel.appendChild(div);
+  });
+  panel.scrollTop = panel.scrollHeight;
+}
+
+/* Snapshots the in-progress game (the whole `state` object, plus the log) to sessionStorage
+   right before opening Instructions in its new tab, so Back to 500 in that tab can resume it
+   instead of silently dealing a brand new game. */
+function saveResumeState(){
+  try {
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ state, log }));
+  } catch (err) {
+    console.error('saveResumeState error', err);
+  }
+}
+
+/* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes it
+   from sessionStorage) so it's only ever used once - a later fresh visit to this page still
+   deals a genuinely new game. Returns true if a game was restored, false otherwise. */
+function tryRestoreResumeState(){
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY);
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    const saved = JSON.parse(raw);
+    if(!saved || typeof saved.state !== 'object') return false;
+    state = saved.state;
+    log = saved.log || [];
+    rebuildLogPanel();
+    render();
+    return true;
+  } catch (err) {
+    console.error('tryRestoreResumeState error', err);
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------
 // RECORDED SCORES (shared, cross-device, via Firebase — see the
 // <script type="module"> block near the end of the file). Same pattern
@@ -2116,6 +2168,7 @@ document.getElementById('universalModal').addEventListener('click', (e)=>{
 // EVENT WIRING / INIT
 // ---------------------------------------------------------------------
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
+  saveResumeState();
   window.open('../500Instructions.html', '_blank');
 });
 // Set (to showHandSummary/showSummary) whenever the Hand Complete or game-
@@ -2209,8 +2262,10 @@ document.getElementById('logToggle').addEventListener('dblclick', ()=>{
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 });
 
-state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
-dealNewHand();
+if(!tryRestoreResumeState()){
+  state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
+  dealNewHand();
+}
 </script>
 
 <!-- -------------------------------------------------------------------------
