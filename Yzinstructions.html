@@ -1,0 +1,294 @@
+
+<!-- Revision 3 | Monday, September 07, 2026 | Corrected a transcription slip: the already-filled-matching-box sentence in Multiple Yahtzees should read "must" (matching the game's enforced restriction and Perry's intent), not "can" as briefly shown in Revision 2. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yahtzee Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 1in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/yahtzee.html">Back to Yahtzee</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Yahtzee Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>According to Hasbro, the game was invented by an anonymous Canadian couple, who called it The Yacht Game because they played it on their yacht with their friends. Later they asked toy and game entrepreneur Edwin S. Lowe if he would make up some sets to be given as gifts to their friends who enjoyed the game. Lowe perceived the possibility of marketing the game and acquired the rights to the game from the couple in exchange for 1,000 gift sets.</p>
+
+      <h2>Objective</h2>
+      <p>The objective of the game is to score points by rolling five dice to make certain combinations. The dice can be rolled up to three times in a round to try to make various scoring combinations. The game consists of thirteen rounds. After each round, the player chooses which scoring category is to be used for that round. Once a category has been used in the game, it cannot be used again. The scoring categories have varying point values, some of which are fixed values and others for which the score depends on the value of the dice. A Yahtzee is five-of-a-kind and scores 50 points, the highest of any category.</p>
+      <p>The game is over after the thirteen rounds have been played.</p>
+
+      <h2>Gameplay</h2>
+      <p>In each of the thirteen rounds, the player gets three rolls of the dice by clicking on the "Roll The Dice" button. They can choose to end their turn after one or two rolls. After the first roll, the player can save any dice they want by clicking on them and then re-rolling the other dice. This procedure is repeated after the second roll. The player has complete choice as to which dice to roll. It is possible to re-roll any dice that were or were not rolled before.</p>
+      <p>The Scorecard contains 13 different categories, one for each round. After completing each round, the player must select one of these categories by clicking on an Action button. The score entered in the category depends on how well the five dice matches the scoring rule for that category. Once a score has been entered for a category, that category may not be used again in that game. The game is completed after 13 rounds, with each of the 13 categories filled. Total scores are calculated by summing all thirteen categories together with any bonuses.</p>
+      <p>The Scorecard is divided into Upper and Lower Sections.</p>
+
+      <h3>Upper Section</h3>
+      <ul>
+        <li>Ones: Get as many ones as possible.</li>
+        <li>Twos: Get as many twos as possible.</li>
+        <li>Threes: Get as many threes as possible.</li>
+        <li>Fours: Get as many fours as possible.</li>
+        <li>Fives: Get as many fives as possible.</li>
+        <li>Sixes: Get as many sixes as possible.</li>
+      </ul>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If the player gets 1, 3, 3, 3, 5 and chooses Threes, they will get 3*3 = 9 points.</p>
+      </div>
+
+      <p>If the sum of the Upper Section scores is 63 or more, the player will get a bonus of 35 points. The player needs three of each to reach 63, but it is not required to get exactly three of each. It is perfectly OK to have five sixes, and zero ones for example, as long as the sum is 63 or more the bonus will be awarded.</p>
+      <p>To gauge how well the player is doing in the Upper Section, they often refer to being "up" or "down" compared to the average of three required for each box. So if the player scores four "sixes" they will be "6 up"; while if they then score just two "fours" they will then be only "2 up". Similarly, if the player starts with two "twos" they will be "2 down".</p>
+
+      <h3>Lower Section</h3>
+      <ul>
+        <li>Three of a Kind: Get three dice with the same number. Points are the sum of all dice (not just the three of a kind).</li>
+        <li>Four of a Kind: Get four dice with the same number. Points are the sum of all dice (not just the four of a kind).</li>
+        <li>Full House: Get three of a kind and a pair, e.g. 1,1,3,3,3 or 3,3,3,6,6. Scores 25 points.</li>
+        <li>Small Straight: Get four sequential dice, 1,2,3,4 or 2,3,4,5 or 3,4,5,6. Scores 30 points.</li>
+        <li>Large Straight: Get five sequential dice, 1,2,3,4,5 or 2,3,4,5,6. Scores 40 points.</li>
+        <li>Chance: The player can put anything into chance; it's basically like a garbage can when they don't have anything else they can use the dice for. The score is simply the sum of the dice.</li>
+        <li>Yahtzee: Five of a kind. Scores 50 points.</li>
+      </ul>
+
+      <h2>Multiple Yahtzees</h2>
+      <p>If the player rolls a second Yahtzee they get 100 bonus points. If the Yahtzee category already has a zero, they do not get the 100-point bonus. Either way, they get a joker, which means that they can choose another category for an additional bonus. If the number they got for the Yahtzee does not have a score in the Upper Section, then they must use it.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If they get an additional Yahtzee with 2's, and they haven't used the 2's in the Upper Section then they must choose the 2's and get 10 points for it. If the 2's category is already filled, then they must choose one of the empty Lower Section categories. If they choose 3 of a Kind, 4 of a Kind, or Chance, the sum of the dice will be the score. If they choose Full House, Small Straight, or Large Straight they will receive the normal 25, 30, or 40 points.</p>
+      </div>
+
+      <p>If the corresponding Upper Section box and all Lower Section boxes have been used, an unused Upper Section box must be used, resulting in a score of 0.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
