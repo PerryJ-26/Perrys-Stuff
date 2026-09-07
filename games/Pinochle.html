@@ -1,5 +1,5 @@
 
-<!-- Revision 27 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game (which opens a new tab) and then Back to Pinochle in that tab started a brand new game instead of resuming the one still running in the original tab. Instructions now saves the current state/log to sessionStorage first (which the new tab inherits), and the page restores it on load instead of always dealing a fresh hand, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
+<!-- Revision 28 | Sunday, September 06, 2026 | Fixed the freeze the Revision 27 resume fix introduced: resuming mid-bidding (or mid any other phase) rebuilt the board via render() but never the phase's own panel (bid panel, trump/pass/meld panels, round-end modal), leaving nothing clickable. tryRestoreResumeState() now re-enters whichever phase was saved. Also fixed passedSeats/humanMeldUsed (JS Sets) losing their contents when saved to sessionStorage, and added a trickResolving guard so resuming mid-trick can't double-count a trick. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1208,6 +1208,8 @@ let state = {
   meldDetail: { S:[], N:[], E:[], W:[] },
   trick: {},               // seat -> card currently on the felt
   trickLeader: null,
+  trickResolving: false,   // true from the moment a trick is first detected complete
+                            // until it's actually cleared - guards against resolving it twice
   tricksWon: { NS: [], EW: [] }, // arrays of card-point totals per trick, for reference
   pointsThisHand: { NS: 0, EW: 0 },
   lastTrickWinner: null,
@@ -1369,6 +1371,7 @@ function dealNewHandInner(){
   state.meldDetail = { S:[], N:[], E:[], W:[] };
   state.trick = {};
   state.trickLeader = null;
+  state.trickResolving = false;
   state.pointsThisHand = { NS:0, EW:0 };
   state.lastTrickWinner = null;
   state.cardsPlayedCount = 0;
@@ -2252,6 +2255,11 @@ function legalPlays(seat, leadSuit){
 function advanceTrick(){
   const playedSeats = Object.keys(state.trick);
   if(playedSeats.length === 4){
+    // Guards against resolving the same trick twice (e.g. a stale duplicate
+    // schedule landing after it's already been resolved but before it's
+    // cleared) - mirrors the same guard in 500's advanceTrick().
+    if(state.trickResolving) return;
+    state.trickResolving = true;
     resolveTrick();
     return;
   }
@@ -2442,6 +2450,7 @@ function resolveTrick(){
   pausableTimeout(()=>{
     state.trick = {};
     state.trickLeader = winner;
+    state.trickResolving = false;
     clearTrickArea();
     if(isLastTrick){
       finishHand();
@@ -2926,7 +2935,10 @@ function rebuildLogPanel(){
    it instead of silently dealing a brand new game. */
 function saveResumeState(){
   try {
-    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ state, log }));
+    // state.passedSeats/humanMeldUsed are JS Sets - JSON.stringify silently
+    // turns those into "{}" with no error, losing their contents, unless
+    // this replacer converts them to plain arrays first.
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ state, log }, (key, value) => value instanceof Set ? Array.from(value) : value));
   } catch (err) {
     console.error('saveResumeState error', err);
   }
@@ -2934,7 +2946,17 @@ function saveResumeState(){
 
 /* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes it
    from sessionStorage) so it's only ever used once - a later fresh visit to this page still
-   deals a genuinely new game. Returns true if a game was restored, false otherwise. */
+   deals a genuinely new game. Returns true if a game was restored, false otherwise.
+
+   render() alone rebuilds the board, but NOT the phase-specific interactive
+   panels (the bid panel, trump choice, card-passing panel, meld panel, the
+   round-end modal) - those only ever get built by the game's own normal
+   turn-by-turn flow, never by render() itself. Without the switch below,
+   resuming mid-phase left the board looking "frozen": cards dealt, nothing
+   clickable anywhere. Each case calls whichever of those phase functions is
+   safe to call again on its own restored state, without redoing or
+   double-counting anything that already happened before the snapshot was
+   taken (e.g. scoring a completed trick or a finished hand a second time). */
 function tryRestoreResumeState(){
   try {
     const raw = sessionStorage.getItem(RESUME_KEY);
@@ -2943,9 +2965,86 @@ function tryRestoreResumeState(){
     const saved = JSON.parse(raw);
     if(!saved || typeof saved.state !== 'object') return false;
     state = saved.state;
+    state.passedSeats = new Set(state.passedSeats || []);
+    state.humanMeldUsed = new Set(state.humanMeldUsed || []);
     log = saved.log || [];
     rebuildLogPanel();
+
+    // render() never touches the trump badge (setTrump() sets it directly,
+    // once) - without this a resumed game past the bidding phase would show
+    // an empty Trump box even though a suit was already chosen.
+    if(state.trump){
+      const isRed = RED_SUITS.includes(state.trump);
+      const color = isRed ? '#b3261e' : '#000000';
+      document.getElementById('trumpBadge').innerHTML = `<span style="font-weight:400;">Trump:</span> <span style="color:${color}">${state.trump} ${suitName(state.trump)}</span>`;
+    } else {
+      document.getElementById('trumpBadge').innerHTML = '<span style="font-weight:400;">Trump:</span>';
+    }
+
     render();
+
+    switch(state.phase){
+      case 'bidding':
+        // Safe to call directly - only reads state.bid/passedSeats/
+        // biddingTurn to work out whose turn it is now.
+        processBiddingTurn();
+        break;
+      case 'trump':
+        // state.phase only lingers on 'trump' while waiting on YOUR choice -
+        // an AI's trump pick happens synchronously and moves straight into
+        // the passing phase, so it can never be caught mid-'trump'.
+        promptHumanTrumpChoice();
+        break;
+      case 'passing':
+        // Likewise, 'passing' only lingers while waiting on your card
+        // selection (as either the partner or the declarer) - an AI-only
+        // exchange runs straight through to melding. renderPassPanel()
+        // reads state.passStage to show whichever side is actually pending.
+        renderPassPanel();
+        break;
+      case 'humanMeld':
+        // Only reached when "AI creates melds" is off, so this is always
+        // waiting on you.
+        renderMeldPanel();
+        break;
+      case 'meld':
+        // finalizeMeldPhase() already ran and calculated everyone's meld
+        // before this was saved - just re-show the summary/"Start Play"
+        // modal (which has no side effects of its own) instead of
+        // recalculating.
+        showMeldSummary('NS');
+        break;
+      case 'play':
+        if(state.trickResolving){
+          // resolveTrick() already ran (points/tricksTaken already updated)
+          // before this was saved; only its own 900ms "clear the trick and
+          // move on" pause never got to fire. Finish that step instead of
+          // calling resolveTrick() again, which would double-count the trick.
+          const winner = currentTrickWinner();
+          state.trick = {};
+          state.trickLeader = winner;
+          state.trickResolving = false;
+          clearTrickArea();
+          render();
+          if(state.cardsPlayedCount === 48){ finishHand(); } else { advanceTrick(); }
+        } else {
+          // Safe to call directly in every other case - either the trick
+          // isn't full yet (it works out whose turn is next), or it just
+          // became full and hasn't been resolved yet (it resolves it itself).
+          advanceTrick();
+        }
+        break;
+      case 'scoring': {
+        // finishHand() already tallied the round and updated state.scores
+        // before this was saved - calling it again would score the round a
+        // second time. Just give you a way to continue instead.
+        const gameOver = state.scores.NS >= GAME_TARGET || state.scores.EW >= GAME_TARGET;
+        showModal(gameOver ? 'Welcome Back' : 'Round Complete', '<p>Picking back up where you left off.</p>',
+          `<button onclick="closeModal(); ${gameOver ? 'newGame()' : 'nextHand()'};">${gameOver ? 'Start a new game' : 'Deal The Next Round'}</button>`, false);
+        break;
+      }
+    }
+
     return true;
   } catch (err) {
     console.error('tryRestoreResumeState error', err);
