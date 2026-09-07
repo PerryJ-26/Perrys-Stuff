@@ -1,5 +1,5 @@
 
-<!-- Revision 10 | Sunday, September 06, 2026 | Renamed "The AI" to "AI" (setup field, live game, and Recorded Scores list); fixed column alignment in the Recorded Scores list by preserving spaces (white-space:pre) instead of collapsing them. -->
+<!-- Revision 11 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game and then Back to Othello started a brand new game instead of resuming. Instructions now saves the current board/turn/names/log to sessionStorage first, and the page restores it on load (skipped if the saved game had already ended) instead of always starting fresh, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -917,6 +917,62 @@
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+  /* Snapshots the in-progress game to sessionStorage right before navigating to Instructions,
+     so Back to Othello can resume it instead of silently starting a new game. The log panel has
+     no backing array (log() only ever appends straight to the DOM), so its innerHTML is saved
+     directly alongside the game state. */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({
+        mode, names, isAI, board, phase, current,
+        logHtml: document.getElementById('log').innerHTML
+      }));
+    } catch (err) {
+      console.error('saveResumeState error', err);
+    }
+  }
+
+  /* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes
+     it from sessionStorage) so it's only ever used once - a later fresh visit still starts a
+     genuinely new game. A saved game that had already ended isn't "in progress" - there's
+     nothing to resume, so that case (and any invalid snapshot) falls through to a fresh start.
+     Returns true if a game was restored, false otherwise. */
+  function tryRestoreResumeState(){
+    try {
+      const raw = sessionStorage.getItem(RESUME_KEY);
+      if(!raw) return false;
+      sessionStorage.removeItem(RESUME_KEY);
+      const saved = JSON.parse(raw);
+      if(!saved || saved.phase !== 'playing' || !Array.isArray(saved.board)) return false;
+
+      mode = saved.mode;
+      names = saved.names;
+      isAI = saved.isAI;
+      board = saved.board;
+      phase = saved.phase;
+
+      buildBoardDOM();
+      renderBoardImmediate();
+      buildBoardLabels();
+      updateLabelsVisibility();
+
+      document.getElementById('nameBlack').textContent = `${names.black} (Black)`;
+      document.getElementById('nameWhite').textContent = `${names.white} (White)`;
+      updateSessionWinsNameLabels();
+      document.getElementById('log').innerHTML = saved.logHtml || '';
+      document.getElementById('gameOver').classList.remove('show');
+      document.getElementById('universalModal').style.display = 'none';
+
+      updateScoreboard();
+      updateSessionWinsDisplay();
+      beginTurn(saved.current, false);
+      return true;
+    } catch (err) {
+      console.error('tryRestoreResumeState error', err);
+      return false;
+    }
+  }
+
   // Pass is enabled any time the player on the clock (human OR the AI) has no legal move -
   // a human always has to be the one to click it, even when it's the AI that's stuck, since
   // the AI never acts on its own until someone dismisses its Can't Move popup for it.
@@ -1214,6 +1270,7 @@
   }
 
   document.getElementById('instructionsBtn').addEventListener('click', () => {
+    saveResumeState();
     window.location.href = '../OthInstructions.html';
   });
 
@@ -1281,6 +1338,11 @@
   // ---------------- session wins scoreboard ----------------
   // sessionStorage (not localStorage) - see Acey-Deucey's identical comment: this tally is
   // meant to survive a page reload within the same tab, but correctly reset once the tab closes.
+  // Lets an in-progress game survive Instructions and Back to Othello - see saveResumeState /
+  // tryRestoreResumeState below. Without this, Back to Othello always looked like a fresh page
+  // load and silently started a brand new game over the one in progress.
+  const RESUME_KEY = 'othelloResumeState_v1';
+
   const SESSION_WINS_KEY = 'othelloSessionWins_v1';
   function loadSessionWins(){
     try {
@@ -1401,6 +1463,7 @@
 
   // ---------------- start / restart ----------------
   function startGame(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
     board = newBoard();
     phase = 'playing';
     turnToken++;
@@ -1466,7 +1529,9 @@
     } catch (err) { console.error('restorePersistedSettings error', err); }
   })();
 
-  startGame();
+  if(!tryRestoreResumeState()){
+    startGame();
+  }
 
   // Aligns the top of the "Black (Player 1)" name field with the top of the "New Game"
   // button, purely for visual balance between the two side panels - same technique
