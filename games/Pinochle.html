@@ -1,5 +1,5 @@
 
-<!-- Revision 26 | Thursday, September 03, 2026 -->
+<!-- Revision 27 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game (which opens a new tab) and then Back to Pinochle in that tab started a brand new game instead of resuming the one still running in the original tab. Instructions now saves the current state/log to sessionStorage first (which the new tab inherits), and the page restores it on load instead of always dealing a fresh hand, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1148,6 +1148,12 @@ try {
 // each team this session, not individual hands. Persisted in sessionStorage (like
 // AceyDeucey's own session-wins feature) so a refresh mid-game doesn't lose the
 // count, but it's never reset on New Game - only an intentional Exit clears it.
+// Lets an in-progress game survive Instructions (opens in a new tab, which inherits a copy of
+// this tab's sessionStorage) and Back to Pinochle in that tab - see saveResumeState /
+// tryRestoreResumeState below. Without this, Back to Pinochle always looked like a fresh page
+// load and silently dealt a brand new game over the one still running in the original tab.
+const RESUME_KEY = 'pinochleResumeState_v1';
+
 const SESSION_WINS_KEY = 'pinochleSessionWins_v1';
 let sessionWins = { NS:0, EW:0 };
 function loadSessionWins(){
@@ -2580,6 +2586,7 @@ function newGame(){
   state.dealerIdx = 0;
   log = [];
   document.getElementById('logPanel').innerHTML = '';
+  try { sessionStorage.removeItem(RESUME_KEY); } catch (e) {}
   dealNewHand();
 }
 
@@ -2901,6 +2908,51 @@ function addLog(msg){
   panel.scrollTop = panel.scrollHeight;
 }
 
+/* Rebuilds the log panel's DOM from a restored `log` array (mirrors the DOM half of addLog,
+   without re-pushing into `log` itself) - used by tryRestoreResumeState below. */
+function rebuildLogPanel(){
+  const panel = document.getElementById('logPanel');
+  panel.innerHTML = '';
+  log.forEach(msg=>{
+    const div = document.createElement('div');
+    div.textContent = msg;
+    panel.appendChild(div);
+  });
+  panel.scrollTop = panel.scrollHeight;
+}
+
+/* Snapshots the in-progress game (the whole `state` object, plus the log) to sessionStorage
+   right before opening Instructions in its new tab, so Back to Pinochle in that tab can resume
+   it instead of silently dealing a brand new game. */
+function saveResumeState(){
+  try {
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ state, log }));
+  } catch (err) {
+    console.error('saveResumeState error', err);
+  }
+}
+
+/* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes it
+   from sessionStorage) so it's only ever used once - a later fresh visit to this page still
+   deals a genuinely new game. Returns true if a game was restored, false otherwise. */
+function tryRestoreResumeState(){
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY);
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    const saved = JSON.parse(raw);
+    if(!saved || typeof saved.state !== 'object') return false;
+    state = saved.state;
+    log = saved.log || [];
+    rebuildLogPanel();
+    render();
+    return true;
+  } catch (err) {
+    console.error('tryRestoreResumeState error', err);
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------
 // MODAL SYSTEM (matches the #universalModal / showModal() pattern used
 // across the Game Hub, so Notepad++ diffs stay familiar between files)
@@ -3026,6 +3078,7 @@ function showRules(){
 // EVENT WIRING / INIT
 // ---------------------------------------------------------------------
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
+  saveResumeState();
   window.open('../Pinstructions.html', '_blank');
 });
 document.getElementById('exitBtn').addEventListener('click', ()=>{
@@ -3159,7 +3212,9 @@ function updateDebugReadout(){
 setInterval(updateDebugReadout, 400);
 window.addEventListener('resize', updateDebugReadout);
 
-dealNewHand();
+if(!tryRestoreResumeState()){
+  dealNewHand();
+}
 </script>
 
 <!-- -------------------------------------------------------------------------
