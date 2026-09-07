@@ -1,5 +1,5 @@
 
-<!-- Revision 9 | Monday, September 07, 2026 | Replaced the Sound toggle button with an Instructions button linking to Yzinstructions.html (sound effects still play, just no longer have a manual on/off button); enforced the Multiple Yahtzees joker-priority rule (matching Upper box, then Lower Section, then any open Upper box) when scoring a bonus Yahtzee, including when the original Yahtzee was zeroed out. -->
+<!-- Revision 10 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game and then Back to Yahtzee started a brand new game instead of resuming - the page had no way to remember an in-progress game across that navigation. The Instructions button now saves the current scorecard/dice/rolls-left/held-dice/bonus-count to sessionStorage before leaving, and the page restores it on load instead of auto-starting a new game, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -475,7 +475,7 @@
         class="scoreBtn"> New Game
       </button>
       
-      <button id="instructionsBtn" onclick="window.location.href='../Yzinstructions.html'" class="scoreBtn"
+      <button id="instructionsBtn" onclick="saveResumeState(); window.location.href='../Yzinstructions.html'" class="scoreBtn"
         style="background:var(--exit-btn-bg);
         color:var(--exit-btn-text);
         font-weight:600;
@@ -732,6 +732,10 @@ let yahtzeeBonusCount = 0;
 
 const highScoresList = document.getElementById('highScoresList');
 const HIGH_SCORES_KEY = 'yahtzeeHighScores_v1';
+/* Lets an in-progress game survive a trip to Instructions and back (see saveResumeState /
+   tryRestoreResumeState below) - without this, returning from Instructions always looked like
+   a fresh page load and silently started a brand new game over the one in progress. */
+const RESUME_KEY = 'yahtzeeResumeState_v1';
 const MAX_HIGH_SCORES = 30;
 const MAX_HIGH_SCORES_DISPLAY = 12;
 
@@ -1610,6 +1614,7 @@ function initYahtzee(){
     held = [false,false,false,false,false];
     dice = [1,1,1,1,1];
     yahtzeeBonusCount = 0;
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (e) {}
     renderDice();
     renderScorecard();
     updateTotals();
@@ -1622,8 +1627,49 @@ function initYahtzee(){
   }
 }
 
-/* Initialize UI */
-initYahtzee();
+/* Snapshots the in-progress game (scorecard, dice, rolls left, held dice, bonus count) to
+   sessionStorage right before navigating to Instructions, so Back to Yahtzee can resume it
+   instead of the page silently starting a new game on load. */
+function saveResumeState(){
+  try {
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ scorecard, rollsLeft, held, dice, yahtzeeBonusCount }));
+  } catch (err) {
+    console.error('saveResumeState error', err);
+  }
+}
+
+/* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes it
+   from sessionStorage) so it's only ever used once - a later fresh visit to this page still
+   starts a genuinely new game. Returns true if a game was restored, false otherwise. */
+function tryRestoreResumeState(){
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY);
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    const saved = JSON.parse(raw);
+    if(!saved || typeof saved.scorecard !== 'object') return false;
+    scorecard = saved.scorecard;
+    rollsLeft = saved.rollsLeft;
+    held = saved.held;
+    dice = saved.dice;
+    yahtzeeBonusCount = saved.yahtzeeBonusCount || 0;
+    renderDice();
+    renderScorecard();
+    updateTotals();
+    updateRollInfo();
+    renderHighScores();
+    return true;
+  } catch (err) {
+    console.error('tryRestoreResumeState error', err);
+    return false;
+  }
+}
+
+/* Initialize UI - resume an in-progress game if we have one saved (see saveResumeState /
+   tryRestoreResumeState above), otherwise start a new one as before. */
+if(!tryRestoreResumeState()){
+  initYahtzee();
+}
 
 /* Pins the Scorecard and High Scores cards to the left column's exact height (not just a minimum),
    so neither can overshoot past Totals' bottom either - min-height alone still let Scorecard's own
