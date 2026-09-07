@@ -1,5 +1,5 @@
 
-<!-- Revision 15 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game (which opens a new tab) and then Back to Spades in that tab started a brand new game instead of resuming the one still running in the original tab. Instructions now saves the current state/log to sessionStorage first (which the new tab inherits), and the page restores it on load instead of always dealing a fresh hand, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
+<!-- Revision 16 | Sunday, September 06, 2026 | Proactively fixed the same freeze bug found (and fixed) in Pinochle/500: resuming mid-bidding, mid-Nil-exchange, or mid-trick rebuilt the board via render() but never the phase's own panel, leaving nothing clickable. tryRestoreResumeState() now re-enters whichever phase was saved, and correctly finishes a trick that was resolved but not yet cleared at the moment of saving instead of risking a double-counted trick. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1841,7 +1841,18 @@ function saveResumeState(){
 
 /* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes it
    from sessionStorage) so it's only ever used once - a later fresh visit to this page still
-   deals a genuinely new game. Returns true if a game was restored, false otherwise. */
+   deals a genuinely new game. Returns true if a game was restored, false otherwise.
+
+   render() alone rebuilds the board, but NOT the phase-specific interactive
+   panels (the bid panel, the Nil-exchange discard panel, the round-end
+   modal) - those only ever get built by the game's own normal turn-by-turn
+   flow, never by render() itself. Without the switch below, resuming
+   mid-phase left the board looking "frozen": cards dealt, nothing clickable
+   anywhere - the same bug already found and fixed in Pinochle.html and
+   500.html. Each case calls whichever of those phase functions is safe to
+   call again on its own restored state, without redoing or double-counting
+   anything that already happened before the snapshot was taken (e.g.
+   scoring a completed trick or a finished hand a second time). */
 function tryRestoreResumeState(){
   try {
     const raw = sessionStorage.getItem(RESUME_KEY);
@@ -1853,6 +1864,66 @@ function tryRestoreResumeState(){
     log = saved.log || [];
     rebuildLogPanel();
     render();
+
+    switch(state.phase){
+      case 'bidding':
+        // Safe to call directly - only reads state.biddingTurn/biddingOrder
+        // to work out whose turn it is now.
+        processBiddingTurn();
+        break;
+      case 'nilExchange':
+        if(state.pendingHumanExchange){
+          // A stray id from an earlier round's selection can't happen in
+          // practice, but filtering to cards still actually in hand costs
+          // nothing and makes this safe regardless of which of the two
+          // sub-moments (the "You Bid Nil" intro modal, or the card-picker
+          // panel itself) this was saved during - either way, jumping
+          // straight to the card picker with whatever valid selection
+          // already exists is the correct, actionable resume point.
+          const handIds = state.hands.S.map(c=>c.id);
+          state.discardSelection = (state.discardSelection || []).filter(id => handIds.includes(id));
+          render();
+          renderExchangePanel();
+        } else {
+          // No human exchange pending - this phase only lingers this long
+          // waiting on YOUR selection; an AI-only exchange resolves
+          // synchronously and only pauses briefly (500ms) before startPlay().
+          // If caught in that narrow window, just move on to it directly.
+          startPlay();
+        }
+        break;
+      case 'play':
+        if(state.trickResolving){
+          // resolveTrick() already ran (tricksTaken already updated) before
+          // this was saved; only its own 900ms "clear the trick and move
+          // on" pause never got to fire. Finish that step instead of
+          // calling resolveTrick() again, which would double-count the trick.
+          const winner = currentTrickWinner();
+          state.trick = {};
+          state.trickResolving = false;
+          state.trickLeader = winner;
+          clearTrickArea();
+          render();
+          const totalPlayed = Object.values(state.tricksTaken).reduce((a,b)=>a+b,0);
+          if(totalPlayed >= 13){ finishHand(); } else { advanceTrick(); }
+        } else {
+          // Safe to call directly in every other case - either the trick
+          // isn't full yet (it works out whose turn is next), or it just
+          // became full and hasn't been resolved yet (it resolves it itself).
+          advanceTrick();
+        }
+        break;
+      case 'scoring': {
+        // finishHand() already tallied the hand and updated state.scores
+        // before this was saved - calling it again would score the hand a
+        // second time. Just give you a way to continue instead.
+        const winnerTeam = checkGameEnd();
+        showModal(winnerTeam ? 'Welcome Back' : 'Hand Complete', '<p>Picking back up where you left off.</p>',
+          `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${winnerTeam ? 'Start a new game' : 'Deal The Next Hand'}</button>`, false);
+        break;
+      }
+    }
+
     return true;
   } catch (err) {
     console.error('tryRestoreResumeState error', err);
