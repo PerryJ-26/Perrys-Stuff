@@ -1,6 +1,6 @@
 
 
-<!-- Revision 50 | Tuesday, September 1, 2026 -->
+<!-- Revision 51 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game and then Back to Acey Deucey started a brand new game instead of resuming. Instructions now saves the current board/dice/turn/names/log to sessionStorage first, and the page restores it on load instead of always starting fresh, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1533,6 +1533,11 @@
   // back). Called from both applyNameChangeLive() (a plain name edit, no restart) and
   // startGame() (mode changes/New Game/etc.), since either one can be the most recent thing
   // the player did.
+  // Lets an in-progress game survive Instructions and Back to Acey Deucey - see
+  // saveResumeState / tryRestoreResumeState below. Without this, Back to Acey Deucey always
+  // looked like a fresh page load and silently started a brand new game over the one in progress.
+  const RESUME_KEY = 'aceyDeuceyResumeState_v1';
+
   const PLAYER_NAMES_KEY = 'aceyDeuceyPlayerNames_v1';
   function persistSettings(){
     try {
@@ -1605,6 +1610,7 @@
   });
 
   function startGame(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
     pendingRestart = false;
     names.white = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     names.black = mode==='ai' ? 'The AI' : (document.getElementById('gsP2Name').value.trim() || 'Player 2');
@@ -1823,6 +1829,75 @@
     el.scrollTop = el.scrollHeight;
   }
 
+  /* Snapshots the in-progress game to sessionStorage right before navigating to Instructions,
+     so Back to Acey Deucey can resume it instead of silently starting a new game. The log panel
+     has no backing array (log() only ever appends straight to the DOM), so its innerHTML is
+     saved directly alongside the game state. */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({
+        names, isAI, board, bar, off, current, nextStarter, dice, originalRoll, usedCount,
+        phase, awaitingDoubleChoice, isDoubleFromAceyDeucey, isDoubleBonusPending, doublesStreak,
+        everFullyEntered, selected, legalMap,
+        logHtml: document.getElementById('log').innerHTML
+      }));
+    } catch (err) {
+      console.error('saveResumeState error', err);
+    }
+  }
+
+  /* Restores a snapshot saved by saveResumeState, if one is present, and consumes it (removes
+     it from sessionStorage) so it's only ever used once - a later fresh visit still starts a
+     genuinely new game. Returns true if a game was restored, false otherwise. */
+  function tryRestoreResumeState(){
+    try {
+      const raw = sessionStorage.getItem(RESUME_KEY);
+      if(!raw) return false;
+      sessionStorage.removeItem(RESUME_KEY);
+      const saved = JSON.parse(raw);
+      if(!saved || !saved.board || !saved.names) return false;
+
+      pendingRestart = false;
+      names = saved.names;
+      isAI = saved.isAI;
+      board = saved.board;
+      bar = saved.bar;
+      off = saved.off;
+      current = saved.current;
+      nextStarter = saved.nextStarter;
+      dice = saved.dice;
+      originalRoll = saved.originalRoll;
+      usedCount = saved.usedCount;
+      phase = saved.phase;
+      awaitingDoubleChoice = saved.awaitingDoubleChoice;
+      isDoubleFromAceyDeucey = saved.isDoubleFromAceyDeucey;
+      isDoubleBonusPending = saved.isDoubleBonusPending;
+      doublesStreak = saved.doublesStreak;
+      everFullyEntered = saved.everFullyEntered;
+      selected = saved.selected;
+      legalMap = saved.legalMap || [];
+
+      document.getElementById('game').classList.add('show');
+      document.getElementById('nameWhite').textContent = names.white + ' (White)';
+      document.getElementById('nameBlack').textContent = names.black + ' (Black)';
+      document.getElementById('sessionWinsP1Name').textContent = names.white;
+      document.getElementById('sessionWinsP2Name').textContent = names.black;
+      document.getElementById('pipsWhiteLabel').textContent = names.white;
+      document.getElementById('pipsBlackLabel').textContent = names.black;
+      updateSessionWinsDisplay();
+      document.getElementById('log').innerHTML = saved.logHtml || '';
+      document.getElementById('gameOver').classList.remove('show');
+
+      buildBoardDOM();
+      render();
+      maybeAutoRollForAI();
+      return true;
+    } catch (err) {
+      console.error('tryRestoreResumeState error', err);
+      return false;
+    }
+  }
+
   // ---------------- interaction ----------------
   function onSourceClick(source){
     if(phase !== 'moving') return;
@@ -2024,6 +2099,7 @@
 
   updateSoundButton();
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
     window.location.href = '../ADInstructions.html';
   });
 
@@ -2673,8 +2749,11 @@
   })();
 
   // No Setup screen anymore - the board opens automatically as soon as the page loads, using
-  // whatever the default mode/name fields already show (AI Opponent, "Player 1" vs "The AI").
-  startGame();
+  // whatever the default mode/name fields already show (AI Opponent, "Player 1" vs "The AI") -
+  // unless there's an in-progress game to resume (see tryRestoreResumeState above).
+  if(!tryRestoreResumeState()){
+    startGame();
+  }
   applyPointNumbersVisibility(); // #boardGrid now exists - apply the restored/saved show-numbers state
 
   // Aligns the top of the "Player 1" name field with the top of the "New Game" button, purely
