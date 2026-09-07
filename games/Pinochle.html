@@ -1,5 +1,5 @@
 
-<!-- Revision 28 | Sunday, September 06, 2026 | Fixed the freeze the Revision 27 resume fix introduced: resuming mid-bidding (or mid any other phase) rebuilt the board via render() but never the phase's own panel (bid panel, trump/pass/meld panels, round-end modal), leaving nothing clickable. tryRestoreResumeState() now re-enters whichever phase was saved. Also fixed passedSeats/humanMeldUsed (JS Sets) losing their contents when saved to sessionStorage, and added a trickResolving guard so resuming mid-trick can't double-count a trick. -->
+<!-- Revision 29 | Monday, September 07, 2026 | Instructions now navigates in the same tab (like Othello/Acey Deucey/Yahtzee) instead of opening a new tab each time, per request - the new-tab behavior was leaving multiple tabs open and reading as multiple separate games. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3178,7 +3178,7 @@ function showRules(){
 // ---------------------------------------------------------------------
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
   saveResumeState();
-  window.open('../Pinstructions.html', '_blank');
+  window.location.href = '../Pinstructions.html';
 });
 document.getElementById('exitBtn').addEventListener('click', ()=>{
   showModal('Exit Pinochle', 'Are you sure you want to exit?', `
