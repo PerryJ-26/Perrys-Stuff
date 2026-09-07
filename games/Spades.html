@@ -1,5 +1,5 @@
 
-<!-- Revision 16 | Sunday, September 06, 2026 | Proactively fixed the same freeze bug found (and fixed) in Pinochle/500: resuming mid-bidding, mid-Nil-exchange, or mid-trick rebuilt the board via render() but never the phase's own panel, leaving nothing clickable. tryRestoreResumeState() now re-enters whichever phase was saved, and correctly finishes a trick that was resolved but not yet cleared at the moment of saving instead of risking a double-counted trick. -->
+<!-- Revision 17 | Monday, September 07, 2026 | Instructions now navigates in the same tab (like Othello/Acey Deucey/Yahtzee) instead of opening a new tab each time, per request - the new-tab behavior was leaving multiple tabs open and reading as multiple separate games. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2016,7 +2016,7 @@ document.getElementById('universalModal').addEventListener('click', (e)=>{
 // ---------------------------------------------------------------------
 document.getElementById('rulesBtn').addEventListener('click', ()=>{
   saveResumeState();
-  window.open('../Spinstructions.html', '_blank');
+  window.location.href = '../Spinstructions.html';
 });
 // Set (to showHandSummary/showSummary) whenever the Hand Complete or game-
 // over popup is drawn - lets confirmExit() below put that exact popup back
