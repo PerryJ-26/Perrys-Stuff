@@ -1,5 +1,5 @@
 
-<!-- Revision 14 | Monday, September 07, 2026 | Instructions now navigates in the same tab (like Othello/Acey Deucey/Yahtzee) instead of opening a new tab each time, per request - the new-tab behavior was leaving multiple tabs open and reading as multiple separate games. -->
+<!-- Revision 17 | Tuesday, September 08, 2026 | Two more Nullo-related fixes: (1) cardBeats() now recognizes the Joker as an automatic winner even in a No-Trump/Nullo trick, so a void hand holding it is no longer misjudged as having a safe discard; (2) a defender leading against an opponent's Nullo now leads low from their own longest suit instead of their own high cards/aces, since leading high was just winning the trick back for themselves instead of pressuring the bidder. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -456,13 +456,25 @@
   #bidPanel{
     position: fixed;
     top: 68px;
+    /* left is set in px by positionBidPanel() (JS) to the felt's own
+       actual center, not the browser window's - #table-wrap's asymmetric
+       margins mean those aren't the same point. 50% here is just a
+       harmless fallback for the instant before that JS runs. This used
+       to be a fixed "dead-center of the viewport, shifted 0.5in right"
+       formula; narrowing the table below (first column -0.75in, each
+       trick-count column -0.25in) already cleared the West/East bubbles
+       at 1920x1080, and centering on the felt itself (rather than the
+       window) keeps it centered on the actual red-outlined play area at
+       other window sizes too. */
     left: 50%;
-    /* Shifted 0.5in right of dead-center so West's speech bubble (just
-       left of the felt's middle) isn't hidden behind the panel. */
-    transform: translateX(calc(-50% + 0.5in));
+    transform: translateX(-50%);
     z-index: 60;
     width: 94%;
-    max-width: 640px;
+    /* Shrunk from 640px along with the table (see the fixed column
+       widths below) so the popup box always hugs the table instead of
+       leaving a wide band of empty padding around a now-narrower table.
+       (4.28in table + this panel's own padding/border ≈ 4.53in.) */
+    max-width: 435px;
     /* Was 82vh, tall enough to reach down over the player's own hand at
        the bottom of the felt. Capped shorter so it stays clear of the
        hand. The table itself is also sized more compactly below (smaller
@@ -477,8 +489,22 @@
      #bidPanel's max-height above without a scrollbar. */
   #bidPanel h3{ margin: 0 0 2px; font-size: .8rem; }
   #bidPanel .bidStatus{ font-size: .8rem; margin-bottom: 2px; }
-  #bidPanel table{ font-size: .74rem; margin-bottom: 3px; }
+  /* table-layout:fixed (rather than the browser's default auto-sizing)
+     is what makes the explicit column widths below actually stick -
+     without it the browser just re-stretches every column to fill
+     whatever width the table is given. A <table> is block-level, so
+     width:auto would still just fill its container (same as width:100%)
+     rather than shrinking to the columns' actual widths - giving it the
+     exact sum of those widths instead, plus centering it with
+     margin:auto, is what actually narrows (and re-centers) the table. */
+  #bidPanel table{ font-size: .74rem; table-layout: fixed; width: 4.28in; margin: 0 auto 3px; }
   #bidPanel td, #bidPanel th{ padding: 1px 5px; }
+  /* First (suit-name) column narrowed by .75in from its old auto-sized
+     width (~1.43in), and each of the 5 trick-count columns narrowed by
+     .25in from their old auto-sized width (~0.97in). table-layout:fixed
+     takes these from the header row and applies them to every row. */
+  #bidPanel table tr:first-child th:first-child{ width: 0.68in; }
+  #bidPanel table tr:first-child th:not(:first-child){ width: 0.72in; }
   #bidPanel button.bid-cell-btn{ padding: 1px 4px; font-size: .74rem; }
   #bidPanel .nullo-row{ margin: 2px 0; gap: 8px; }
   #bidPanel .nullo-row button{ padding: 3px 10px; font-size: .8rem; }
@@ -508,9 +534,13 @@
   .control-panel button.pass{ background:var(--pass-btn-bg); color:#fff; border-color:var(--pass-btn-border); }
   .control-panel .bidStatus{ width:100%; text-align:center; font-size:calc(.78rem + 3px); color:#3a1418; margin-bottom:2px; }
   .bid-table-wrap{ width:100%; overflow-x:auto; }
-  .bid-table-wrap table{ min-width: 460px; }
+  /* This used to force the table to at least its old (wider) size even
+     if something tried to shrink it. Now that #bidPanel table sets an
+     explicit, deliberately-narrower width of its own, this old floor
+     would just fight that - dropped rather than raised, so the new
+     narrower width actually takes effect. */
   .bid-table-wrap td.suit-cell{ text-align:left; font-weight:700; white-space:nowrap; }
-  .bid-table-wrap button.bid-cell-btn{ width:100%; padding:3px 6px; font-size:.82rem; }
+  .bid-table-wrap button.bid-cell-btn{ width:100%; padding:3px 6px; font-size:.82rem; text-align:center; }
   .nullo-row{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%; margin: 4px 0; }
 
   /* ---------- Score table (top-left corner) ---------- */
@@ -1192,9 +1222,23 @@ function placePass(seat){
   pausableTimeout(processBiddingTurn, 350);
 }
 
+// Centers #bidPanel on the felt's own red-outlined box rather than on the
+// browser window - #table-wrap's asymmetric left/right margins mean the
+// felt usually isn't exactly at 50% of the viewport, so a plain
+// left:50% would drift off the felt's true center. Called whenever the
+// panel is (re)shown, and again on resize while it's open.
+function positionBidPanel(){
+  const panel = document.getElementById('bidPanel');
+  if(panel.style.display !== 'flex') return;
+  const feltRect = document.getElementById('felt').getBoundingClientRect();
+  panel.style.left = (feltRect.left + feltRect.width/2) + 'px';
+}
+window.addEventListener('resize', positionBidPanel);
+
 function renderBidPanel(){
   const panel = document.getElementById('bidPanel');
   panel.style.display = 'flex';
+  positionBidPanel();
   const highValue = state.currentHighBid ? state.currentHighBid.value : 0;
 
   let rows = '';
@@ -1517,6 +1561,14 @@ function leadSuitOfTrick(){
 }
 
 function cardBeats(c, current, leadSuit, trump){
+  // The Joker is unconditionally the highest card whenever it's played (see
+  // currentTrickWinner() below) - in a suit contract that's already covered
+  // naturally since effectiveSuit() maps it to the trump suit, but in a
+  // No-Trump/Nullo trick (trump === null) it has no suit to fall back on and
+  // would otherwise fail every comparison below, wrongly reading as a safe
+  // discard for a hand that's void in the led suit. Handle it explicitly so
+  // both contract types agree with currentTrickWinner()'s own rule.
+  if(c.rank === 'JK') return true;
   const cEff = effectiveSuit(c, trump), curEff = effectiveSuit(current, trump);
   const cTrump = !!trump && cEff === trump;
   const curTrump = !!trump && curEff === trump;
@@ -1573,6 +1625,29 @@ function chooseAiCard(seat, options, leadSuit){
   if(!leadSuit){
     // Leading
     if(isNulloContractor) return sortByRankAsc(options)[0]; // lead low — minimize the chance of winning
+
+    const isDefendingNullo = state.contract && state.contract.type === 'nullo';
+    if(isDefendingNullo){
+      // Leading your own high cards/aces here just wins the trick straight
+      // back for yourself - it does nothing to pressure the bidder into
+      // taking one, which is the entire point of defending against a
+      // Nullo. Leading low from your own longest suit is the standard
+      // misère-defense attack instead: it can't hand you the trick, and
+      // repeatedly running your long suit is what eventually strips out
+      // your own side's low cards there, making a later round in that same
+      // suit more likely to force the bidder to head it. sortByRankAsc
+      // already ranks the Joker as high (never the actual lowest unless
+      // it's the only card left), so this naturally avoids leading it too -
+      // playing the Joker always wins the trick outright for whoever leads
+      // it, which is exactly the outcome a defender doesn't want here.
+      const suitCounts = {};
+      options.forEach(c=>{ if(c.suit) suitCounts[c.suit] = (suitCounts[c.suit]||0) + 1; });
+      let longestSuit = null, longestCount = 0;
+      Object.entries(suitCounts).forEach(([s,n])=>{ if(n > longestCount){ longestSuit = s; longestCount = n; } });
+      const fromLongest = longestSuit ? options.filter(c=> c.suit === longestSuit) : options;
+      return sortByRankAsc(fromLongest)[0];
+    }
+
     if(trump){
       const trumps = options.filter(c=> effectiveSuit(c,trump) === trump);
       if(trumps.length >= 3) return sortByEffRankDesc(trumps, trump)[0];
@@ -1591,7 +1666,16 @@ function chooseAiCard(seat, options, leadSuit){
   }
   const currentWinner = currentTrickWinner();
   const partnerWinning = PARTNER[seat] === currentWinner;
-  if(partnerWinning){
+  // Defending against an opponent's Nullo (this seat isn't the bidder, and
+  // it isn't Nullo itself) is the mirror image of normal play: the whole
+  // point is to make the BIDDER take a trick, not to keep tricks away from
+  // them. If the bidder is already the one sitting on the highest card in
+  // this trick, overtaking them just to "win cheaply" would steal the bust
+  // away and hand the bidder a free pass - so treat "the bidder is
+  // currently winning" the same as "partner is currently winning": duck
+  // under it instead of beating it.
+  const bidderCurrentlyStuck = state.contract && state.contract.type === 'nullo' && currentWinner === state.contract.bidder;
+  if(partnerWinning || bidderCurrentlyStuck){
     return sortByRankAsc(options)[0]; // no card-point value to feed — just play low
   }
   if(winningCandidates.length){
