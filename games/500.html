@@ -1,5 +1,5 @@
 
-<!-- Revision 17 | Tuesday, September 08, 2026 | Two more Nullo-related fixes: (1) cardBeats() now recognizes the Joker as an automatic winner even in a No-Trump/Nullo trick, so a void hand holding it is no longer misjudged as having a safe discard; (2) a defender leading against an opponent's Nullo now leads low from their own longest suit instead of their own high cards/aces, since leading high was just winning the trick back for themselves instead of pressuring the bidder. -->
+<!-- Revision 18 | Tuesday, September 08, 2026 | Two bid-panel layout fixes: (1) the suit-name column was 8px too narrow for "Diamonds", which was spilling into the 6-tricks column - widened just enough to fit it; (2) the panel's vertical position is now computed from North's card row (like its horizontal position already was from the felt) instead of a fixed 68px, since that fixed value was landing right on top of North's cards - most visible with View All Cards on, but really always overlapping them. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -455,17 +455,19 @@
      (also oversized) meld panel. */
   #bidPanel{
     position: fixed;
+    /* top and left are both set in px by positionBidPanel() (JS) - left to
+       the felt's own actual center, top to just below North's card row -
+       rather than the browser window, since #table-wrap's asymmetric
+       margins mean the window's own center/edges aren't the same points.
+       The values here are just a harmless fallback for the instant before
+       that JS runs. This used to be a fixed "dead-center of the viewport,
+       shifted 0.5in right" formula with a fixed top:68px; narrowing the
+       table below (first column -0.68in, each trick-count column -0.25in)
+       already cleared the West/East bubbles at 1920x1080, and computing
+       both top and left from the board's own elements keeps the panel
+       clear of North's cards and centered on the felt at other window
+       sizes too. */
     top: 68px;
-    /* left is set in px by positionBidPanel() (JS) to the felt's own
-       actual center, not the browser window's - #table-wrap's asymmetric
-       margins mean those aren't the same point. 50% here is just a
-       harmless fallback for the instant before that JS runs. This used
-       to be a fixed "dead-center of the viewport, shifted 0.5in right"
-       formula; narrowing the table below (first column -0.75in, each
-       trick-count column -0.25in) already cleared the West/East bubbles
-       at 1920x1080, and centering on the felt itself (rather than the
-       window) keeps it centered on the actual red-outlined play area at
-       other window sizes too. */
     left: 50%;
     transform: translateX(-50%);
     z-index: 60;
@@ -473,8 +475,8 @@
     /* Shrunk from 640px along with the table (see the fixed column
        widths below) so the popup box always hugs the table instead of
        leaving a wide band of empty padding around a now-narrower table.
-       (4.28in table + this panel's own padding/border ≈ 4.53in.) */
-    max-width: 435px;
+       (4.36in table + this panel's own padding/border ≈ 4.60in.) */
+    max-width: 442px;
     /* Was 82vh, tall enough to reach down over the player's own hand at
        the bottom of the felt. Capped shorter so it stays clear of the
        hand. The table itself is also sized more compactly below (smaller
@@ -497,13 +499,17 @@
      rather than shrinking to the columns' actual widths - giving it the
      exact sum of those widths instead, plus centering it with
      margin:auto, is what actually narrows (and re-centers) the table. */
-  #bidPanel table{ font-size: .74rem; table-layout: fixed; width: 4.28in; margin: 0 auto 3px; }
+  #bidPanel table{ font-size: .74rem; table-layout: fixed; width: 4.36in; margin: 0 auto 3px; }
   #bidPanel td, #bidPanel th{ padding: 1px 5px; }
-  /* First (suit-name) column narrowed by .75in from its old auto-sized
-     width (~1.43in), and each of the 5 trick-count columns narrowed by
-     .25in from their old auto-sized width (~0.97in). table-layout:fixed
-     takes these from the header row and applies them to every row. */
-  #bidPanel table tr:first-child th:first-child{ width: 0.68in; }
+  /* First (suit-name) column narrowed from its old auto-sized width
+     (~1.43in) to 0.76in, and each of the 5 trick-count columns narrowed by
+     .25in from their old auto-sized width (~0.97in) to 0.72in.
+     table-layout:fixed takes these from the header row and applies them
+     to every row. 0.76in (rather than the originally-requested 0.68in) is
+     the smallest width "♦ Diamonds" - the longest suit label - actually
+     fits in without spilling into the next column; every other label
+     already fit at 0.68in. */
+  #bidPanel table tr:first-child th:first-child{ width: 0.76in; }
   #bidPanel table tr:first-child th:not(:first-child){ width: 0.72in; }
   #bidPanel button.bid-cell-btn{ padding: 1px 4px; font-size: .74rem; }
   #bidPanel .nullo-row{ margin: 2px 0; gap: 8px; }
@@ -1222,16 +1228,25 @@ function placePass(seat){
   pausableTimeout(processBiddingTurn, 350);
 }
 
-// Centers #bidPanel on the felt's own red-outlined box rather than on the
-// browser window - #table-wrap's asymmetric left/right margins mean the
-// felt usually isn't exactly at 50% of the viewport, so a plain
-// left:50% would drift off the felt's true center. Called whenever the
-// panel is (re)shown, and again on resize while it's open.
+// Centers #bidPanel horizontally on the felt's own red-outlined box, and
+// positions it vertically just below North's cards, rather than using the
+// browser window for either - #table-wrap's asymmetric left/right margins
+// mean the window's horizontal center isn't the felt's, and a fixed top
+// offset landed right on top of North's card row (#cards-N sits directly
+// above the felt, in the same column this panel is centered on) - most
+// noticeable with View All Cards on, since North's hand is worth actually
+// seeing then, but the overlap was really there either way. Reading
+// #cards-N's own current bottom edge (rather than a fixed px guess) keeps
+// this correct whether North's hand is showing as card-backs or (with View
+// All Cards on) as a shorter text grid. Called whenever the panel is
+// (re)shown, and again on resize while it's open.
 function positionBidPanel(){
   const panel = document.getElementById('bidPanel');
   if(panel.style.display !== 'flex') return;
   const feltRect = document.getElementById('felt').getBoundingClientRect();
   panel.style.left = (feltRect.left + feltRect.width/2) + 'px';
+  const cardsNRect = document.getElementById('cards-N').getBoundingClientRect();
+  panel.style.top = (cardsNRect.bottom + 8) + 'px';
 }
 window.addEventListener('resize', positionBidPanel);
 
