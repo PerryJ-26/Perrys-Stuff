@@ -1,0 +1,289 @@
+
+<!-- Revision 2 | Wednesday, September 09, 2026 | Fixed a contradiction in the trick example (South was said to have no diamonds, then play a diamond) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hearts Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .meld-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 16px;
+    font-size: 0.98rem;
+  }
+
+  .meld-table th, .meld-table td {
+    border: 1px solid var(--table-border);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .meld-table th {
+    background: var(--table-header-bg);
+    color: var(--heading-text);
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/Hearts.html">Back to Hearts</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Hearts Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>Hearts appeared in the United States around 1880 and likely grew out of older European games like Reversis. In 1909, the Q&spades; was added as a top penalty card (&ldquo;Black Lady&rdquo;), which heavily shaped the modern version. It also became much more widely known through computer versions in the early 1990s (including a Windows 3.11 multiplayer release).</p>
+
+      <h2>Overview</h2>
+      <p>Hearts is an easy-to-play trick-taking game where players compete for the fewest points. Each hand consists of 26 points, one for each Heart and 13 for the Queen of Spades (Q&spades;). A player may &ldquo;shoot the moon&rdquo; by taking all 26 points in a hand, giving other players 26 points instead. A game is over when one or more players get to 100 points. The lowest score wins.</p>
+
+      <h2>Players</h2>
+      <p>The game is played by four individual players with no partnerships.</p>
+      <p class="note">Note: In this game, West is Don, North is Sam, East is Matt, and South is You.</p>
+
+      <h2>Deal</h2>
+      <p>Hearts is played with a standard 52-card deck, Ace (highest) through 2 (lowest) of each suit. The entire deck is dealt giving each of the four players 13 cards. There is no trump suit.</p>
+
+      <h2>Passing Cards</h2>
+      <p>Following the deal, each player chooses 3 cards from their hand to pass to another player. Who you pass to rotates through (1) left, (2) right, (3) across, (4) no-pass, in that order, then repeats.</p>
+
+      <h2 class="print-page-break">Play</h2>
+      <p>The player holding the 2 of clubs leads the first trick. Play continues clockwise with players following the suit led, if possible, or playing any other card if not. You may not play a point card (a Heart or Q&spades;) on the first trick of a hand. When all four players have played, the trick is taken by the player who played the highest card of the suit led.</p>
+      <p class="note">Note: You may not lead a point card until a Heart or Q&spades; has been played on a prior trick.</p>
+      <p>The player who takes the trick leads the next trick.</p>
+      <p>In any case, you may play or lead a point if you have no alternative.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Don (West) leads the 5&diams;. Sam (North) has diamonds and must follow suit, so he plays the 9&diams;. Matt (East) has no diamonds, so he may play any card; he discards the Q&spades; &mdash; the top penalty card. You (South) also have diamonds and follow suit with your lowest, the 2&diams;, since you cannot beat the trick anyway. Sam's 9&diams; is the highest diamond played, so Sam takes the trick, along with the Q&spades;'s 13 points, and leads the next trick.</p>
+      </div>
+
+      <h2>Scoring</h2>
+      <p>Points are tallied at the end of each hand. One point is scored for each Heart taken and 13 for Q&spades;. If one player takes all 26 points in a hand, it's called &ldquo;Shooting the Moon,&rdquo; and 26 points are added to the scores of the other players and no points are added to the player who shot the moon (took all the points). However, in the case where adding 26 points to the other players would end the game and the player who shot the moon would not win, then 26 points are subtracted from the shooter's score instead, and nothing is added to the other scores.</p>
+
+      <h2>Game</h2>
+      <p>The game is over when one or more players' score is 100 or more. The player with the lowest score wins. If there is a tie, play one or more full additional hands until one player pulls ahead with a strictly lower total.</p>
+
+    </div>
+  </main>
+
+</body>
+</html>
