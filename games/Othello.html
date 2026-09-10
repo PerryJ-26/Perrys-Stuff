@@ -1,5 +1,5 @@
 
-<!-- Revision 14 | Wednesday, September 09, 2026 | Removed the "Player (Black)"/"AI (White)" score-card boxes above the board; turned "Perry's Turn" white; centered the "Current Discs" title and rebuilt it as a 3-column grid (name / color / count) carrying the player-name info the removed boxes used to show; widened the page (1056px -> 1300px max width) and the board-row gap (14px -> 28px) so the board grows into the space freed above it and the side panels sit further out. -->
+<!-- Revision 15 | Wednesday, September 09, 2026 | Centered the "This Session's Wins" title and its stats row (name = count pairs) to match the already-centered "Current Discs" box. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -300,17 +300,16 @@
     text-decoration:underline;
     font-size:0.85rem;
     margin-bottom:6px;
-    white-space:nowrap;}
+    white-space:nowrap;
+    text-align:center;}
 
   .session-wins-stats{
     font-size:0.8rem;
-    white-space:nowrap;}
+    white-space:nowrap;
+    text-align:center;}
 
   /* "Current Discs" box - 3-column grid (name / color / count) so the
-     values naturally line up across both rows without manual pixel math.
-     Title centered only for this box, not the shared "This Session's
-     Wins" box, which keeps its left-aligned underlined title. */
-  #currentDiscsBox .session-wins-title{text-align:center;}
+     values naturally line up across both rows without manual pixel math. */
 
   .current-discs-grid{
     display:grid;
