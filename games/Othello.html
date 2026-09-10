@@ -1,5 +1,5 @@
 
-<!-- Revision 11 | Sunday, September 06, 2026 | Fixed: clicking Instructions mid-game and then Back to Othello started a brand new game instead of resuming. Instructions now saves the current board/turn/names/log to sessionStorage first, and the page restores it on load (skipped if the saved game had already ended) instead of always starting fresh, consuming the saved snapshot so a genuine fresh visit still starts clean. -->
+<!-- Revision 14 | Wednesday, September 09, 2026 | Removed the "Player (Black)"/"AI (White)" score-card boxes above the board; turned "Perry's Turn" white; centered the "Current Discs" title and rebuilt it as a 3-column grid (name / color / count) carrying the player-name info the removed boxes used to show; widened the page (1056px -> 1300px max width) and the board-row gap (14px -> 28px) so the board grows into the space freed above it and the side panels sit further out. -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -10,41 +10,41 @@
 
   /* ===== ALL COLORS LIVE HERE - blue theme, matches the rest of the site ===== */
   :root{
-    /* Page background gradient */
-    --baize:#2f6fa8;
-    --baize-dark:#0d2438;
-    --wood:#1f3a5f;
-    --wood-dark:#12233d;
-    --cream:#eaf2fb;
-    --cream-dark:#cfe0ef;
+    /* Page background gradient - violet theme, main color #c653c6 per Perry's spec */
+    --baize:#c653c6;
+    --baize-dark:#380d38;
+    --wood:#5f1f58;
+    --wood-dark:#3d1237;
+    --cream:#fbeafa;
+    --cream-dark:#efcfef;
     --h1-shadow:rgba(0,0,0,0.35);
 
     /* Score card - player name labels */
-    --player-name-color:#eaf2fb;
+    --player-name-color:#fbeafa;
 
-    /* Discs */
+    /* Discs - kept true black/white for player-identity clarity, not retinted */
     --white-checker:#f4f8fc;
-    --white-checker-edge:#6f89a3;
+    --white-checker-edge:#a36fa1;
     --black-checker:#101a2a;
-    --black-checker-edge:#7fc4f5;
+    --black-checker-edge:#ee7ff5;
     --checker-shadow:rgba(0,0,0,0.5);
     --checker-shadow-inset:rgba(0,0,0,0.18);
 
     /* Panels (score cards, side boxes) */
     --panel-bg:rgba(0,0,0,0.22);
-    --panel-border:rgba(74,144,194,0.35);
+    --panel-border:rgba(187,74,194,0.35);
     --score-card-bg:rgba(0,0,0,0.28);
-    --score-card-border:rgba(74,144,194,0.3);
-    --score-card-active-glow:rgba(127,196,245,0.25);
+    --score-card-border:rgba(187,74,194,0.3);
+    --score-card-active-glow:rgba(238,127,245,0.25);
 
     /* Board */
-    --board-tile:#3d6f97;
-    --board-tile-line:rgba(127,196,245,0.22);
+    --board-tile:#953d97;
+    --board-tile-line:rgba(238,127,245,0.22);
     --hint-circle:rgba(0,0,0,0.32);
 
     /* Accent (replaces gold in the wood/gold reference theme) */
-    --accent:#4a90c2;
-    --accent-bright:#7fc4f5;
+    --accent:#bb4ac2;
+    --accent-bright:#ee7ff5;
 
     /* Universal confirmation modal */
     --modal-overlay-bg:rgba(0,0,0,0.65);
@@ -52,11 +52,11 @@
 
     /* Game Over / "Play Another Game?" screen */
     --gameover-panel-bg:rgba(0,0,0,0.2);
-    --gameover-panel-border:rgba(74,144,194,0.35);
-    --gameover-title-color:#7fc4f5;
-    --gameover-prompt-color:#12233d;
-    --gameover-btn-bg:#7fc4f5;
-    --gameover-btn-text:#12233d;
+    --gameover-panel-border:rgba(187,74,194,0.35);
+    --gameover-title-color:#ee7ff5;
+    --gameover-prompt-color:#3d1237;
+    --gameover-btn-bg:#ee7ff5;
+    --gameover-btn-text:#3d1237;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -65,10 +65,7 @@
     margin:0;
     height:100vh;
     overflow:hidden;
-    background:radial-gradient(
-      ellipse at 50% -10%,
-      var(--baize),
-      var(--baize-dark) 100%);
+    background:#c653c6;
     font-family:'Space Mono', monospace;
     color:var(--cream);
     display:flex;
@@ -77,7 +74,7 @@
 
   .wrap{
     width:100%;
-    max-width:1056px;
+    max-width:1300px;
     height:100%;
     display:flex;
     flex-direction:column;
@@ -114,47 +111,12 @@
   /* ---- game screen ---- */
   #game{display:flex; flex-direction:column; flex:1; min-height:0;}
 
-  .scoreboard{
-    display:flex;
-    gap:10px;
-    margin-bottom:6px;
-    flex-wrap:wrap;
-    flex:0 0 auto;}
-
-  .score-card{
-    flex:1 1 200px;
-    background:var(--score-card-bg);
-    border:2px solid var(--score-card-border);
-    border-radius:8px;
-    padding:6px 14px;
-    text-align:center;}
-
-  .score-card.active{
-    border-color:var(--accent-bright);
-    box-shadow:0 0 0 1px var(--accent-bright),
-    0 0 16px var(--score-card-active-glow);}
-
-  .score-card .name{
-    font-size:1.0rem;
-    font-weight:900;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--player-name-color);
-    opacity:1;}
-
-  .score-card .stat{
-    font-family:'Playfair Display',serif;
-    font-size:1.15rem;
-    font-weight:700;
-    margin-top:1px;
-    color:var(--player-name-color);}
-
   .turn-banner{
     text-align:center;
     font-family:'Playfair Display',serif;
     font-size:0.95rem;
     font-weight:bold;
-    color:var(--accent-bright);
+    color:#ffffff;
     margin-bottom:6px;
     min-height:1.2em;
     flex:0 0 auto;}
@@ -162,7 +124,7 @@
   /* ---- board ---- */
   .board-row{
     display:flex;
-    gap:14px;
+    gap:28px;
     align-items:stretch;
     flex:1;
     min-height:0;
@@ -344,14 +306,22 @@
     font-size:0.8rem;
     white-space:nowrap;}
 
-  .pips-row{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;}
+  /* "Current Discs" box - 3-column grid (name / color / count) so the
+     values naturally line up across both rows without manual pixel math.
+     Title centered only for this box, not the shared "This Session's
+     Wins" box, which keeps its left-aligned underlined title. */
+  #currentDiscsBox .session-wins-title{text-align:center;}
 
-  .pips-row + .pips-row{margin-top:2px;}
+  .current-discs-grid{
+    display:grid;
+    grid-template-columns:auto auto auto;
+    column-gap:10px;
+    row-gap:2px;
+    font-size:0.8rem;}
 
-  .pips-value{font-weight:700; text-align:right;}
+  .current-discs-grid .cd-name{font-weight:700; text-align:left;}
+  .current-discs-grid .cd-color{text-align:left; opacity:0.8;}
+  .current-discs-grid .cd-value{font-weight:700; text-align:right;}
 
   #gsPanel{
     width:100%;
@@ -627,17 +597,6 @@
   </header>
 
   <section id="game">
-    <div class="scoreboard">
-      <div class="score-card" id="scoreBlack">
-        <div class="name" id="nameBlack">Player 1 (Black)</div>
-        <div class="stat"><span id="countBlack">2</span> Discs</div>
-      </div>
-      <div class="score-card" id="scoreWhite">
-        <div class="name" id="nameWhite">Player 2 (White)</div>
-        <div class="stat"><span id="countWhite">2</span> Discs</div>
-      </div>
-    </div>
-
     <div class="turn-banner" id="turnBanner"></div>
 
     <div class="board-row">
@@ -683,11 +642,11 @@
           </div>
         </div>
 
-        <div class="session-wins-box session-wins-box-bottom">
+        <div class="session-wins-box session-wins-box-bottom" id="currentDiscsBox">
           <div class="session-wins-title">Current Discs</div>
-          <div class="session-wins-stats">
-            <div class="pips-row"><span>Black</span><span class="pips-value" id="discBlack">2</span></div>
-            <div class="pips-row"><span>White</span><span class="pips-value" id="discWhite">2</span></div>
+          <div class="current-discs-grid">
+            <span class="cd-name" id="discNameBlack">Player 1</span><span class="cd-color">Black</span><span class="cd-value" id="discBlack">2</span>
+            <span class="cd-name" id="discNameWhite">AI</span><span class="cd-color">White</span><span class="cd-value" id="discWhite">2</span>
           </div>
         </div>
       </div>
@@ -894,8 +853,6 @@
   // ---------------- turn flow ----------------
   function updateScoreboard(){
     const {black, white} = countDiscs();
-    document.getElementById('countBlack').textContent = black;
-    document.getElementById('countWhite').textContent = white;
     document.getElementById('discBlack').textContent = black;
     document.getElementById('discWhite').textContent = white;
   }
@@ -904,8 +861,6 @@
     const banner = document.getElementById('turnBanner');
     if(phase !== 'playing'){ banner.textContent = ''; return; }
     banner.textContent = `${names[current]}'s Turn`;
-    document.getElementById('scoreBlack').classList.toggle('active', current === 'black');
-    document.getElementById('scoreWhite').classList.toggle('active', current === 'white');
   }
 
   function log(msg, cls){
@@ -956,8 +911,8 @@
       buildBoardLabels();
       updateLabelsVisibility();
 
-      document.getElementById('nameBlack').textContent = `${names.black} (Black)`;
-      document.getElementById('nameWhite').textContent = `${names.white} (White)`;
+      document.getElementById('discNameBlack').textContent = names.black;
+      document.getElementById('discNameWhite').textContent = names.white;
       updateSessionWinsNameLabels();
       document.getElementById('log').innerHTML = saved.logHtml || '';
       document.getElementById('gameOver').classList.remove('show');
@@ -1236,8 +1191,6 @@
     document.getElementById('universalModal').style.display = 'none';
     document.getElementById('gameOver').classList.add('show');
     document.getElementById('turnBanner').textContent = '';
-    document.getElementById('scoreBlack').classList.remove('active');
-    document.getElementById('scoreWhite').classList.remove('active');
     updateActionButtons();
     const {black, white} = countDiscs();
     document.getElementById('gameOverTitle').textContent = `${names[winner]} Wins!`;
@@ -1432,8 +1385,6 @@
     document.getElementById('universalModal').style.display = 'none';
     document.getElementById('gameOver').classList.add('show');
     document.getElementById('turnBanner').textContent = '';
-    document.getElementById('scoreBlack').classList.remove('active');
-    document.getElementById('scoreWhite').classList.remove('active');
     updateActionButtons();
     let winner = null;
     if(black > white) winner = 'black';
@@ -1477,8 +1428,8 @@
     isAI.black = false;
     isAI.white = (mode === 'ai');
 
-    document.getElementById('nameBlack').textContent = `${names.black} (Black)`;
-    document.getElementById('nameWhite').textContent = `${names.white} (White)`;
+    document.getElementById('discNameBlack').textContent = names.black;
+    document.getElementById('discNameWhite').textContent = names.white;
     updateSessionWinsNameLabels();
 
     document.getElementById('log').innerHTML = '';
