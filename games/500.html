@@ -1,5 +1,5 @@
 
-<!-- Revision 32 | Tuesday, September 08, 2026 | Found the actual cause of the extra empty gap above the bid box: Bob's seat clips its own contents, and his card row is genuinely taller than the space the table layout gives that seat - so measuring from the card row itself (like every earlier revision did) always placed the panel noticeably lower than what's actually visible, wasting real space above it. Now measuring from the seat's own box instead, which matches what you actually see. Should let the box sit higher and both scrollbars go away. Also caught the bug in my own testing that hid this from me: my test scripts weren't waiting for the card-dealing animation to finish before measuring, so they were seeing a temporary mid-animation layout state, not what you actually see once the bid box opens. -->
+<!-- Revision 33 | Thursday, September 10, 2026 | Found the actual cause of the extra empty gap above the bid box: Bob's seat clips its own contents, and his card row is genuinely taller than the space the table layout gives that seat - so measuring from the card row itself (like every earlier revision did) always placed the panel noticeably lower than what's actually visible, wasting real space above it. Now measuring from the seat's own box instead, which matches what you actually see. Should let the box sit higher and both scrollbars go away. Also caught the bug in my own testing that hid this from me: my test scripts weren't waiting for the card-dealing animation to finish before measuring, so they were seeing a temporary mid-animation layout state, not what you actually see once the bid box opens. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,7 +88,7 @@
     --cardback-2: #1f6b3a;
     --cardback-border: #123f22;
 
-    --shadow-soft: rgba(255,255,255,.45);
+    --shadow-soft: rgba(255,255,255,.65);
     --shadow-medium: rgba(0,0,0,.4);
     --shadow-strong: rgba(0,0,0,.6);
     --glow-active: rgba(255,255,255,.6);
@@ -637,7 +637,8 @@
     box-sizing:border-box;
     width:180px;
     min-height:73px;
-    background:#d8c8a0;
+    /* background:#d8c8a0; */
+    background: var(--shadow-soft);
     border:2px solid #000000;
     border-radius:8px;
     padding:8px 12px;
