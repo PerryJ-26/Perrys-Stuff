@@ -1,5 +1,5 @@
 
-<!-- Revision 30 | Friday, September 11, 2026 | The "What is your bid?" panel was being shifted 0.5in right of center (a leftover offset) - removed it so it's centered left-to-right like Hand Complete, Win the Game, and Recorded Scores already were. -->
+<!-- Revision 31 | Friday, September 11, 2026 | Hand Complete, Win the Game, Recorded Scores, and What is your bid? now center on the felt board (#table-wrap) itself instead of the full browser window - the button column on the left isn't part of "the screen" a player is looking at, so centering on the raw window made every popup look shifted right of the board. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1142,6 +1142,11 @@ function placeBid(seat, tricks){
 function renderBidPanel(){
   const panel = document.getElementById('bidPanel');
   panel.style.display = 'flex';
+  // Centered on the felt board (#table-wrap), not the full browser window -
+  // same reasoning as showModal()'s popups: the left-hand button column
+  // isn't part of "the screen" a player is looking at.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  panel.style.left = (boardRect.left + boardRect.width / 2) + 'px';
   let btns = '';
   for(let n=0; n<=13; n++){
     btns += `<button onclick="humanBid(${n})">${n===0?'Nil':n}</button>`;
@@ -2090,6 +2095,15 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   // before it.
   modal.classList.remove('below-scoreboard');
   modal.style.paddingTop = '';
+  // Center every popup on the felt board (#table-wrap) rather than the
+  // full browser window - the left-hand button column sits outside the
+  // board and isn't part of what a player reads as "the screen", so
+  // centering on the raw window looks off to the right of the board.
+  // Measuring the board's actual position (instead of hard-coding the
+  // button column's width) keeps this correct at any window size.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  modal.style.paddingLeft = boardRect.left + 'px';
+  modal.style.paddingRight = (window.innerWidth - boardRect.right) + 'px';
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
 }
