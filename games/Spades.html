@@ -1,5 +1,5 @@
 
-<!-- Revision 22 | Thursday, September 10, 2026 | The automatic wrap from the last revision was breaking the dealer's meta-line at an awkward spot (e.g. "Dealer • Bid:" / "3 • Tricks: 0"). Now forces "Dealer" onto its own row, with "Bid: N • Tricks: N" together on the row below it, instead of leaving the browser to wrap wherever it runs out of width. -->
+<!-- Revision 23 | Thursday, September 10, 2026 | Fixed: once bidding finished, the Scoreboard's Bid column showed the per-player breakdown in parentheses (e.g. "3 (3+Nil)"), which widened the box enough to overlap North's cards. Removed the parenthetical breakdown - the Bid column now shows just the team's total (e.g. "3"). -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1083,7 +1083,7 @@ function updateTeamBidLabel(team){
   const allIn = seats.every(s => state.bids[s]);
   if(allIn){
     const total = seats.reduce((sum,s)=> sum + state.bids[s].tricks, 0);
-    state.teamBidInfo[team] = { label: `${total} (${labels.join('+')})` };
+    state.teamBidInfo[team] = { label: `${total}` };
   } else {
     state.teamBidInfo[team] = { label: labels.join('+') };
   }
