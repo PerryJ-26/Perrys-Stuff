@@ -1,5 +1,5 @@
 
-<!-- Revision 23 | Thursday, September 10, 2026 | Fixed: once bidding finished, the Scoreboard's Bid column showed the per-player breakdown in parentheses (e.g. "3 (3+Nil)"), which widened the box enough to overlap North's cards. Removed the parenthetical breakdown - the Bid column now shows just the team's total (e.g. "3"). -->
+<!-- Revision 24 | Thursday, September 10, 2026 | Moved the "What is your bid?" panel down about 1in (68px -> 164px from the top) so it no longer covers the Scoreboard box in the top-left corner. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -449,7 +449,7 @@
      it needs more width than the felt's own 320px column can give it. */
   #bidPanel{
     position: fixed;
-    top: 68px;
+    top: 164px;
     left: 50%;
     transform: translateX(calc(-50% + 0.5in));
     z-index: 60;
