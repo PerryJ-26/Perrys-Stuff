@@ -1,5 +1,5 @@
 
-<!-- Revision 21 | Thursday, September 10, 2026 | Fixed: Ann's (or Sue's) "Dealer • Bid: N • Tricks: N" line was getting sliced off on the left, because it's wider than the narrow West/East seat columns and the seat box clips overflow. Changed the line to wrap onto a second line instead of overflowing/getting clipped when it doesn't fit. -->
+<!-- Revision 22 | Thursday, September 10, 2026 | The automatic wrap from the last revision was breaking the dealer's meta-line at an awkward spot (e.g. "Dealer • Bid:" / "3 • Tricks: 0"). Now forces "Dealer" onto its own row, with "Bid: N • Tricks: N" together on the row below it, instead of leaving the browser to wrap wherever it runs out of width. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1714,7 +1714,11 @@ function render(){
   const showBidTricks = state.phase === 'play' || state.phase === 'scoring';
   SEATS.forEach(seat=>{
     const parts = [];
-    if(seat === dealerSeat) parts.push({ cls:'tag', text:'Dealer' });
+    // breakAfter forces "Dealer" onto its own row, with "Bid: N • Tricks: N"
+    // together on the row below - a clean, predictable 2-row layout instead
+    // of leaving the browser to wrap wherever it happens to run out of room
+    // (which could split it mid-phrase, e.g. after "Bid:").
+    if(seat === dealerSeat) parts.push({ cls:'tag', text:'Dealer', breakAfter:true });
     if(showBidTricks && state.bids[seat]){
       const bidText = state.bids[seat].tricks === 0 ? 'Bid: Nil' : `Bid: ${state.bids[seat].tricks}`;
       parts.push({ cls:'tricks', text: bidText });
@@ -1722,7 +1726,12 @@ function render(){
     if(showBidTricks){
       parts.push({ cls:'tricks', text:`Tricks: ${state.tricksTaken[seat]}` });
     }
-    const html = parts.map((p,i)=> (i>0?'<span class="sep">•</span>':'') + `<span class="${p.cls}">${p.text}</span>`).join('');
+    let html = '';
+    parts.forEach((p,i)=>{
+      if(i>0 && !parts[i-1].breakAfter) html += '<span class="sep">•</span>';
+      html += `<span class="${p.cls}">${p.text}</span>`;
+      if(p.breakAfter) html += '<br>';
+    });
     document.getElementById(`meta-${seat}`).innerHTML = html;
   });
 
