@@ -1,5 +1,5 @@
 
-<!-- Revision 24 | Thursday, September 10, 2026 | Moved the "What is your bid?" panel down about 1in (68px -> 164px from the top) so it no longer covers the Scoreboard box in the top-left corner. -->
+<!-- Revision 25 | Friday, September 11, 2026 | Recorded Scores popup: left-aligned the Winner and Opponent columns, right-aligned the Date column, kept all column headers centered, and increased the popup's height so the list fits without a scroll bar. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -664,6 +664,18 @@
   #universalModal table.scores-table th:not(:first-child){
     padding-left:14px;
   }
+
+  /* Winner/Opponent are names, so they read better left-aligned; Date reads
+     better right-aligned as a column of figures. Margin (a short number)
+     stays centered, same as before. Column headers stay centered across
+     every column regardless of how that column's data is aligned. */
+  #universalModal table.scores-table th{ text-align:center; }
+  #universalModal table.scores-table th:first-child{ text-align:center; }
+  #universalModal table.scores-table td:nth-child(2),
+  #universalModal table.scores-table td:nth-child(4){ text-align:left; }
+  #universalModal table.scores-table td:nth-child(5){ text-align:right; }
+
+  #universalModal .modalBox.scores-style{ max-height: 95vh; }
 
   @media (max-width: 720px){
     #table-wrap{
@@ -2034,7 +2046,7 @@ function showScoresModal(){
         </table>`;
     }
   }
-  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true);
+  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true, 'scores-style');
 }
 
 document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
