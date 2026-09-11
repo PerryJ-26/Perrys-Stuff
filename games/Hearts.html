@@ -1,5 +1,5 @@
 
-<!-- Revision 13 | Friday, September 11, 2026 | Recorded Scores popup now shows only the top 12 scores (was 15), and its height was increased so the list fits without a scroll bar. -->
+<!-- Revision 14 | Friday, September 11, 2026 | Added "[Winner] won by a margin of [N]" below the red flashing winner text on the Win popup. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1412,6 +1412,10 @@ function finishHand(){
   const winnerSeat = checkGameEnd();
   const heading = winnerSeat ? `*** ${SEAT_NAME[winnerSeat].toUpperCase()} WINS THE GAME! ***` : 'Hand Complete';
   const btnLabel = winnerSeat ? 'Start a new game' : 'Deal The Next Hand';
+  // Margin = the difference between the highest of the 4 final scores and the
+  // winner's (lowest) score - same definition used for the Recorded Scores
+  // list below, so this number always matches what gets saved there.
+  const winMargin = winnerSeat ? Math.max(...SEATS.map(s=> state.scores[s])) - state.scores[winnerSeat] : null;
   const row = (label, vals, emphasize) => `<tr${emphasize ? ' style="border-top:2px solid #999; background:rgba(0,0,0,.06);"' : ''}><td style="font-weight:600;">${label}</td>${SEATS.map(s=>`<td${emphasize ? ' style="font-weight:700;font-size:1.05em;"' : ''}>${vals[s]}</td>`).join('')}</tr>`;
 
   // Wrapped in its own function (and stashed in modalReopenFn) purely so this
@@ -1421,6 +1425,7 @@ function finishHand(){
   // because the popup gets redrawn, so they stay outside this function.
   function showHandSummary(){
     showModal(heading, `
+      ${winnerSeat ? `<p style="font-weight:700;">${SEAT_NAME[winnerSeat]} won by a margin of ${winMargin}</p>` : ''}
       ${moonNote ? `<p>${moonNote}</p>` : ''}
       <table>
         <tr><th></th>${SEATS.map(s=>`<th>${SEAT_NAME[s]}</th>`).join('')}</tr>
@@ -1446,11 +1451,9 @@ function finishHand(){
     updateSessionWinsDisplay();
 
     // Shared (cross-device) recorded score for this finished game - see the
-    // Firebase block near the end of the file. Margin = the difference
-    // between the highest score of the 4 and the winner's score (higher
-    // margin = more decisive win), per Perry's request.
-    const highestScore = Math.max(...SEATS.map(s=> state.scores[s]));
-    recordScore(SEAT_NAME[winnerSeat], highestScore - state.scores[winnerSeat]);
+    // Firebase block near the end of the file. Reuses winMargin (computed
+    // above) so this always matches the margin shown on the popup itself.
+    recordScore(SEAT_NAME[winnerSeat], winMargin);
   }
 }
 
