@@ -1,5 +1,5 @@
 
-<!-- Revision 20 | Wednesday, September 09, 2026 | PDJ Changed felt bg to a darker orange -->
+<!-- Revision 21 | Thursday, September 10, 2026 | Fixed: Ann's (or Sue's) "Dealer • Bid: N • Tricks: N" line was getting sliced off on the left, because it's wider than the narrow West/East seat columns and the seat box clips overflow. Changed the line to wrap onto a second line instead of overflowing/getting clipped when it doesn't fit. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -204,7 +204,14 @@
     font-weight:700;
     min-height: 1em;
     text-align:center;
-    white-space: nowrap;
+    /* Was white-space:nowrap, which let this line grow wider than the
+       narrow West/East seat columns (clamp 105-140px) whenever the
+       "Dealer • " tag was added on top of "Bid: N • Tricks: N" - the
+       overflow then got sliced off by .seat's overflow:hidden. Wrapping
+       instead keeps the full text visible on two lines when it doesn't
+       fit; North/South sit in the much wider middle column and always
+       have room to stay on one line regardless. */
+    white-space: normal;
     flex-shrink:0;
   }
   /* The pale-gold tag color that worked against the old muted brown felt
