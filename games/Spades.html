@@ -1,5 +1,5 @@
 
-<!-- Revision 29 | Friday, September 11, 2026 | Reinforced the popup system's LEFT/RIGHT centering too (equal auto left/right margins alongside the existing center alignment), matching the top/bottom reinforcement from Revision 28 - every popup is now guaranteed even space on all four sides rather than leaning toward one edge. -->
+<!-- Revision 30 | Friday, September 11, 2026 | The "What is your bid?" panel was being shifted 0.5in right of center (a leftover offset) - removed it so it's centered left-to-right like Hand Complete, Win the Game, and Recorded Scores already were. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -451,7 +451,7 @@
     position: fixed;
     top: 164px;
     left: 50%;
-    transform: translateX(calc(-50% + 0.5in));
+    transform: translateX(-50%);
     z-index: 60;
     width: 94%;
     max-width: 460px;
