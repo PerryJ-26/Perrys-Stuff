@@ -1,5 +1,5 @@
 
-<!-- Revision 12 | Thursday, September 10, 2026 | Fixed the "Hearts" badge to a constant width so it no longer shrinks (and drags the Name box left with it) when the text switches from "Hearts: Not Broken" to the shorter "Hearts: Broken". -->
+<!-- Revision 13 | Friday, September 11, 2026 | Recorded Scores popup now shows only the top 12 scores (was 15), and its height was increased so the list fits without a scroll bar. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -626,6 +626,10 @@
   }
   #universalModal .modalBox.exit-style .modalBtns button:last-child{
     background:#d8c8a0;
+  }
+
+  #universalModal .modalBox.scores-style{
+    max-height: 95vh;
   }
 
   #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
@@ -1772,7 +1776,7 @@ function tryRestoreResumeState(){
 // from Firebase yet (or it's unreachable)", so the modal can say so
 // explicitly instead of showing stale/empty data.
 // ---------------------------------------------------------------------
-const MAX_RECORDED_SCORES = 15;
+const MAX_RECORDED_SCORES = 12;
 let sharedScores = null;
 window.onSharedScoresUpdate = function(list){
   sharedScores = list;
@@ -1810,7 +1814,7 @@ function showScoresModal(){
         </table>`;
     }
   }
-  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true);
+  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true, 'scores-style');
 }
 
 document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
