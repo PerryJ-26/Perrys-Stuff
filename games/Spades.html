@@ -1,5 +1,5 @@
 
-<!-- Revision 25 | Friday, September 11, 2026 | Recorded Scores popup: left-aligned the Winner and Opponent columns, right-aligned the Date column, kept all column headers centered, and increased the popup's height so the list fits without a scroll bar. -->
+<!-- Revision 29 | Friday, September 11, 2026 | Reinforced the popup system's LEFT/RIGHT centering too (equal auto left/right margins alongside the existing center alignment), matching the top/bottom reinforcement from Revision 28 - every popup is now guaranteed even space on all four sides rather than leaning toward one edge. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -584,6 +584,13 @@
     z-index:100;
     align-items:center; justify-content:center;
   }
+  /* Used for the Hand Complete / Win-the-game popup: the actual reserved
+     height (padding-top) is set inline by dropBelowScoreboard() in the
+     script below, measured from the Scoreboard box's real on-screen size
+     rather than a guessed fixed number. This class only marks that a
+     popup has opted into that lowered position. */
+  #universalModal.below-scoreboard{
+  }
   #universalModal .modalBox{
     box-shadow: 0 4px 20px rgba(0,0,0,.5);
     background: var(--cream);
@@ -595,6 +602,14 @@
     width: 90%;
     max-height: 80vh;
     overflow-y:auto;
+    /* Belt-and-suspenders alongside align-items/justify-content:center
+       above: equal auto margins force the browser to split any leftover
+       space evenly on both sides (top/bottom AND left/right), so the box
+       can't end up hugging one edge even in an edge case. */
+    margin-top: auto;
+    margin-bottom: auto;
+    margin-left: auto;
+    margin-right: auto;
   }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -1628,6 +1643,10 @@ function finishHand(){
       </table>
     `, `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>
       <button onclick="confirmExit()">Quit</button>`, false);
+    // Dropped down and re-centered in the space below the Scoreboard box
+    // (top-left corner) so this popup - the tallest/most frequent one in
+    // the game - never covers it, per Perry's request.
+    dropBelowScoreboard();
     if(winnerTeam){
       const titleEl = document.getElementById('modalTitle');
       titleEl.style.color = 'red';
@@ -2066,8 +2085,25 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   const modal = document.getElementById('universalModal');
   modal.style.display = 'flex';
   modal.dataset.dismissable = dismissable ? '1' : '0';
+  // Reset here so a popup that doesn't ask for the lowered position (see
+  // showHandSummary() below) never inherits it from whatever was shown
+  // before it.
+  modal.classList.remove('below-scoreboard');
+  modal.style.paddingTop = '';
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+}
+// Reserves just enough space above the Hand Complete / Win-the-game popup to
+// clear the Scoreboard box (top-left corner), measuring the Scoreboard's
+// actual on-screen height each time instead of assuming a fixed size - so
+// this keeps working if that box ever gets taller or shorter (e.g. a wider
+// team name, a longer bid label) or the popup is opened at a different
+// window size.
+function dropBelowScoreboard(){
+  const modal = document.getElementById('universalModal');
+  const scoreRect = document.getElementById('scoreTable').getBoundingClientRect();
+  modal.style.paddingTop = (scoreRect.bottom + 30) + 'px';
+  modal.classList.add('below-scoreboard');
 }
 function closeModal(){
   document.getElementById('universalModal').style.display = 'none';
