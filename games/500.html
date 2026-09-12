@@ -1,5 +1,5 @@
 
-<!-- Revision 33 | Thursday, September 10, 2026 | Found the actual cause of the extra empty gap above the bid box: Bob's seat clips its own contents, and his card row is genuinely taller than the space the table layout gives that seat - so measuring from the card row itself (like every earlier revision did) always placed the panel noticeably lower than what's actually visible, wasting real space above it. Now measuring from the seat's own box instead, which matches what you actually see. Should let the box sit higher and both scrollbars go away. Also caught the bug in my own testing that hid this from me: my test scripts weren't waiting for the card-dealing animation to finish before measuring, so they were seeing a temporary mid-animation layout state, not what you actually see once the bid box opens. -->
+<!-- Revision 34 | Friday, September 11, 2026 | Hand Complete, Win the Game, and Recorded Scores now center on the felt board (#table-wrap) itself instead of the full browser window, positioning themselves directly (fixed left/top set in script) rather than relying on flex layout - the same fix already applied to Spades. Hand Complete/Win the Game are also nudged 0.5in below dead-center so they stop crowding the Trump/Your Name boxes near the top and bottom of the felt. Recorded Scores' popup can now grow tall enough (up to 95vh) to fit all 15 rows without a scroll bar. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -694,9 +694,20 @@
     position:fixed; inset:0;
     background: transparent;
     z-index:100;
-    align-items:center; justify-content:center;
+    /* The .modalBox below positions itself directly (position:fixed with
+       an explicit left/top set by JS) rather than relying on this
+       container's layout to center it - see showModal() / nudgeModalDown()
+       - so this container just needs to span the full window so its
+       transparent backdrop can catch outside-clicks to dismiss. */
   }
   #universalModal .modalBox{
+    position: fixed;
+    /* left/top/transform are set in JS (showModal(), nudgeModalDown()) so
+       the box's on-screen position is always computed directly from the
+       felt board's (#table-wrap) actual measured position, instead of
+       centering on the full browser window - #table-wrap's asymmetric
+       left/right margins (see its own comment above) mean the window's
+       horizontal center isn't the felt's. */
     box-shadow: 0 4px 20px rgba(0,0,0,.5);
     background: var(--cream);
     color: var(--ink);
@@ -708,6 +719,9 @@
     max-height: 80vh;
     overflow-y:auto;
   }
+  /* Recorded Scores: taller cap so its (up to 15-row) table fits without
+     an internal scroll bar. */
+  #universalModal .modalBox.scores-style{ max-height: 95vh; }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
   #universalModal .modalBtns{
@@ -1950,6 +1964,7 @@ function finishHand(){
       </table>
     `, `<button onclick="closeModal(); ${winnerTeam ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>
       <button onclick="confirmExit()">Quit</button>`, false);
+    nudgeModalDown(48); // 0.5in lower than dead-center, per Perry's request
     if(winnerTeam){
       const titleEl = document.getElementById('modalTitle');
       titleEl.style.color = 'red';
@@ -1995,6 +2010,7 @@ function showGameOverPanel(){
       </table>
     `, `<button onclick="closeModal(); newGame();">Start a new game</button>
       <button onclick="confirmExit()">Quit</button>`, false);
+    nudgeModalDown(48); // 0.5in lower than dead-center, per Perry's request
     const titleEl = document.getElementById('modalTitle');
     titleEl.style.color = 'red';
     titleEl.classList.add('win-blink');
@@ -2388,7 +2404,7 @@ function showScoresModal(){
         </table>`;
     }
   }
-  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true);
+  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true, 'scores-style');
 }
 
 document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
@@ -2410,6 +2426,30 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   modal.dataset.dismissable = dismissable ? '1' : '0';
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+  // Position the box directly instead of leaning on the browser window's
+  // center: its horizontal position is always pinned to the felt board's
+  // (#table-wrap) actual measured center, not the full window - #table-
+  // wrap's left/right margins aren't symmetric (see its own CSS comment),
+  // so window-centering looks off relative to the felt. Vertically this
+  // defaults to the center of the window; nudgeModalDown() below (called
+  // separately by callers that need it, e.g. Hand Complete / Win the
+  // Game) shifts just that vertical placement afterward.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  const boardCenterX = boardRect.left + boardRect.width / 2;
+  if(box){
+    box.style.left = boardCenterX + 'px';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
+}
+// Shifts the just-shown popup down from its default vertical center by a
+// fixed amount - used for Hand Complete / Win the Game so the popup isn't
+// sitting exactly mid-window, where it can crowd the Contract/Your Name
+// boxes near the top and bottom edges of the felt. Purely vertical - the
+// horizontal centering set by showModal() above is untouched.
+function nudgeModalDown(offsetPx){
+  const box = document.querySelector('#universalModal .modalBox');
+  if(box) box.style.top = `calc(50% + ${offsetPx}px)`;
 }
 function closeModal(){
   document.getElementById('universalModal').style.display = 'none';
