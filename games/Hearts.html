@@ -1,5 +1,5 @@
 
-<!-- Revision 18 | Saturday, September 12, 2026 | Fixed the AI voluntarily taking the Queen of Spades: when following suit in spades on a trick with no points on it yet (so winning is purely optional), the AI could pick the Queen as its "best" winning card and grab the trick with it, eating the 13-point penalty for no reason. Now the Queen is excluded from that voluntary-win check - it's only ever played there when it's literally the only spade left in hand. -->
+<!-- Revision 19 | Saturday, September 12, 2026 | Centered the Hand Complete, Win the Game, and Recorded Scores popups (and every other popup, since they all share the same showModal()) left to right on the felt (#table-wrap) instead of the full browser viewport - the felt isn't always viewport-centered itself, so viewport-centering left the popups visibly off-center relative to the board. Rebuilt to use direct position:fixed left/top (JS-computed from the board's actual position), the same mechanism already used in Spades and 500. -->
 <!-- ALSO CHANGE PAGE_REVISION AT BOTTOM -->
 
 <!DOCTYPE html>
@@ -586,9 +586,9 @@
     position:fixed; inset:0;
     background: transparent;
     z-index:100;
-    align-items:center; justify-content:center;
   }
   #universalModal .modalBox{
+    position: fixed;
     box-shadow: 0 4px 20px rgba(0,0,0,.5);
     background: var(--cream);
     color: var(--ink);
@@ -788,7 +788,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 18;
+  const PAGE_REVISION = 19;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1862,6 +1862,16 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   modal.dataset.dismissable = dismissable ? '1' : '0';
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+  // Center on the felt (#table-wrap), not the full browser viewport - the felt isn't always
+  // viewport-centered itself (fixed side panels like the game log take up their own space), so
+  // centering the modal on the viewport left it visibly off-center relative to the board.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  const boardCenterX = boardRect.left + boardRect.width / 2;
+  if(box){
+    box.style.left = boardCenterX + 'px';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
 }
 function closeModal(){
   document.getElementById('universalModal').style.display = 'none';
