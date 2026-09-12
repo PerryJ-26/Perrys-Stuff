@@ -1,5 +1,5 @@
 
-<!-- Revision 13 | Thursday, September 10, 2026 | Google Fonts (fonts.googleapis.com) turned out to be unreachable from my own testing sandbox (blocked by its network policy) - so the Inter switch in the prior revision fixed rendering for your browser but not for mine. Embedded the actual Inter font data (Latin subset, weights 400/500/600/700) directly into the file as base64, so it loads with zero network dependency and renders identically in both places. -->
+<!-- Revision 14 | Saturday, September 12, 2026 | The Action column's Score button had no fixed width, so it sized to its own text - going from a 1-digit potential score ("Score 5") to a 2-digit one ("Score 50") made the button (and the whole scorecard table) wider, visibly shifting the layout. Gave .scoreBtn a fixed min-width (72px, sized to fit "Score 50" with a small margin) plus centered text, so the button - and the column - stay the same width no matter how many digits the score has. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -289,7 +289,10 @@
     color:#fff;
     padding:2px 8px;
     border-radius:6px;
-    cursor:pointer }
+    cursor:pointer;
+    box-sizing:border-box;
+    min-width:72px;
+    text-align:center }
     
   .scoreBtn.disabled{
     opacity:.45;
