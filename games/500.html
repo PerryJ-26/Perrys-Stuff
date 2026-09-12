@@ -1,5 +1,5 @@
 
-<!-- Revision 36 | Friday, September 11, 2026 | Recorded Scores popup's top/bottom padding cut by about 0.2in (22px down to 2.8px on top and bottom only; left/right untouched) per Perry's request, to reclaim more vertical room toward eliminating its scroll bar. -->
+<!-- Revision 37 | Friday, September 11, 2026 | The Trump/Contract badge (and Your Name, which tracks its right edge) now mirror the Team/Score box's gap from the felt's left edge onto their own gap from the felt's right edge, recomputed live in positionCornerBoxes() - previously they used a fixed 6px inset that looked noticeably tighter than the left side's gap once #table-wrap's centered grid left much more slack on that side, per Perry's report. Now both sides always match, at any window width. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2185,9 +2185,21 @@ function positionCornerBoxes(){
   const winsBox = document.getElementById('sessionWinsBox');
   const nameBox = document.getElementById('yourNameBox');
   if(!scoreTable || !trumpBadge || !winsBox || !nameBox) return;
+
+  const board = document.getElementById('table-wrap').getBoundingClientRect();
+  const scoreRect = scoreTable.getBoundingClientRect();
+  // Mirror trumpBadge's gap from the felt's right edge to scoreTable's own
+  // gap from the felt's left edge, so the two sides always read as
+  // symmetric - #table-wrap's grid is centered as a whole, so the slack
+  // outside its narrow side columns grows or shrinks with the window
+  // width, and a fixed right-edge inset here looked fine at some widths
+  // but noticeably tighter than the left side's gap at others (per
+  // Perry's report). yourNameBox mirrors trumpBadge's right edge below,
+  // so fixing this one fixes both right-side boxes.
+  trumpBadge.style.right = (scoreRect.left - board.left) + 'px';
+
   winsBox.style.transform = '';
   nameBox.style.transform = '';
-  const scoreRect = scoreTable.getBoundingClientRect();
   const trumpRect = trumpBadge.getBoundingClientRect();
   const winsRect = winsBox.getBoundingClientRect();
   const nameRect = nameBox.getBoundingClientRect();
