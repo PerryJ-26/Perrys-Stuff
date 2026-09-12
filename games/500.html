@@ -1,5 +1,5 @@
 
-<!-- Revision 34 | Friday, September 11, 2026 | Hand Complete, Win the Game, and Recorded Scores now center on the felt board (#table-wrap) itself instead of the full browser window, positioning themselves directly (fixed left/top set in script) rather than relying on flex layout - the same fix already applied to Spades. Hand Complete/Win the Game are also nudged 0.5in below dead-center so they stop crowding the Trump/Your Name boxes near the top and bottom of the felt. Recorded Scores' popup can now grow tall enough (up to 95vh) to fit all 15 rows without a scroll bar. -->
+<!-- Revision 35 | Friday, September 11, 2026 | Found why the Trump/Contract badge (and the Your Name box, which tracks its right edge) were partially off the felt during normal play, not just during popups: the badge lived in the grid's narrow ~140px-wide right-hand column and simply grew rightward past the felt's true edge once its text got long ("Contract: Nullo (No-Trump)"), getting clipped by #table-wrap's own overflow:hidden. Switched it to anchor from the right edge of the felt itself (position:absolute, right:6px) instead of growing rightward from a fixed left starting point, so it now always grows into the open middle of the board and can't run off the edge no matter how long the contract name is or how it renders. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -372,10 +372,16 @@
   #bubble-E{ grid-column:3; grid-row:2; justify-self:end; align-self:start; margin-top:2px; z-index:20; }
 
   #trumpBadge{
-    grid-column: 3; grid-row: 1;
-    justify-self: start; align-self: start;
-    margin-top: 8px;
-    position:relative; z-index:15;
+    /* Right-anchored to #table-wrap's own inner edge (position:absolute,
+       not a grid cell) instead of left-aligned in the narrow ~140px-wide
+       grid-column 3 and left to grow rightward - the "Contract: ..." text
+       is long enough that it was overflowing past the felt's real right
+       edge and getting clipped by #table-wrap's overflow:hidden. Anchoring
+       from the right means it always grows leftward into the open middle
+       of the felt instead, so it can never run off the board no matter
+       how long the contract name or how it renders in a given browser. */
+    position:absolute; z-index:15;
+    top: 18px; right: 6px;
     background: var(--shadow-soft);
     color:#1b1b1b;
     border: 2px solid rgba(0,0,0,.35);
