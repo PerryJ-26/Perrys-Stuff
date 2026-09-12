@@ -1,5 +1,7 @@
 
-<!-- Revision 15 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's pale blue background (#e6edf6). -->
+<!-- Revision 18 | Saturday, September 12, 2026 | Fixed the AI voluntarily taking the Queen of Spades: when following suit in spades on a trick with no points on it yet (so winning is purely optional), the AI could pick the Queen as its "best" winning card and grab the trick with it, eating the 13-point penalty for no reason. Now the Queen is excluded from that voluntary-win check - it's only ever played there when it's literally the only spade left in hand. -->
+<!-- ALSO CHANGE PAGE_REVISION AT BOTTOM -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -682,7 +684,7 @@
 </style>
 </head>
 <body>
-<div class="revBadge">Rev. 15</div>
+<div class="revBadge" id="revBadge"></div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Hearts</h1>
@@ -786,6 +788,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 18;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* =====================================================================
    Hearts — standalone game
    4 individual players, no partnerships: South = You, West = Don,
@@ -1291,9 +1296,15 @@ function chooseAiCard(seat, leadSuit){
     if(!trickHasPoints){
       const currentBest = currentBestCardInTrick(leadSuit);
       const winners = followers.filter(c=> RANK_STRENGTH[c.rank] > RANK_STRENGTH[currentBest.rank]);
-      if(winners.length) return sortByRankDesc(winners)[0];
+      // Winning here is only ever optional - nobody has fed this trick a point card yet - so the
+      // Queen of Spades should never be the card that grabs it. Only count a win as worth taking
+      // if some OTHER card can do it; if the Queen is the sole card that would win, that's treated
+      // the same as having no winner at all and falls through to ducking below instead, so this
+      // seat never volunteers to eat its own 13-point penalty for a trick it didn't need to win.
+      const safeWinners = winners.filter(c => !(c.suit==='♠' && c.rank==='Q'));
+      if(safeWinners.length) return sortByRankDesc(safeWinners)[0];
     }
-    return sortByRankAsc(followers)[0]; // duck as low as legally possible
+    return sortByRankAsc(followers)[0]; // duck as low as legally possible (or forced to play the Queen if it's the only spade left)
   }
 
   // Void in the led suit - discard
