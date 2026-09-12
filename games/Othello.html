@@ -1,5 +1,5 @@
 
-<!-- Revision 15 | Wednesday, September 09, 2026 | Centered the "This Session's Wins" title and its stats row (name = count pairs) to match the already-centered "Current Discs" box. -->
+<!-- Revision 16 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against the pink felt background (#c653c6). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -71,6 +71,17 @@
     display:flex;
     justify-content:center;
     padding:10px 12px;}
+
+  .revBadge{
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
 
   .wrap{
     width:100%;
@@ -580,6 +591,7 @@
 </style>
 </head>
 <body>
+<div class="revBadge">Rev. 16</div>
 <div id="universalModal" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h3 id="universalModalTitle"></h3>
