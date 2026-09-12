@@ -1,5 +1,5 @@
 
-<!-- Revision 35 | Friday, September 11, 2026 | Found why the Trump/Contract badge (and the Your Name box, which tracks its right edge) were partially off the felt during normal play, not just during popups: the badge lived in the grid's narrow ~140px-wide right-hand column and simply grew rightward past the felt's true edge once its text got long ("Contract: Nullo (No-Trump)"), getting clipped by #table-wrap's own overflow:hidden. Switched it to anchor from the right edge of the felt itself (position:absolute, right:6px) instead of growing rightward from a fixed left starting point, so it now always grows into the open middle of the board and can't run off the edge no matter how long the contract name is or how it renders. -->
+<!-- Revision 36 | Friday, September 11, 2026 | Recorded Scores popup's top/bottom padding cut by about 0.2in (22px down to 2.8px on top and bottom only; left/right untouched) per Perry's request, to reclaim more vertical room toward eliminating its scroll bar. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -727,7 +727,13 @@
   }
   /* Recorded Scores: taller cap so its (up to 15-row) table fits without
      an internal scroll bar. */
-  #universalModal .modalBox.scores-style{ max-height: 95vh; }
+  #universalModal .modalBox.scores-style{
+    max-height: 95vh;
+    /* Top/bottom padding trimmed by ~0.2in each (left/right left alone)
+       to reclaim vertical space toward eliminating the scroll bar. */
+    padding-top: 2.8px;
+    padding-bottom: 2.8px;
+  }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
   #universalModal .modalBtns{
