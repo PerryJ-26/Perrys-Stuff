@@ -1,5 +1,5 @@
 
-<!-- Revision 14 | Saturday, September 12, 2026 | The Action column's Score button had no fixed width, so it sized to its own text - going from a 1-digit potential score ("Score 5") to a 2-digit one ("Score 50") made the button (and the whole scorecard table) wider, visibly shifting the layout. Gave .scoreBtn a fixed min-width (72px, sized to fit "Score 50" with a small margin) plus centered text, so the button - and the column - stay the same width no matter how many digits the score has. -->
+<!-- Revision 15 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header bar, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's green background (#19a519). -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -480,6 +480,11 @@
          main's centered, max-width content) always sits at the true left edge of the window. -->
     <div id="secretClearZone" ondblclick="openClearScoresModal()"
       style="position:absolute; bottom:0; left:0; width:48px; height:48px; cursor:default; z-index:2;"></div>
+
+    <!-- Rev. N marker - top-right corner of this full-width header bar. Black text: more
+         contrast than white against the green header background (#19a519). -->
+    <div class="revBadge"
+      style="position:absolute; top:8px; right:16px; font-size:0.7rem; font-weight:600; color:#000000; pointer-events:none;">Rev. 15</div>
 
     <div style="font-size:50px; font-weight:bold; line-height:1; white-space:nowrap;">Yahtzee</div>
 
