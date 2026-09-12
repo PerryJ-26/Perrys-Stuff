@@ -1,5 +1,5 @@
 
-<!-- Revision 32 | Thursday, September 10, 2026 | PDJ Changed bg of lower boxes. -->
+<!-- Revision 33 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's pale blue background (#dfe7f0). -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,6 +99,17 @@
     flex-direction: column;
     overflow: hidden; /* the page itself never scrolls — see the table-wrap
                           sizing notes below for how that's enforced */
+  }
+
+  .revBadge{
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
   }
 
   /* ===== TEMPORARY DEBUG OUTLINES - toggled via the "Show Outlines"
@@ -1017,6 +1028,7 @@
 </style>
 </head>
 <body>
+<div class="revBadge">Rev. 33</div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Pinochle</h1>
