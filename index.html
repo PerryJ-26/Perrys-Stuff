@@ -1,5 +1,5 @@
 
-<!-- Revision 7 | Wednesday, September 09, 2026 | Turned the "Coming Soon" Hearts placeholder into a live card linking to games/Hearts.html with its images/Hearts.jpg thumbnail, matching the pattern of every other game row. -->
+<!-- Revision 9 | Saturday, September 12, 2026 | Made the "Rev. N" corner marker read its number from a single JS constant (PAGE_REVISION) instead of being typed as static text, so the badge and the revision comment can't drift out of sync with each other. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -64,6 +64,17 @@
     color: var(--header-text);
     text-align: center;
     padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
   }
 
   header h1 {
@@ -189,6 +200,7 @@
   <div class="site-header-wrap">
     <header>
       <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
     </header>
 
     <nav>
@@ -244,6 +256,11 @@
     </div>
   </main>
 
+
+<script>
+  const PAGE_REVISION = 9;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
 
 </body>
 </html>
