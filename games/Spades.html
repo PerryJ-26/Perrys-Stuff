@@ -1,5 +1,5 @@
 
-<!-- Revision 32 | Friday, September 11, 2026 | All four popups (bid panel, Hand Complete, Win the Game, Recorded Scores) now position themselves directly (fixed left/top set in script) instead of leaning on the modal's flex layout plus dynamic padding to center them - a simpler, more reliably-verifiable mechanism. Recorded Scores now shows up to 12 entries (was 15) and its top/bottom padding is cut in half, to help clear the scroll bar. -->
+<!-- Revision 33 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's cream background (#fbe8c8). -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -99,6 +99,17 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  }
+
+  .revBadge{
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
   }
 
   #pageTitle{
@@ -717,6 +728,7 @@
 </style>
 </head>
 <body>
+<div class="revBadge">Rev. 33</div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Spades</h1>
