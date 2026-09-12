@@ -1,5 +1,5 @@
 
-<!-- Revision 31 | Friday, September 11, 2026 | Hand Complete, Win the Game, Recorded Scores, and What is your bid? now center on the felt board (#table-wrap) itself instead of the full browser window - the button column on the left isn't part of "the screen" a player is looking at, so centering on the raw window made every popup look shifted right of the board. -->
+<!-- Revision 32 | Friday, September 11, 2026 | All four popups (bid panel, Hand Complete, Win the Game, Recorded Scores) now position themselves directly (fixed left/top set in script) instead of leaning on the modal's flex layout plus dynamic padding to center them - a simpler, more reliably-verifiable mechanism. Recorded Scores now shows up to 12 entries (was 15) and its top/bottom padding is cut in half, to help clear the scroll bar. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -582,16 +582,23 @@
     position:fixed; inset:0;
     background: transparent;
     z-index:100;
-    align-items:center; justify-content:center;
-  }
-  /* Used for the Hand Complete / Win-the-game popup: the actual reserved
-     height (padding-top) is set inline by dropBelowScoreboard() in the
-     script below, measured from the Scoreboard box's real on-screen size
-     rather than a guessed fixed number. This class only marks that a
-     popup has opted into that lowered position. */
-  #universalModal.below-scoreboard{
+    /* The .modalBox below positions itself directly (position:fixed with
+       an explicit left/top set by JS) rather than relying on this
+       container's flex layout to center it - see showModal() /
+       dropBelowScoreboard(). This container just needs to span the full
+       window so its transparent backdrop can catch outside-clicks to
+       dismiss. */
   }
   #universalModal .modalBox{
+    position: fixed;
+    /* left/top/transform are set in JS (showModal(), dropBelowScoreboard())
+       so the box's on-screen position is always computed directly from the
+       felt board's (#table-wrap) actual measured position, instead of
+       depending on the parent's flex centering plus dynamic padding - the
+       previous approach layered several interacting mechanisms (flex
+       centering, JS-computed padding, auto margins) that made it hard to
+       be certain every popup variant centered correctly in every browser.
+       Computing the final left/top directly removes that whole chain. */
     box-shadow: 0 4px 20px rgba(0,0,0,.5);
     background: var(--cream);
     color: var(--ink);
@@ -602,14 +609,6 @@
     width: 90%;
     max-height: 80vh;
     overflow-y:auto;
-    /* Belt-and-suspenders alongside align-items/justify-content:center
-       above: equal auto margins force the browser to split any leftover
-       space evenly on both sides (top/bottom AND left/right), so the box
-       can't end up hugging one edge even in an edge case. */
-    margin-top: auto;
-    margin-bottom: auto;
-    margin-left: auto;
-    margin-right: auto;
   }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -690,7 +689,13 @@
   #universalModal table.scores-table td:nth-child(4){ text-align:left; }
   #universalModal table.scores-table td:nth-child(5){ text-align:right; }
 
-  #universalModal .modalBox.scores-style{ max-height: 95vh; }
+  #universalModal .modalBox.scores-style{
+    max-height: 95vh;
+    /* Top/bottom padding cut in half (left/right left alone) to reclaim
+       vertical space toward eliminating the scroll bar. */
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
 
   @media (max-width: 720px){
     #table-wrap{
@@ -2031,7 +2036,7 @@ function tryRestoreResumeState(){
 // for this to actually read/write anything; until then the modal will
 // just show the "unable to reach the shared scoreboard" message.
 // ---------------------------------------------------------------------
-const MAX_RECORDED_SCORES = 15;
+const MAX_RECORDED_SCORES = 12;
 let sharedScores = null;
 window.onSharedScoresUpdate = function(list){
   sharedScores = list;
@@ -2094,29 +2099,40 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   // showHandSummary() below) never inherits it from whatever was shown
   // before it.
   modal.classList.remove('below-scoreboard');
-  modal.style.paddingTop = '';
-  // Center every popup on the felt board (#table-wrap) rather than the
-  // full browser window - the left-hand button column sits outside the
-  // board and isn't part of what a player reads as "the screen", so
-  // centering on the raw window looks off to the right of the board.
-  // Measuring the board's actual position (instead of hard-coding the
-  // button column's width) keeps this correct at any window size.
-  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
-  modal.style.paddingLeft = boardRect.left + 'px';
-  modal.style.paddingRight = (window.innerWidth - boardRect.right) + 'px';
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+  // Position the box directly instead of leaning on flex centering: its
+  // horizontal position is always pinned to the felt board's (#table-wrap)
+  // actual measured center - not the full browser window - because the
+  // left-hand button column sits outside the board and isn't part of what
+  // a player reads as "the screen". Vertically it defaults to the center
+  // of the window; dropBelowScoreboard() (below) overrides just the
+  // vertical half of this for the Hand Complete / Win-the-game popup.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  const boardCenterX = boardRect.left + boardRect.width / 2;
+  if(box){
+    box.style.left = boardCenterX + 'px';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
 }
 // Reserves just enough space above the Hand Complete / Win-the-game popup to
 // clear the Scoreboard box (top-left corner), measuring the Scoreboard's
 // actual on-screen height each time instead of assuming a fixed size - so
 // this keeps working if that box ever gets taller or shorter (e.g. a wider
 // team name, a longer bid label) or the popup is opened at a different
-// window size.
+// window size. Only overrides the vertical placement set by showModal()
+// above - the horizontal centering (box.style.left) is left untouched.
 function dropBelowScoreboard(){
   const modal = document.getElementById('universalModal');
+  const box = modal.querySelector('.modalBox');
   const scoreRect = document.getElementById('scoreTable').getBoundingClientRect();
-  modal.style.paddingTop = (scoreRect.bottom + 30) + 'px';
+  if(box){
+    box.style.top = (scoreRect.bottom + 30) + 'px';
+    // top is now an exact position (not a center point to straddle), so
+    // only the horizontal half of the translate is still needed.
+    box.style.transform = 'translateX(-50%)';
+  }
   modal.classList.add('below-scoreboard');
 }
 function closeModal(){
