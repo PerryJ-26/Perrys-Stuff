@@ -1,5 +1,5 @@
 
-<!-- Revision 54 | Thursday, September 10, 2026 | Flattened the felt's radial-gradient background to a solid var(--baize) fill. Changed the "This Session's Wins" and "Remaining Pips" boxes to use --score-card-bg instead of --cream-dark for their background. (Also removed a stray extra blank line that had built up above this comment - should be exactly one, per convention.) -->
+<!-- Revision 55 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against the green felt background (#00b32d). -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -124,6 +124,17 @@
     justify-content:center;
     padding:10px 12px;}
   
+  .revBadge{
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
   .wrap{
     width:100%; 
     max-width:1056px; 
@@ -1150,6 +1161,7 @@
 
 </head>
 <body>
+<div class="revBadge">Rev. 55</div>
 <div id="universalModal" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h3 id="universalModalTitle"></h3>
