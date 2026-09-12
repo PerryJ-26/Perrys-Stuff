@@ -1,5 +1,5 @@
 
-<!-- Revision 6 | Sunday, August 30, 2026 -->
+<!-- Revision 7 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's light-blue background (#4a90c2). -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,6 +52,17 @@
     color: var(--header-text);
     text-align: center;
     padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
   }
 
   header h1 {
@@ -225,6 +236,7 @@
   <div class="site-header-wrap">
     <header>
       <h1>Game Hub</h1>
+      <span class="revBadge">Rev. 7</span>
     </header>
 
     <nav>
