@@ -1,5 +1,5 @@
 
-<!-- Revision 37 | Friday, September 11, 2026 | The Trump/Contract badge (and Your Name, which tracks its right edge) now mirror the Team/Score box's gap from the felt's left edge onto their own gap from the felt's right edge, recomputed live in positionCornerBoxes() - previously they used a fixed 6px inset that looked noticeably tighter than the left side's gap once #table-wrap's centered grid left much more slack on that side, per Perry's report. Now both sides always match, at any window width. -->
+<!-- Revision 38 | Friday, September 11, 2026 | Recorded Scores: capped at 14 entries (was 15) and its table rows' top/bottom cell padding trimmed by about 1/32in (3px down to 1.5px each), both per Perry's request, to clear the scroll bar that reappeared once a 14th/15th score got recorded. Scoped to just the scores-table so Hand Complete's table (which shares the same base cell styling) is unaffected. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -801,6 +801,14 @@
   #universalModal table.scores-table td:not(:first-child),
   #universalModal table.scores-table th:not(:first-child){
     padding-left:14px;
+  }
+  /* Row spacing trimmed by ~1/32in total (top+bottom padding 3px+3px down
+     to 1.5px+1.5px) - only for this table, so Hand Complete's table (which
+     shares the generic #universalModal td/th rule above) is untouched. */
+  #universalModal table.scores-table td,
+  #universalModal table.scores-table th{
+    padding-top: 1.5px;
+    padding-bottom: 1.5px;
   }
 
   @media (max-width: 720px){
@@ -2386,7 +2394,7 @@ function tryRestoreResumeState(){
 // it's unreachable)", so the modal can say so explicitly instead of
 // showing stale/empty data.
 // ---------------------------------------------------------------------
-const MAX_RECORDED_SCORES = 15;
+const MAX_RECORDED_SCORES = 14;
 let sharedScores = null;
 window.onSharedScoresUpdate = function(list){
   sharedScores = list;
