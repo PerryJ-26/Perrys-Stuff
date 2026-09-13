@@ -1,5 +1,5 @@
 
-<!-- Revision 38 | Saturday, September 12, 2026 | Recorded Scores popup: 1) Raised the popup's max-height cap (80vh -> 92vh, scoped to a new .modalBox.scores-style class so Round Complete/Win Game keep the normal 80vh) so more rows fit before scrolling kicks in. 2) Capped the list at 12 scores (was 15) instead of showing more than fit. 3) Trimmed the table's row padding (3px+3px top/bottom down to 1.5px+1.5px, scoped to table.scores-table only), matching the row-spacing reduction already done in 500's Recorded Scores table. Together these eliminate the scrollbar. -->
+<!-- Revision 40 | Sunday, September 13, 2026 | Round Complete and Win Game popups: highlighted and bolded the Total Score row (border-top + light background on the row, bold+larger text on the score values) - same treatment Hearts' Hand Complete popup already gives its own Total Score row. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1171 -->
 
 <!DOCTYPE html>
@@ -1168,7 +1168,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 38;
+  const PAGE_REVISION = 40;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2592,8 +2592,11 @@ function finishHand(){
     : 'Round Complete';
   const btnLabel = gameOver ? 'Start a new game' : 'Deal The Next Round';
 
-  const row = (label, ns, ew) =>
-    `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
+  // emphasize (used for the Total Score row) highlights + bolds the row,
+  // matching the treatment Hearts' Hand Complete popup already gives its
+  // own Total Score row.
+  const row = (label, ns, ew, emphasize) =>
+    `<tr${emphasize ? ' style="border-top:2px solid #999; background:rgba(0,0,0,.06);"' : ''}><td style="font-weight:600;">${label}</td><td${emphasize ? ' style="font-weight:700;font-size:1.05em;"' : ''}>${ns}</td><td${emphasize ? ' style="font-weight:700;font-size:1.05em;"' : ''}>${ew}</td></tr>`;
   const forfeitNote = (meldForfeited && meldByTeam[otherTeam] > 0)
     ? `<div style="text-align:center;font-size:.78rem;color:#7a1010;margin-bottom:4px;">${getTeamLabel(otherTeam)} forfeited their meld (${meldByTeam[otherTeam]} pts) — no trick with a counter (A/10/K) won.</div>`
     : '';
@@ -2611,7 +2614,7 @@ function finishHand(){
       <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
       ${row('Round Score', netChangeByTeam.NS, netChangeByTeam.EW)}
       ${row('Previous Score', previousScores.NS, previousScores.EW)}
-      ${row('Total Score', state.scores.NS, state.scores.EW)}
+      ${row('Total Score', state.scores.NS, state.scores.EW, true)}
     </table>
   `, `<button onclick="closeModal(); ${gameOver ? 'newGame()' : 'nextHand()'};">${btnLabel}</button>`, false);
 
@@ -2658,7 +2661,7 @@ function showGameOverPanel(){
   showModal(`*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`, `
     <table class="score-summary">
       <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
-      <tr><td style="font-weight:600;">Total Score</td><td>${state.scores.NS}</td><td>${state.scores.EW}</td></tr>
+      <tr style="border-top:2px solid #999; background:rgba(0,0,0,.06);"><td style="font-weight:600;">Total Score</td><td style="font-weight:700;font-size:1.05em;">${state.scores.NS}</td><td style="font-weight:700;font-size:1.05em;">${state.scores.EW}</td></tr>
     </table>
   `, `<button onclick="closeModal(); newGame();">Start a new game</button>`, false);
   // Restore the flashing red "you won" emphasis that the embedded panel
