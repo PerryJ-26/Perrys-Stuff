@@ -1,5 +1,7 @@
 
-<!-- Revision 33 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's pale blue background (#dfe7f0). -->
+<!-- Revision 38 | Saturday, September 12, 2026 | Recorded Scores popup: 1) Raised the popup's max-height cap (80vh -> 92vh, scoped to a new .modalBox.scores-style class so Round Complete/Win Game keep the normal 80vh) so more rows fit before scrolling kicks in. 2) Capped the list at 12 scores (was 15) instead of showing more than fit. 3) Trimmed the table's row padding (3px+3px top/bottom down to 1.5px+1.5px, scoped to table.scores-table only), matching the row-spacing reduction already done in 500's Recorded Scores table. Together these eliminate the scrollbar. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1171 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -900,9 +902,9 @@
     position:fixed; inset:0;
     background: transparent;
     z-index:100;
-    align-items:center; justify-content:center;
   }
   #universalModal .modalBox{
+    position: fixed;
     box-shadow: 0 4px 20px rgba(0,0,0,.5);
     background: var(--cream);
     color: var(--ink);
@@ -960,6 +962,14 @@
     background:#d8c8a0;
   }
 
+  /* Recorded Scores popup gets a taller cap than the default 80vh so its
+     (now-limited-to-12) rows fit without a scrollbar. Scoped to
+     .modalBox.scores-style (set only by showScoresModal()) so Round
+     Complete / Win Game / Rules keep the normal 80vh cap. */
+  #universalModal .modalBox.scores-style{
+    max-height: 92vh;
+  }
+
   #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
   #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
   /* Team name headers and their numbers center under each other - only
@@ -996,6 +1006,21 @@
   #universalModal table.scores-table th:not(:first-child){
     padding-left:14px;
   }
+  /* Date is the last column - right-justified per Perry's request, overriding the generic
+     center-alignment every other non-first column in this table gets above. */
+  #universalModal table.scores-table td:last-child,
+  #universalModal table.scores-table th:last-child{
+    text-align:right;
+  }
+  /* Row spacing trimmed by ~1/32in total (top+bottom padding 3px+3px down
+     to 1.5px+1.5px) - only for this table, so Round Complete/Win Game's
+     tables (which share the generic #universalModal td/th rule above) are
+     untouched. Same reduction already applied to 500's Recorded Scores. */
+  #universalModal table.scores-table td,
+  #universalModal table.scores-table th{
+    padding-top: 1.5px;
+    padding-bottom: 1.5px;
+  }
 
   /* =================================================================
      Border around the whole playing field. Kept deliberately simple —
@@ -1028,7 +1053,7 @@
 </style>
 </head>
 <body>
-<div class="revBadge">Rev. 33</div>
+<div class="revBadge" id="revBadge"></div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Pinochle</h1>
@@ -1143,6 +1168,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 38;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* =====================================================================
    PINOCHLE — standalone game
    4 players (partnership): South = You, North = your partner (AI),
@@ -3123,6 +3151,16 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
   // leaks from one popup onto the next one that doesn't ask for it.
   const box = modal.querySelector('.modalBox');
   if(box) box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+  // Center on the felt (#table-wrap), not the full browser viewport - the felt isn't always
+  // viewport-centered itself (fixed side panels take up their own space), so centering the modal
+  // on the viewport left it visibly off-center relative to the board.
+  const boardRect = document.getElementById('table-wrap').getBoundingClientRect();
+  const boardCenterX = boardRect.left + boardRect.width / 2;
+  if(box){
+    box.style.left = boardCenterX + 'px';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
 }
 function closeModal(){
   document.getElementById('universalModal').style.display = 'none';
@@ -3138,7 +3176,7 @@ document.getElementById('universalModal').addEventListener('click', (e)=>{
 // (or it's unreachable)", so the modal can say so explicitly instead of
 // showing stale/empty data.
 // ---------------------------------------------------------------------
-const MAX_RECORDED_SCORES = 15;
+const MAX_RECORDED_SCORES = 12;
 let sharedScores = null;
 window.onSharedScoresUpdate = function(list){
   sharedScores = list;
@@ -3180,7 +3218,7 @@ function showScoresModal(){
         </table>`;
     }
   }
-  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true);
+  showModal('Recorded Scores', body, `<button onclick="closeModal()">OK</button>`, true, 'scores-style');
 }
 
 document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
