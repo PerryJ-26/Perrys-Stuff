@@ -1,5 +1,5 @@
 
-<!-- Revision 19 | Saturday, September 12, 2026 | Centered the Hand Complete, Win the Game, and Recorded Scores popups (and every other popup, since they all share the same showModal()) left to right on the felt (#table-wrap) instead of the full browser viewport - the felt isn't always viewport-centered itself, so viewport-centering left the popups visibly off-center relative to the board. Rebuilt to use direct position:fixed left/top (JS-computed from the board's actual position), the same mechanism already used in Spades and 500. -->
+<!-- Revision 20 | Saturday, September 12, 2026 | AI now sheds the Queen of Spades the moment it's safe, instead of only when forced: when following suit in spades and not trying to win the trick, if a King or Ace of Spades has already been played into it, the Queen can no longer possibly win - so it's played right then rather than ducking with some other low spade and hanging onto the Queen until it's eventually forced off-suit into a riskier trick later (per Perry's Sept 13 game log). -->
 <!-- ALSO CHANGE PAGE_REVISION AT BOTTOM -->
 
 <!DOCTYPE html>
@@ -788,7 +788,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 19;
+  const PAGE_REVISION = 20;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1292,9 +1292,9 @@ function chooseAiCard(seat, leadSuit){
 
   const followers = legal.filter(c=>c.suit===leadSuit);
   if(followers.length){
+    const currentBest = currentBestCardInTrick(leadSuit);
     const trickHasPoints = Object.values(state.trick).some(isPointCard);
     if(!trickHasPoints){
-      const currentBest = currentBestCardInTrick(leadSuit);
       const winners = followers.filter(c=> RANK_STRENGTH[c.rank] > RANK_STRENGTH[currentBest.rank]);
       // Winning here is only ever optional - nobody has fed this trick a point card yet - so the
       // Queen of Spades should never be the card that grabs it. Only count a win as worth taking
@@ -1304,6 +1304,15 @@ function chooseAiCard(seat, leadSuit){
       const safeWinners = winners.filter(c => !(c.suit==='♠' && c.rank==='Q'));
       if(safeWinners.length) return sortByRankDesc(safeWinners)[0];
     }
+    // Not trying to win this trick (or can't) - normally that means duck with the lowest legal
+    // card. But if the Queen of Spades is one of the legal followers and a King or Ace of Spades
+    // has already been played into this trick, the Queen can no longer possibly win it (nothing
+    // ranked below the Queen can retroactively make the Queen the winner) - so playing it here is
+    // a completely safe, guaranteed-loss discard. Take that opportunity instead of ducking with
+    // some other low spade, since holding onto the Queen only risks having to dump it later into
+    // a trick that isn't safe at all (e.g. off-suit into whatever happens to be led).
+    const queenOfSpades = followers.find(c=>c.suit==='♠' && c.rank==='Q');
+    if(queenOfSpades && RANK_STRENGTH[currentBest.rank] > RANK_STRENGTH['Q']) return queenOfSpades;
     return sortByRankAsc(followers)[0]; // duck as low as legally possible (or forced to play the Queen if it's the only spade left)
   }
 
