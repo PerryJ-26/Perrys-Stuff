@@ -1,5 +1,7 @@
 
-<!-- Revision 16 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against the pink felt background (#c653c6). -->
+<!-- Revision 27 | Monday, September 14, 2026 | Replaced the Pass/Surrender workflow: the "Can't Move" popup now reads "[Player] can't make a legal move and will Pass this turn." and has a single "Continue" button that dismisses it and passes automatically, so the separate sidebar Pass and Surrender buttons (and the surrender confirmation flow) are gone entirely. The remaining right-side buttons (New Game, Recorded Scores, Instructions, Exit) are now top-aligned with the playing board, same technique as the Game Setup panel on the left. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 744 -->
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -8,56 +10,113 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Space+Mono:wght@400;700&display=swap');
 
-  /* ===== ALL COLORS LIVE HERE - blue theme, matches the rest of the site ===== */
+  /* ===== ALL COLORS LIVE HERE - blue theme, matches the rest of the site =====
+     Every color used anywhere on this page is assigned here, named for what it's
+     used for. Any variable referenced in more than one place has a comment
+     listing every other spot it affects, so the impact of changing it is clear
+     before you do. (This cleanup also removed several variables - --baize,
+     --baize-dark, --player-name-color, --panel-bg, --panel-border,
+     --score-card-bg, --score-card-border, --score-card-active-glow,
+     --gameover-panel-bg, --gameover-panel-border, --gameover-prompt-color - that
+     were defined but never actually referenced by any CSS rule; --baize is now
+     --page-bg below, wired to the actual body background, and the rest had no
+     corresponding element to attach to, so they're gone rather than left dead.) */
   :root{
-    /* Page background gradient - violet theme, main color #c653c6 per Perry's spec */
-    --baize:#c653c6;
-    --baize-dark:#380d38;
+    /* Page background */
+    --page-bg:#8490fb;
+    --page-titlesub:#000000;
+    
+    /* Board frame background/border, and the general dark "ink" color reused for
+       text and borders across most panels, modals and buttons on this page -
+       used by: board-frame background gradient + border, action-btn-small text,
+       mode-btn background (and text when selected), gs-field input text, the
+       universal modal box's title/subtitle/body/button text, the gameover-box's
+       text, the play-again prompt text, and the log panel's background */
     --wood:#5f1f58;
     --wood-dark:#3d1237;
+
+
+
+
+    /* Light surface color, also used as body text color - used by: body text,
+       mode-btn text, gs-field input background, universal modal box background,
+       gameover-box background, log text */
     --cream:#fbeafa;
+   
+    /* Slightly darker than --cream - used by: session-wins-box background,
+       universal modal's secondary-button background */
     --cream-dark:#efcfef;
+
     --h1-shadow:rgba(0,0,0,0.35);
 
-    /* Score card - player name labels */
-    --player-name-color:#fbeafa;
-
-    /* Discs - kept true black/white for player-identity clarity, not retinted */
+    /* Discs - kept true black/white for player-identity clarity, not retinted.
+       checker-edge-halo adds a thin light ring just outside each disc's border
+       so the border stays visible even on the side that overlaps checker-shadow
+       (a black border would otherwise blend into a black drop-shadow). */
     --white-checker:#f4f8fc;
-    --white-checker-edge:#a36fa1;
+    --white-checker-edge:#000000;
     --black-checker:#101a2a;
-    --black-checker-edge:#ee7ff5;
+    --black-checker-edge:#ffffff;
     --checker-shadow:rgba(0,0,0,0.5);
     --checker-shadow-inset:rgba(0,0,0,0.18);
-
-    /* Panels (score cards, side boxes) */
-    --panel-bg:rgba(0,0,0,0.22);
-    --panel-border:rgba(187,74,194,0.35);
-    --score-card-bg:rgba(0,0,0,0.28);
-    --score-card-border:rgba(187,74,194,0.3);
-    --score-card-active-glow:rgba(238,127,245,0.25);
+    --checker-edge-halo:rgba(255,255,255,0.45);
 
     /* Board */
-    --board-tile:#953d97;
+    --board-tile:#9da6fb;
     --board-tile-line:rgba(238,127,245,0.22);
     --hint-circle:rgba(0,0,0,0.32);
+    
+    /* White text drawn directly over the purple board/frame area - used by: the
+       "AI's Turn" banner, and the column (A-H) / row (1-8) position labels */
+    --board-area-text:#ffffff;
+    
+    /* Marks the single most recently placed piece */
+    --last-move-dot:#ff1a1a;
+    --last-move-dot-shadow:rgba(0,0,0,0.7);
 
-    /* Accent (replaces gold in the wood/gold reference theme) */
+    /* Accent (replaces gold in the wood/gold reference theme) - used by: the
+       "how to play" rule-line background, footer text, and the border on the
+       universal modal, gameover-box and log panel */
     --accent:#bb4ac2;
+    
+    /* Brighter accent - used by: page title + subtitle, action buttons, the
+       selected mode button, the modal's primary button, and the log panel's
+       title + win-line text */
     --accent-bright:#ee7ff5;
+    --action-buttons:#6b7afa;
+
+    /* "Black (...)"/"White (...)" field labels above the two name inputs in
+       the Game Setup panel */
+    --gs-field-label-text:#000000;
+
+
 
     /* Universal confirmation modal */
     --modal-overlay-bg:rgba(0,0,0,0.65);
+
+    /* Shared by the universal modal box and the gameover-box */
     --modal-box-shadow:rgba(0,0,0,0.6);
 
+    /* "Rev. N" badge in the header */
+    --rev-badge-text:#000000;
+
+    /* "This Session's Wins" box - shared by its border and its text */
+    --session-box-ink:#000000;
+
     /* Game Over / "Play Another Game?" screen */
-    --gameover-panel-bg:rgba(0,0,0,0.2);
-    --gameover-panel-border:rgba(187,74,194,0.35);
     --gameover-title-color:#ee7ff5;
-    --gameover-prompt-color:#3d1237;
+   
+    /* The color the title alternates to/from - see the flash-red keyframes */
+    --gameover-title-flash:#ff4d4d;
     --gameover-btn-bg:#ee7ff5;
     --gameover-btn-text:#3d1237;
+
+    /* Game log panel */
+    --log-panel-shadow:rgba(0,0,0,0.5);
+    --log-divider:rgba(255,255,255,0.06);
   }
+  /* End :root section */
+  
   *{box-sizing:border-box;}
   html,body{height:100%;}
 
@@ -65,7 +124,7 @@
     margin:0;
     height:100vh;
     overflow:hidden;
-    background:#c653c6;
+    background:var(--page-bg);
     font-family:'Space Mono', monospace;
     color:var(--cream);
     display:flex;
@@ -79,7 +138,7 @@
     z-index: 9999;
     font-size: 0.7rem;
     font-weight: 600;
-    color: #000000;
+    color: var(--rev-badge-text);
     pointer-events: none;
   }
 
@@ -101,7 +160,7 @@
     font-weight:900;
     font-size:clamp(1.3rem,3.5vw,2.2rem);
     margin:0;
-    color:var(--accent-bright);
+    color:var(--page-titlesub);
     text-shadow:0 2px 0 var(--h1-shadow);}
 
   .subtitle{
@@ -109,7 +168,7 @@
     font-size:0.80rem;
     letter-spacing:0.28em;
     text-transform:uppercase;
-    color:var(--accent-bright);
+    color:var(--page-titlesub);
     font-weight:bold;}
 
   .rule-line{
@@ -127,7 +186,7 @@
     font-family:'Playfair Display',serif;
     font-size:0.95rem;
     font-weight:bold;
-    color:#ffffff;
+    color:var(--board-area-text);
     margin-bottom:6px;
     min-height:1.2em;
     flex:0 0 auto;}
@@ -185,7 +244,7 @@
     display:none;
     position:absolute;
     pointer-events:none;
-    color:#ffffff;
+    color:var(--board-area-text);
     font-family:'Space Mono',monospace;
     font-weight:700;
     font-size:0.8rem;}
@@ -223,7 +282,14 @@
     aspect-ratio:1 / 1;
     border-radius:50%;
     transition:transform 260ms ease;
-    box-shadow:0 2px 4px var(--checker-shadow),
+
+    /* The halo layer (a thin near-white ring just outside the border) is listed
+       before the drop-shadow so it paints on top of it - without it, a dark
+       border (the white checker's black edge) has no contrast against the
+       black drop-shadow immediately behind it and the two visually merge into
+       one blob on that side of the disc. */
+    box-shadow:0 0 0 1px var(--checker-edge-halo),
+      0 2px 4px var(--checker-shadow),
       inset 0 0 0 2px var(--checker-shadow-inset);
     pointer-events:none;}
 
@@ -252,29 +318,14 @@
     width:0.0875in;
     height:0.0875in;
     border-radius:50%;
-    background:#ff1a1a;
-    box-shadow:0 0 2px rgba(0,0,0,0.7);
+    background:var(--last-move-dot);
+    box-shadow:0 0 2px var(--last-move-dot-shadow);
     pointer-events:none;
     z-index:5;}
 
-  .action-btn{
-    padding:10px 18px;
-    background:var(--accent-bright);
-    color:var(--wood-dark);
-    border:none; border-radius:8px;
-    font-family:'Playfair Display',serif;
-    font-weight:700;
-    font-size:0.92rem;
-    cursor:pointer;
-    width:100%;}
-
-  .action-btn:hover{filter:brightness(1.08);}
-
-  .action-btn:disabled{opacity:0.35; cursor:not-allowed; filter:none;}
-
   .action-btn-small{
     padding:7px 13px;
-    background:var(--accent-bright);
+    background:var(--action-buttons);
     color:var(--wood-dark);
     border:none; border-radius:8px;
     font-family:Arial, Helvetica, sans-serif;
@@ -285,8 +336,10 @@
 
   .action-btn-small:hover{filter:brightness(1.08);}
 
+  /* No margin-top here - now that Pass/Surrender are gone, #secondaryButtons is the first
+     (only) thing in the right side-controls panel, and its top position is instead set
+     directly by alignPanelWithBoard() in JS, to line up with the top of the playing board. */
   #secondaryButtons{
-    margin-top:10px;
     display:flex;
     flex-direction:column;
     gap:8px;
@@ -297,11 +350,11 @@
     width:100%;
     box-sizing:border-box;
     background:var(--cream-dark);
-    border:2px solid #000000;
+    border:2px solid var(--session-box-ink);
     border-radius:8px;
     padding:8px 12px;
     font-family:Arial, Helvetica, sans-serif;
-    color:#000000;
+    color:var(--session-box-ink);
     text-align:left;}
 
   .session-wins-box-bottom{margin-top:auto;}
@@ -357,17 +410,24 @@
   .mode-btn:hover{background:var(--wood);}
 
   .mode-btn.selected, .gs-mode-btn.selected{
-    background:var(--accent-bright);
+    background:var(--action-buttons);
     color:var(--wood-dark);}
 
   .gs-field{width:100%; margin-top:6px;}
+
+  /* First name field only - shrinks the flex gap inherited from #gsPanel (6px) down to
+     match the 8px gap between the action buttons on the right side (see
+     .side-controls-inner's gap), now that the button-to-field gap is no longer pinned to
+     the "New Game" button's position by JS (see the removed alignPlayer1WithNewGame()). */
+  #gsPanel .gs-field:first-of-type{margin-top:2px;}
 
   .gs-field label{
     display:block;
     font-size:10px;
     text-transform:uppercase;
     letter-spacing:0.06em;
-    color:var(--accent-bright);
+    font-weight:700;
+    color:var(--gs-field-label-text);
     margin-bottom:2px;}
 
   .gs-field input{
@@ -398,10 +458,6 @@
     width:100%; height:100%;
     background:var(--modal-overlay-bg);
     z-index:99998;}
-
-  /* Used only by the Can't Move popup - lets clicks pass through the dimmed backdrop so the
-     sidebar's Pass button (the only thing that's meant to dismiss it) stays clickable. */
-  #universalModal.passthrough{ pointer-events:none; }
 
   #universalModal .modal-box{
     position:absolute;
@@ -504,7 +560,7 @@
     animation:flash-red 1s step-start infinite;}
 
   @keyframes flash-red{
-    0%, 49%{color:#ff4d4d;}
+    0%, 49%{color:var(--gameover-title-flash);}
     50%, 100%{color:var(--gameover-title-color);}
   }
 
@@ -564,7 +620,7 @@
     border-radius:8px;
     padding:8px 10px;
     z-index:500;
-    box-shadow:0 6px 20px rgba(0,0,0,0.5);}
+    box-shadow:0 6px 20px var(--log-panel-shadow);}
 
   #logPanel.show{display:flex; flex-direction:column;}
 
@@ -584,14 +640,14 @@
     flex:1 1 auto;
     min-height:0;}
 
-  #log div{padding:1px 0; border-bottom:1px solid rgba(255,255,255,0.06);}
+  #log div{padding:1px 0; border-bottom:1px solid var(--log-divider);}
   #log div.win{color:var(--accent-bright); font-weight:700;}
   #log div.info{opacity:0.9;}
 
 </style>
 </head>
 <body>
-<div class="revBadge">Rev. 16</div>
+<div class="revBadge" id="revBadge"></div>
 <div id="universalModal" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h3 id="universalModalTitle"></h3>
@@ -614,16 +670,15 @@
       <div class="side-controls">
         <div class="side-controls-inner side-controls-inner-top">
           <div id="gsPanel">
-            <button class="mode-btn gs-mode-btn" data-mode="human" data-label="Human Opponent">Human Opponent: OFF</button>
-            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-mode="ai" data-label="AI Opponent">AI Opponent: ON</button>
+            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-label="AI Opponent">AI Opponent: ON</button>
 
             <div class="gs-field">
-              <label for="gsP1Name">Black (Player 1)</label>
+              <label id="gsP1Label" for="gsP1Name">Black (Player 1)</label>
               <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
             </div>
             <div class="gs-field">
               <label id="gsP2Label" for="gsP2Name">White (AI)</label>
-              <input type="text" id="gsP2Name" value="AI" maxlength="16" disabled>
+              <input type="text" id="gsP2Name" value="AI" placeholder="Player 2" maxlength="16" disabled>
             </div>
           </div>
         </div>
@@ -642,9 +697,6 @@
 
       <div class="side-controls">
         <div class="side-controls-inner side-controls-inner-top">
-          <button class="action-btn" id="passBtn" disabled>Pass</button>
-          <button class="action-btn" id="surrenderBtn">Surrender</button>
-
           <div id="secondaryButtons">
             <button class="action-btn-small" id="resetBtn">New Game</button>
             <button class="action-btn-small" id="scoresBtn">Recorded Scores</button>
@@ -689,6 +741,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 27;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 (function(){
 
   // ---------------- state ----------------
@@ -922,9 +977,12 @@
       buildBoardLabels();
       updateLabelsVisibility();
 
+      updateSessionWinsNameLabels();
+      // Overrides the live-field-based names updateSessionWinsNameLabels() just wrote to
+      // discNameBlack/discNameWhite with the resumed game's actual saved names, in case the
+      // name fields have since been edited to something different from when this game began.
       document.getElementById('discNameBlack').textContent = names.black;
       document.getElementById('discNameWhite').textContent = names.white;
-      updateSessionWinsNameLabels();
       document.getElementById('log').innerHTML = saved.logHtml || '';
       document.getElementById('gameOver').classList.remove('show');
       document.getElementById('universalModal').style.display = 'none';
@@ -939,29 +997,17 @@
     }
   }
 
-  // Pass is enabled any time the player on the clock (human OR the AI) has no legal move -
-  // a human always has to be the one to click it, even when it's the AI that's stuck, since
-  // the AI never acts on its own until someone dismisses its Can't Move popup for it.
-  function updateActionButtons(){
-    const passBtnEl = document.getElementById('passBtn');
-    if(passBtnEl) passBtnEl.disabled = !(phase === 'playing' && legalMoveList.length === 0);
-    const surrenderBtnEl = document.getElementById('surrenderBtn');
-    if(surrenderBtnEl) surrenderBtnEl.disabled = (phase !== 'playing');
-  }
-
-  function showCantMoveModal(player){
-    showModal({
+  // Shows the "Can't Move" popup naming whichever player (human or AI) is stuck, with a
+  // single "Continue" button that both dismisses the popup and passes that player's turn -
+  // replaces the old separate sidebar Pass button (see the removed updateActionButtons()).
+  async function showCantMoveModal(player){
+    await showModal({
       title: "Can't Move",
-      message: 'No legal move this turn. Click Pass to continue, or Surrender to end the game.',
-      buttons: [] // deliberately no OK button - only the sidebar Pass/Surrender buttons dismiss this
+      message: `${names[player]} can't make a legal move and will Pass this turn.`,
+      buttons: [{ label:'Continue', value:true, primary:true }]
     });
-    const subtitleEl = document.getElementById('universalModalSubtitle');
-    subtitleEl.textContent = names[player];
-    subtitleEl.style.display = '';
-    // "passthrough" lets clicks reach the sidebar (Pass and Surrender in particular) right
-    // through the dimmed backdrop - a normal modal blocks the whole page, but this one
-    // specifically needs to stay out of the way of the buttons that are meant to dismiss it.
-    document.getElementById('universalModal').classList.add('passthrough');
+    log(`${names[player]} passes.`, 'info');
+    beginTurn(opp(player), true);
   }
 
   // Starts (or resumes, after a pass) the given player's turn. cameFromPass is true only on
@@ -976,7 +1022,6 @@
     renderHints();
     updateTurnBanner();
     updateScoreboard();
-    updateActionButtons();
     // Bumped on every call (blocked or not) so any earlier setTimeout (an AI move already in
     // flight, say) is invalidated the instant a new turn state begins - see its check below.
     turnToken++;
@@ -985,8 +1030,8 @@
     if(legalMoveList.length === 0){
       if(cameFromPass){ endGame(); return; }
       log(`${names[player]} has no legal move.`, 'info');
-      // Whether it's a human or the AI that's stuck, a human always has to click Pass (or
-      // Surrender) to move on - see showCantMoveModal() and the passBtn click handler below.
+      // Whether it's a human or the AI that's stuck, the Can't Move popup's Continue button
+      // handles passing that player's turn - see showCantMoveModal().
       showCantMoveModal(player);
       return;
     }
@@ -1166,55 +1211,6 @@
     ]});
   }
 
-  // ---------------- pass / surrender ----------------
-  // Only does anything once the player on the clock (human OR the AI) genuinely has no legal
-  // move (the button is disabled the rest of the time - see updateActionButtons()) - this is
-  // what dismisses the Can't Move popup and actually hands the turn to the other player. A
-  // human always has to click this, even on the AI's behalf, since the AI never dismisses its
-  // own popup.
-  document.getElementById('passBtn').addEventListener('click', () => {
-    if(phase !== 'playing') return;
-    if(legalMoveList.length !== 0) return;
-    const modal = document.getElementById('universalModal');
-    if(modal) modal.style.display = 'none';
-    const player = current;
-    log(`${names[player]} passes.`, 'info');
-    beginTurn(opp(player), true);
-  });
-
-  document.getElementById('surrenderBtn').addEventListener('click', async () => {
-    if(phase !== 'playing') return;
-    // In AI mode this always means the human (Black) giving up to the AI - in a human vs
-    // human game, it's whichever player's turn it currently is that surrenders.
-    const surrenderingPlayer = mode === 'ai' ? 'black' : current;
-    const winner = opp(surrenderingPlayer);
-    const ok = await showConfirm(
-      `Are you sure ${names[surrenderingPlayer]} wants to surrender? ${names[winner]} will win the game.`,
-      'Surrender'
-    );
-    if(ok) surrenderGame(surrenderingPlayer);
-  });
-
-  function surrenderGame(surrenderingPlayer){
-    phase = 'game-over';
-    turnToken++; // invalidates any pending AI move/pass timer
-    const winner = opp(surrenderingPlayer);
-    document.getElementById('universalModal').style.display = 'none';
-    document.getElementById('gameOver').classList.add('show');
-    document.getElementById('turnBanner').textContent = '';
-    updateActionButtons();
-    const {black, white} = countDiscs();
-    document.getElementById('gameOverTitle').textContent = `${names[winner]} Wins!`;
-    document.getElementById('gameOverText').textContent =
-      `${names[surrenderingPlayer]} surrendered. Final count: ${black} Black, ${white} White.`;
-    document.getElementById('gameOverPips').textContent = `${names[winner]} wins by surrender`;
-    log(`${names[surrenderingPlayer]} surrenders. ${names[winner]} wins the game!`, 'win');
-    sessionWins[winner]++;
-    saveSessionWins();
-    updateSessionWinsDisplay();
-    recordScore(names[winner], Math.abs(black - white), names[surrenderingPlayer]);
-  }
-
   // ---------------- new game / exit ----------------
   document.getElementById('resetBtn').addEventListener('click', async () => {
     const ok = await showConfirm('Start a new game? Your current game will be lost.', 'New Game');
@@ -1254,13 +1250,17 @@
       }));
     } catch (err) { console.error('savePlayerNames error', err); }
   }
-  // Keeps the "This Session's Wins" name labels in sync with the name fields as the
-  // user types, instead of only updating them the next time startGame() runs.
+  // Keeps the "This Session's Wins" name labels, the "Current Discs" name labels, and the
+  // "Black (...)" field label above the Player 1 name box, all in sync with the name
+  // fields as the user types, instead of only updating them the next time startGame() runs.
   function updateSessionWinsNameLabels(){
     const p1 = document.getElementById('gsP1Name').value.trim() || 'Player 1';
     const p2 = document.getElementById('gsP2Name').value.trim() || (mode === 'ai' ? 'AI' : 'Player 2');
     document.getElementById('sessionWinsP1Name').textContent = p1;
     document.getElementById('sessionWinsP2Name').textContent = p2;
+    document.getElementById('gsP1Label').textContent = 'Black (' + p1 + ')';
+    document.getElementById('discNameBlack').textContent = p1;
+    document.getElementById('discNameWhite').textContent = p2;
   }
   document.getElementById('gsP1Name').addEventListener('change', savePlayerNames);
   document.getElementById('gsP2Name').addEventListener('change', savePlayerNames);
@@ -1269,34 +1269,30 @@
 
   // Unlike Acey-Deucey (where the mode switch is deferred until the next Roll Dice click,
   // to avoid interrupting a die-tumble animation), Othello has no equivalent gated action -
-  // toggling Human/AI Opponent here just starts a fresh game immediately.
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const newMode = btn.dataset.mode;
-      if(newMode === mode) return;
-      mode = newMode;
-      document.querySelectorAll('.mode-btn').forEach(b => {
-        const isSelected = b.dataset.mode === mode;
-        b.classList.toggle('selected', isSelected);
-        b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
-      });
-      const p2Input = document.getElementById('gsP2Name');
-      const p2Label = document.getElementById('gsP2Label');
-      if(mode === 'ai'){
-        p2Label.childNodes[0].textContent = 'White (AI) ';
-        p2Input.value = 'AI'; p2Input.disabled = true;
-      } else {
-        p2Label.childNodes[0].textContent = 'White (Player 2) ';
-        let savedP2 = '';
-        try {
-          const raw = localStorage.getItem(PLAYER_NAMES_KEY);
-          if(raw) savedP2 = JSON.parse(raw).p2Name || '';
-        } catch (err) {}
-        p2Input.value = savedP2; p2Input.disabled = false;
-      }
-      try { sessionStorage.setItem('othelloSettings_v1', JSON.stringify({mode})); } catch (err) {}
-      startGame();
-    });
+  // toggling AI Opponent here just starts a fresh game immediately.
+  // Single self-contained ON/OFF toggle (there's no longer a separate "Human Opponent"
+  // button to select instead) - each click just flips mode between 'ai' and 'human'.
+  document.getElementById('gsAiBtn').addEventListener('click', () => {
+    const btn = document.getElementById('gsAiBtn');
+    mode = (mode === 'ai') ? 'human' : 'ai';
+    const isOn = mode === 'ai';
+    btn.textContent = btn.dataset.label + (isOn ? ': ON' : ': OFF');
+    const p2Input = document.getElementById('gsP2Name');
+    const p2Label = document.getElementById('gsP2Label');
+    if(mode === 'ai'){
+      p2Label.childNodes[0].textContent = 'White (AI) ';
+      p2Input.value = 'AI'; p2Input.disabled = true;
+    } else {
+      p2Label.childNodes[0].textContent = 'White (Player 2) ';
+      let savedP2 = '';
+      try {
+        const raw = localStorage.getItem(PLAYER_NAMES_KEY);
+        if(raw) savedP2 = JSON.parse(raw).p2Name || '';
+      } catch (err) {}
+      p2Input.value = savedP2; p2Input.disabled = false;
+    }
+    try { sessionStorage.setItem('othelloSettings_v1', JSON.stringify({mode})); } catch (err) {}
+    startGame();
   });
 
   // ---------------- session wins scoreboard ----------------
@@ -1359,7 +1355,8 @@
     const ptsStr = pad(`${marginStr} discs`, 10);
     const opponentName = normalizeName(entry.opponent || 'Unknown');
     const vsStr = pad('vs ' + opponentName, 12);
-    return `${rankStr} ${nameStr} ${ptsStr} ${vsStr} ${entry.date}`;
+    const dateStr = String(entry.date).padStart(10, ' '); // right-align - longest date is "12/31/2026" (10 chars)
+    return `${rankStr} ${nameStr} ${ptsStr} ${vsStr} ${dateStr}`;
   }
 
   function showScoresModal(){
@@ -1396,7 +1393,6 @@
     document.getElementById('universalModal').style.display = 'none';
     document.getElementById('gameOver').classList.add('show');
     document.getElementById('turnBanner').textContent = '';
-    updateActionButtons();
     let winner = null;
     if(black > white) winner = 'black';
     else if(white > black) winner = 'white';
@@ -1472,11 +1468,9 @@
         const saved = JSON.parse(rawSettings);
         if(saved.mode && saved.mode !== mode){
           mode = saved.mode;
-          document.querySelectorAll('.mode-btn').forEach(b => {
-            const isSelected = b.dataset.mode === mode;
-            b.classList.toggle('selected', isSelected);
-            b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
-          });
+          const btn = document.getElementById('gsAiBtn');
+          const isOn = mode === 'ai';
+          btn.textContent = btn.dataset.label + (isOn ? ': ON' : ': OFF');
         }
       }
       const p2Input = document.getElementById('gsP2Name');
@@ -1495,28 +1489,29 @@
     startGame();
   }
 
-  // Aligns the top of the "Black (Player 1)" name field with the top of the "New Game"
-  // button, purely for visual balance between the two side panels - same technique
-  // Acey-Deucey uses, just anchored off the AI Opponent button (the last button in this
-  // panel, since Othello has no Game Options button).
-  function alignPlayer1WithNewGame(){
+  // Top-aligns a side-controls group with the top of the playing board itself, by measuring
+  // the live gap and setting a corrective margin-top - used for both #gsPanel (the AI
+  // Opponent button and the two name fields, on the left) and #secondaryButtons (New Game /
+  // Recorded Scores / Instructions / Exit, on the right, now that Pass and Surrender above
+  // it are gone).
+  function alignPanelWithBoard(panel){
     try {
-      const lastBtn = document.getElementById('gsAiBtn');
-      const p1Field = document.getElementById('gsP1Name');
-      const newGameBtn = document.getElementById('resetBtn');
-      if(!lastBtn || !p1Field || !newGameBtn) return;
-      lastBtn.style.marginBottom = '0px';
-      const currentGap = p1Field.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
-      const targetGap = newGameBtn.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
-      const neededMargin = Math.max(0, targetGap - currentGap);
-      lastBtn.style.marginBottom = neededMargin + 'px';
+      const boardFrame = document.querySelector('.board-frame');
+      if(!panel || !boardFrame) return;
+      panel.style.marginTop = '0px';
+      const diff = boardFrame.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+      panel.style.marginTop = diff + 'px';
     } catch (err) {
-      console.error('alignPlayer1WithNewGame error', err);
+      console.error('alignPanelWithBoard error', err);
     }
   }
-  alignPlayer1WithNewGame();
-  window.addEventListener('load', alignPlayer1WithNewGame);
-  window.addEventListener('resize', alignPlayer1WithNewGame);
+  function alignSidePanelsWithBoard(){
+    alignPanelWithBoard(document.getElementById('gsPanel'));
+    alignPanelWithBoard(document.getElementById('secondaryButtons'));
+  }
+  alignSidePanelsWithBoard();
+  window.addEventListener('load', alignSidePanelsWithBoard);
+  window.addEventListener('resize', alignSidePanelsWithBoard);
 
 })();
 
