@@ -1,5 +1,7 @@
 
-<!-- Revision 39 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's tan background (#ece1db). -->
+<!-- Revision 43 | Sunday, September 13, 2026 | South's hand now displays in true ranking order once trump is selected: sortHand() takes an optional trump argument and sorts by effectiveSuit/effectiveRank instead of raw suit/rank, so both bowers fold into the trump suit's block (ranked correctly within it) and the Joker lands as the single highest card, instead of sitting under its printed suit in raw deal order. Re-sorts South's hand the moment trump is decided (finishBiddingRound), and also threads trump through the kitty-merge sort in startKittyPhase() so a South-as-bidder hand stays correctly ordered after picking up the kitty. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 958 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -842,7 +844,7 @@
 </style>
 </head>
 <body>
-<div class="revBadge">Rev. 39</div>
+<div class="revBadge" id="revBadge"></div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">500</h1>
@@ -953,6 +955,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 43;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* =====================================================================
    500 — standalone game
    4 players (partnership): South = You, North = your partner (AI),
@@ -1103,13 +1108,18 @@ function shuffle(arr){
   return arr;
 }
 
-function sortHand(cards){
+// trump is optional - omitted (or null) at deal time, before bidding has decided
+// a trump suit, so cards sort by their printed suit/rank exactly as before.
+// Once trump is known, effectiveSuit/effectiveRank (see TRUMP / BOWER MECHANICS
+// above) fold both bowers into the trump suit's block and rank them correctly
+// within it, with the Joker landing as the single highest card overall.
+function sortHand(cards, trump){
   const suitOrder = ['♠','♥','♣','♦'];
   return [...cards].sort((a,b)=>{
-    if(a.rank==='JK') return -1;
-    if(b.rank==='JK') return 1;
-    if(a.suit !== b.suit) return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-    return RANK_STRENGTH[a.rank] - RANK_STRENGTH[b.rank];
+    const suitA = effectiveSuit(a, trump);
+    const suitB = effectiveSuit(b, trump);
+    if(suitA !== suitB) return suitOrder.indexOf(suitA) - suitOrder.indexOf(suitB);
+    return effectiveRank(a, trump) - effectiveRank(b, trump);
   });
 }
 
@@ -1518,6 +1528,11 @@ function finishBiddingRound(){
   }
   state.contract = state.currentHighBid;
   state.trump = state.contract.type === 'suit' ? state.contract.suit : null;
+  // Now that trump is known, put South's hand in ranking order - both bowers
+  // move into the trump suit's block (ranked correctly within it) and the
+  // Joker becomes the single highest card, instead of sitting in raw
+  // deal-order under its printed suit.
+  state.hands.S = sortHand(state.hands.S, state.trump);
   state.teamBidInfo[TEAM[state.contract.bidder]] = { label: contractLabel(state.contract) };
   addLog(`Bidding won by ${SEAT_NAME[state.contract.bidder]} — ${bidSpokenLabel(state.contract)}.`);
   updateTrumpBadge();
@@ -1557,7 +1572,7 @@ function cardShortColored(card){
 function startKittyPhase(){
   const bidder = state.contract.bidder;
   const kittyCards = state.kitty;
-  state.hands[bidder] = sortHand(state.hands[bidder].concat(kittyCards));
+  state.hands[bidder] = sortHand(state.hands[bidder].concat(kittyCards), state.trump);
   state.kitty = [];
   addLog(`${SEAT_NAME[bidder]} takes the kitty (${kittyCards.map(cardShort).join(', ')}).`);
   render();
