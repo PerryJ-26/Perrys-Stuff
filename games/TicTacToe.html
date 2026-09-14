@@ -1,5 +1,7 @@
 
-<!-- Revision 5 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header, showing this page's current revision number. Used white text, since it gives more contrast than black against this header's blue background (#265cbb). -->
+<!-- Revision 10 | Sunday, September 13, 2026 | Replaced the AI's old win/block/center/corner/random heuristic with a full minimax lookahead, since the heuristic had a real hole: after human takes a corner, AI takes center (correct), human takes the opposite corner, the old heuristic's blind corner-preference let the human force a guaranteed win (the classic "opposite corners" fork) - minimax always finds a win when one exists and always blocks a forced loss instead. Also varied the AI's true opening move (empty board) - it always took the center before, making every AI-first game look and play the same and reliably end in a tie - now it picks randomly among center and the four corners, which are equally sound openings. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 357 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -323,7 +325,7 @@
 </head>
 <body>
 
-<header style="font-weight:bold;">Tic Tac Toe<span class="revBadge">Rev. 5</span></header>
+<header style="font-weight:bold;">Tic Tac Toe<span class="revBadge" id="revBadge"></span></header>
 
 <main>
   <div class="row">
@@ -352,6 +354,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 10;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* Global safety: capture errors and show overlay */
 (function(){
   const overlay = document.getElementById('errorOverlay');
@@ -374,10 +379,13 @@
 const boardElement = document.getElementById('board');
 const statusElement = document.getElementById('status');
 let board = Array(9).fill(null);
-let currentPlayer = 'X';
+let currentPlayer = 'X'; // placeholder - the resetGame() call below picks the real starter
 let gameOver = false;
 let aiEnabled = true;
 let aiPlayer = 'O';
+// Tracks who started the previous game so resetGame() can alternate. Null
+// until the first game of this page load, which is chosen at random.
+let lastStarter = null;
 
 function toggleAI(){
   aiEnabled = !aiEnabled;
@@ -455,37 +463,103 @@ function endGame(winningCombo){
 
 function resetGame(){
   board = Array(9).fill(null);
-  currentPlayer = 'X';
   gameOver = false;
-  statusElement.textContent = "Player X's Turn";
+  // First game ever (this page load) picks a starting player at random;
+  // every game after that alternates from whoever started the previous one.
+  currentPlayer = lastStarter === null
+    ? (Math.random() < 0.5 ? 'X' : 'O')
+    : (lastStarter === 'X' ? 'O' : 'X');
+  lastStarter = currentPlayer;
+  statusElement.textContent = `Player ${currentPlayer}'s Turn`;
   createBoard();
+  if(aiEnabled && currentPlayer === aiPlayer && !gameOver){
+    setTimeout(aiMove, 300);
+  }
 }
-createBoard();
+resetGame();
+
+// Pure win-check against an arbitrary board array (unlike checkWin() above,
+// which always reads the live global `board`) - used by the minimax search
+// below to evaluate hypothetical boards without touching real game state.
+function getWinnerOnBoard(bd){
+  const combos = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for(const combo of combos){
+    const [a,b,c] = combo;
+    if(bd[a] && bd[a]===bd[b] && bd[a]===bd[c]) return bd[a];
+  }
+  return null;
+}
+
+// Full minimax lookahead - tic-tac-toe's entire search space is tiny (at most
+// 9! branches, far fewer in practice since wins cut recursion short), so this
+// finishes instantly and never misses a tactic. Scores a finished board from
+// the AI's perspective, preferring a FASTER win and a SLOWER loss (via the
+// depth adjustment) so the AI doesn't stall out a win it could take now, or
+// walk into a loss it could have delayed/avoided.
+function minimaxScore(bd, playerToMove, depth){
+  const winner = getWinnerOnBoard(bd);
+  const human = aiPlayer === 'X' ? 'O' : 'X';
+  if(winner === aiPlayer) return 10 - depth;
+  if(winner === human) return depth - 10;
+  if(bd.every(c=>c!==null)) return 0;
+
+  const scores = [];
+  for(let i=0;i<9;i++){
+    if(bd[i]===null){
+      bd[i] = playerToMove;
+      scores.push(minimaxScore(bd, playerToMove===aiPlayer ? human : aiPlayer, depth+1));
+      bd[i] = null;
+    }
+  }
+  return playerToMove===aiPlayer ? Math.max(...scores) : Math.min(...scores);
+}
+
+// Returns every empty square that ties for the best minimax score for the AI
+// on the given board - most positions have a single clearly-best move (an
+// immediate win, or the one move that avoids a forced loss - this is what
+// fixes the "opposite corners" fork, since taking a corner there scores
+// lower than taking an edge), but truly equivalent options (like the
+// opening move) come back as a list so aiMove() can pick among them at
+// random instead of always taking the same square.
+function bestAiMoves(bd){
+  const human = aiPlayer === 'X' ? 'O' : 'X';
+  let bestScore = -Infinity;
+  let bestMoves = [];
+  for(let i=0;i<9;i++){
+    if(bd[i]===null){
+      bd[i] = aiPlayer;
+      const score = minimaxScore(bd, human, 1);
+      bd[i] = null;
+      if(score > bestScore){ bestScore = score; bestMoves = [i]; }
+      else if(score === bestScore){ bestMoves.push(i); }
+    }
+  }
+  return bestMoves;
+}
 
 function aiMove(){
   try {
-    const combos = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    // win
-    for(let combo of combos){
-      const [a,b,c]=combo; const line=[board[a],board[b],board[c]];
-      if(line.filter(v=>v===aiPlayer).length===2 && line.includes(null)){
-        makeAIMove(combo[line.indexOf(null)]); return;
-      }
+    // The AI's very first move of the game (empty board): pick randomly among
+    // center and the four corners instead of always taking the center. All
+    // five are equally sound openings - none of them can be forced into a
+    // loss with correct follow-up - so this is purely for variety, per
+    // Perry's report that an AI-opened game always starting (and always
+    // ending as a tie) in the center got repetitive.
+    if(board.every(c=>c===null)){
+      const openings = [4,0,2,6,8];
+      makeAIMove(openings[Math.floor(Math.random()*openings.length)]);
+      return;
     }
-    // block
-    const human = aiPlayer==='X'?'O':'X';
-    for(let combo of combos){
-      const [a,b,c]=combo; const line=[board[a],board[b],board[c]];
-      if(line.filter(v=>v===human).length===2 && line.includes(null)){
-        makeAIMove(combo[line.indexOf(null)]); return;
-      }
-    }
-    // center, corner, random
-    if(board[4]===null){ makeAIMove(4); return; }
-    const corners=[0,2,6,8].filter(i=>board[i]===null);
-    if(corners.length){ makeAIMove(corners[Math.floor(Math.random()*corners.length)]); return; }
-    const open = board.map((v,i)=>v===null?i:null).filter(x=>x!==null);
-    makeAIMove(open[Math.floor(Math.random()*open.length)]);
+    // Every move after the opening: full minimax lookahead instead of the
+    // old win/block/center/corner/random heuristic, which could be talked
+    // into a loss (e.g. it had no way to notice the classic "opposite
+    // corners" fork: human takes a corner, AI takes center, human takes the
+    // opposite corner, and the old heuristic's blind corner-preference then
+    // handed the human a guaranteed win). Minimax always finds a win when
+    // one exists, always blocks a forced loss, and never overlooks a tactic
+    // further out - ties among equally-good moves are broken at random.
+    const moves = bestAiMoves(board);
+    makeAIMove(moves[Math.floor(Math.random()*moves.length)]);
   } catch (err) {
     console.error('aiMove error', err);
     document.getElementById('errorOverlay').textContent = 'aiMove error: ' + err.message;
