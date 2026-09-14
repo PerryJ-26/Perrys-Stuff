@@ -1,5 +1,7 @@
 
-<!-- Revision 10 | Saturday, September 12, 2026 | Made the "Rev. N" corner marker read its number from a single JS constant (PAGE_REVISION) instead of being typed as static text, so the badge and the revision comment can't drift out of sync with each other. -->
+<!-- Revision 13 | Sunday, September 13, 2026 | Corrected the trump ranking example in the Cards section: it listed 4-of-spades as the lowest trump when spades are trump, but the black fours (4S and 4C) are removed from this 43-card deck, so 5-of-spades is actually the lowest trump - dropped the erroneous ", 4S" from the example. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 328 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -279,7 +281,7 @@
 
       <h2>Cards</h2>
       <p>Use a 43-card pack. Remove all twos, all threes, and the black fours from a standard 52-card deck, then add one joker.</p>
-      <p>The joker is always the highest trump. The jack of the trump suit, called the right bower, is the second-highest trump. The jack of the other suit of the same color, called the left bower, is the third-highest trump. Thus, if spades are trump, the trump ranking from highest to lowest is: joker, J♠, J♣, A♠, K♠, Q♠, 10♠, 9♠, 8♠, 7♠, 6♠, 5♠, 4♠.</p>
+      <p>The joker is always the highest trump. The jack of the trump suit, called the right bower, is the second-highest trump. The jack of the other suit of the same color, called the left bower, is the third-highest trump. Thus, if spades are trump, the trump ranking from highest to lowest is: joker, J♠, J♣, A♠, K♠, Q♠, 10♠, 9♠, 8♠, 7♠, 6♠, 5♠.</p>
       <p>In non-trump suits, the rank is: A (high), K, Q, J (if it is not the left bower), 10, 9, 8, 7, 6, 5, 4.</p>
 
       <h2>Deal</h2>
@@ -323,7 +325,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 10;
+  const PAGE_REVISION = 13;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
