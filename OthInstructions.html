@@ -1,5 +1,7 @@
 
-<!-- Revision 2 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's light-blue background (#4a90c2). -->
+<!-- Revision 6 | Sunday, September 13, 2026 | Corrected the reminder comment below: PAGE_REVISION isn't always at the bottom of the file, so it now says "AT LINE 279" instead of "AT BOTTOM". -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 279 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -236,7 +238,7 @@
   <div class="site-header-wrap">
     <header>
       <h1>Game Hub</h1>
-      <span class="revBadge">Rev. 2</span>
+      <span class="revBadge" id="revBadge"></span>
     </header>
 
     <nav>
@@ -268,10 +270,15 @@
       <p>If no available move on the board captures any pieces, you must pass and your opponent gets another turn. If both players pass in a row, there are no more legal moves and the game ends.</p>
 
       <h2>Winning</h2>
-      <p>The game ends when the board is full, when both players pass in a row, or when one player surrenders. The pieces on the board are then counted, and the player with the most pieces wins.</p>
+      <p>The game ends when the board is full or when both players pass in a row. The the player with the most pieces on the board wins.</p>
 
     </div>
   </main>
+
+<script>
+  const PAGE_REVISION = 6;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
 
 </body>
 </html>
