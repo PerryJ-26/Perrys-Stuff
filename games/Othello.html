@@ -1,5 +1,5 @@
 
-<!-- Revision 27 | Monday, September 14, 2026 | Replaced the Pass/Surrender workflow: the "Can't Move" popup now reads "[Player] can't make a legal move and will Pass this turn." and has a single "Continue" button that dismisses it and passes automatically, so the separate sidebar Pass and Surrender buttons (and the surrender confirmation flow) are gone entirely. The remaining right-side buttons (New Game, Recorded Scores, Instructions, Exit) are now top-aligned with the playing board, same technique as the Game Setup panel on the left. -->
+<!-- Revision 28 | Monday, September 14, 2026 | Replaced the Pass/Surrender workflow: the "Can't Move" popup now reads "[Player] can't make a legal move and will Pass this turn." and has a single "Continue" button that dismisses it and passes automatically, so the separate sidebar Pass and Surrender buttons (and the surrender confirmation flow) are gone entirely. The remaining right-side buttons (New Game, Recorded Scores, Instructions, Exit) are now top-aligned with the playing board, same technique as the Game Setup panel on the left. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 744 -->
 
 <!doctype html>
@@ -23,7 +23,7 @@
      corresponding element to attach to, so they're gone rather than left dead.) */
   :root{
     /* Page background */
-    --page-bg:#8490fb;
+    --page-bg:#face8b;
     --page-titlesub:#000000;
     
     /* Board frame background/border, and the general dark "ink" color reused for
@@ -741,7 +741,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 27;
+  const PAGE_REVISION = 28;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
