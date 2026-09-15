@@ -1,5 +1,5 @@
 
-<!-- Revision 63 | Monday, September 14, 2026 | Moved the AI Opponent button and the two name fields/labels up about 0.125" (12px) from where they sat just above Remaining Pips - Remaining Pips itself didn't move, the gap between the two groups just grew by that amount. -->
+<!-- Revision 64 | Tuesday, September 15, 2026 | Two AI heuristic fixes in scoreMove(). (1) The flat bonus for entering from the bar was +40, which drowned out any on-board play - even with Option 1 checked and legally free to act on-board, the AI would just keep entering every checker before ever moving one out of the first quadrant. Cut to +10 so a genuinely better on-board move (a hit, covering a blot, escaping a threat) can win. (2) The flat bonus for covering a blot into a safe point was raised from +6 to +14, and a new penalty was added for leaving a DIFFERENT point exposed by moving a checker away from it (previously only the destination's safety was scored) - together, the AI now goes looking for blocks to make rather than just taking them when the dice happen to line up, without doing it at the cost of exposing something else. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 63;
+  const PAGE_REVISION = 64;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2455,7 +2455,25 @@
     let s = 0;
     if(result.dest === 'off') s += 1000;
     if(result.hit) s += 80;
-    if(source === 'bar') s += 40;
+    // This only ever competes against an on-board move when Option 1 (see opt1Applies()) has
+    // made both legal at once - normally, entering is the ONLY legal source while the bar isn't
+    // empty, so nothing to compare against. This used to be +40, which drowned out everything
+    // else an on-board checker could do (hit, cover a blot into a safe point, escape a real
+    // threat) - the AI would keep entering rather than ever act on the flexibility Option 1
+    // grants, exactly the "enters everything before moving out of the first quadrant" behavior
+    // reported. Knocked down to +10 - still enough of a nudge to prefer entering when nothing
+    // else is going on, but no longer bigger than a genuinely good on-board play.
+    if(source === 'bar') s += 10;
+    // Moving this checker away leaves exactly one of the player's own checkers behind on the
+    // point it started from - a fresh blot there, not just wherever this one lands. Previously
+    // only the DESTINATION's resulting safety was scored, so breaking up an existing point (or
+    // vacating down to a lone checker) to do something else elsewhere was invisible to the
+    // heuristic even when it left that old point exposed. Same threat-scaled penalty as a
+    // destination blot gets below, so this only actually costs anything when there's a real
+    // threat sitting there to punish it.
+    if(source !== 'bar' && board[source].count === 2){
+      s -= 25 * nearbyThreatLevel(player, source);
+    }
     s += die * 2; // progress
     if(result.dest !== 'off'){
       const cell = board[result.dest];
@@ -2471,14 +2489,18 @@
         s -= 25 * nearbyThreatLevel(player, result.dest);
       } else if(willBeCount === 2){
         // Making (or covering) a point still gets the full threat-scaled bonus below when there's
-        // something nearby to actually defend against. But a small FLAT bonus on top of that,
-        // regardless of threat, gives building a point real value even on a wide-open board -
-        // without it, a fresh blot and a newly-made point score identically (both 0) whenever
-        // nothing is nearby yet, so a double with no immediate threat had no reason to ever spread
-        // into a new point instead of just repeatedly advancing whichever checker the tie-break
-        // happened to prefer. Real backgammon strategy builds blocking points proactively, before
-        // the threat that would justify them shows up - this restores a reason to do that.
-        s += 6;
+        // something nearby to actually defend against. The flat bonus on top of that, regardless
+        // of threat, is what makes building a point worthwhile even on a wide-open board - without
+        // it, a fresh blot and a newly-made point score identically (both 0) whenever nothing is
+        // nearby yet, so a double with no immediate threat had no reason to ever spread into a new
+        // point instead of just repeatedly advancing whichever checker the tie-break happened to
+        // prefer. Raised from 6 to 14 (more than the +2/pip progress term can make up for on its
+        // own with a small die) so the AI goes looking for a checker to cover, rather than just
+        // treating it as a nice bonus if the die happens to line up - per Perry's request to be
+        // more aggressive about building blocks whenever it's actually safe to (the threat-scaled
+        // penalties elsewhere, including the new source-exposure one above, are what still stop it
+        // from doing this at the cost of leaving something else hanging).
+        s += 14;
         s += 25 * nearbyThreatLevel(player, result.dest);
       } else {
         // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it only earns its
