@@ -1,5 +1,5 @@
 
-<!-- Revision 10 | Sunday, September 13, 2026 | Replaced the AI's old win/block/center/corner/random heuristic with a full minimax lookahead, since the heuristic had a real hole: after human takes a corner, AI takes center (correct), human takes the opposite corner, the old heuristic's blind corner-preference let the human force a guaranteed win (the classic "opposite corners" fork) - minimax always finds a win when one exists and always blocks a forced loss instead. Also varied the AI's true opening move (empty board) - it always took the center before, making every AI-first game look and play the same and reliably end in a tie - now it picks randomly among center and the four corners, which are equally sound openings. -->
+<!-- Revision 11 | Monday, September 14, 2026 | The AI's opening move (empty board) now picks randomly among all nine squares instead of only the center and four corners - you noticed it never opened on an edge. Every square is an equally sound opening since minimax handles every move afterward, so this is purely more variety, same as the corners-vs-always-center fix before it. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 357 -->
 
 <!DOCTYPE html>
@@ -354,7 +354,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 10;
+  const PAGE_REVISION = 11;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* Global safety: capture errors and show overlay */
@@ -540,13 +540,15 @@ function bestAiMoves(bd){
 function aiMove(){
   try {
     // The AI's very first move of the game (empty board): pick randomly among
-    // center and the four corners instead of always taking the center. All
-    // five are equally sound openings - none of them can be forced into a
-    // loss with correct follow-up - so this is purely for variety, per
-    // Perry's report that an AI-opened game always starting (and always
-    // ending as a tie) in the center got repetitive.
+    // all nine squares, including the four edges, instead of always taking
+    // the center (or, previously, only ever a corner or the center). Every
+    // square is an equally sound opening - none of them can be forced into a
+    // loss with correct follow-up, since minimax handles every move after
+    // this one - so this is purely for variety, per Perry's report that an
+    // AI-opened game always starting (and always ending as a tie) in the
+    // center got repetitive, and later that it never opened on an edge.
     if(board.every(c=>c===null)){
-      const openings = [4,0,2,6,8];
+      const openings = [0,1,2,3,4,5,6,7,8];
       makeAIMove(openings[Math.floor(Math.random()*openings.length)]);
       return;
     }
