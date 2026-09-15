@@ -1,5 +1,7 @@
 
-<!-- Revision 55 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against the green felt background (#00b32d). -->
+<!-- Revision 60 | Monday, September 14, 2026 | Combined the separate "Human Opponent"/"AI Opponent" buttons into a single AI Opponent ON/OFF toggle button, same change made earlier to Othello - clicking it just flips between AI and Human mode. Changed the "White (...)"/"Black (...)" name-field labels in the Game Setup panel from gold to black text. Those labels now also update live the moment a name is typed/entered into either field (previously they stayed on the placeholder text like "Player 1" even after a real name was entered), and correctly show a restored/saved name after a page reload too. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1290 -->
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -62,6 +64,11 @@
 
     /* Score card - player name labels (e.g. "Player 1 (White)") */
     --player-name-color:#000000;
+
+    /* "White (...)"/"Black (...)" field labels above the two name inputs in the Game
+       Setup panel - kept separate from --player-name-color above so the two can be
+       tweaked independently even though both start out black */
+    --gs-field-label-text:#000000;
 
     /* Checkers */
     --white-checker:#f5efe0;
@@ -803,18 +810,17 @@
     color:var(--cream);}
 
   /* Game Options intentionally isn't given the shared .mode-btn class - that class is what the
-     Human/AI toggle JS selects and relabels, and this button isn't a mode toggle. .gs-mode-btn
+     AI Opponent toggle JS selects and relabels, and this button isn't a mode toggle. .gs-mode-btn
      already covers the rest of the look on its own (border:none, which overrides .mode-btn's
-     gold border on Human/AI Opponent too - neither of those actually shows a border), except
-     the background/text color, which is overridden below to the same gold-bright/wood-dark
-     pairing as Roll Dice (and every other action button on the page) instead of the mode
-     buttons' plain wood-dark/cream, since Game Options isn't a toggle and Perry asked for it to
-     match Roll Dice's yellow specifically. Its bottom margin is set at runtime by
-     alignPlayer1WithNewGame() instead of a fixed value here, same as AI Opponent's margin used
-     to be, since it's now the last button in the group sitting right above the name fields - AI
-     Opponent itself goes back to relying on the panel's normal 6px gap, the same spacing it
-     already had above itself (between it and Human Opponent), so Game Options' top margin
-     matches AI Opponent's. */
+     gold border on AI Opponent too - it doesn't actually show a border), except the
+     background/text color, which is overridden below to the same gold-bright/wood-dark pairing
+     as Roll Dice (and every other action button on the page) instead of the mode buttons' plain
+     wood-dark/cream, since Game Options isn't a toggle and Perry asked for it to match Roll
+     Dice's yellow specifically. Its bottom margin is set at runtime by
+     alignPlayer1WithNewGame() instead of a fixed value here, since it's the last button in the
+     group sitting right above the name fields - AI Opponent itself (now the first button, since
+     Human Opponent was removed) just relies on the panel's normal 6px gap below it, same as
+     before. */
   #gameOptionsBtn{
     background:var(--gold-bright);
     color:var(--wood-dark);}
@@ -831,7 +837,7 @@
     font-size:10px;
     text-transform:uppercase;
     letter-spacing:0.06em;
-    color:var(--gold);
+    color:var(--gs-field-label-text);
     margin-bottom:2px;}
 
   .gs-field input{
@@ -1161,7 +1167,7 @@
 
 </head>
 <body>
-<div class="revBadge">Rev. 55</div>
+<div class="revBadge" id="revBadge"></div>
 <div id="universalModal" role="dialog" aria-modal="true">
   <div class="modal-box">
     <h3 id="universalModalTitle"></h3>
@@ -1199,12 +1205,11 @@
       <div class="side-controls">
         <div class="side-controls-inner side-controls-inner-top">
           <div id="gsPanel">
-            <button class="mode-btn gs-mode-btn" data-mode="human" data-label="Human Opponent">Human Opponent: OFF</button>
-            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-mode="ai" data-label="AI Opponent">AI Opponent: ON</button>
+            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-label="AI Opponent">AI Opponent: ON</button>
             <button class="gs-mode-btn" id="gameOptionsBtn">Game Options</button>
 
             <div class="gs-field">
-              <label for="gsP1Name">White (Player 1)</label>
+              <label id="gsP1Label" for="gsP1Name">White (Player 1)</label>
               <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
             </div>
             <div class="gs-field">
@@ -1282,6 +1287,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 60;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 (function(){
 
   // ---------------- state ----------------
@@ -1312,6 +1320,13 @@
   // a player has gotten every one of their 15 checkers off the bar for the first time this game,
   // this flips true for good (see applyMove()) and Option 1 stops applying to them.
   let everFullyEntered = {white:false, black:false};
+  // A checker that gets hit WHILE the player is still mid-opening (before everFullyEntered)
+  // is a "hit" checker, not just one more of the original 15 still streaming in - it must be
+  // entered before anything else moves even though the player hasn't finished their first
+  // entry yet, same as a hit always does once the opening is over. So the instant that
+  // happens, Option 1 stops relaxing things for this player for the rest of this opening -
+  // see opt1Applies() and the hit branch of applyMove().
+  let hitDuringOpening = {white:false, black:false};
   let selected = null; // 'bar' or point number
   let legalMap = [];    // [{die, dest, hit}] for currently selected source
   let rolling = false;  // True while the tumble animation is playing, guards against double-rolls
@@ -1413,9 +1428,11 @@
   // Option 1 ("move before all checkers are entered") only ever relaxes the bar-first rule
   // during a player's OPENING entry - once they've gotten all 15 off the bar for the first
   // time this game, a later hit always has to re-enter before anything else moves, exactly as
-  // if the option were off.
+  // if the option were off. It also stops relaxing things the instant a checker gets hit
+  // during that opening (hitDuringOpening) - a hit checker always needs entering first, even
+  // if the player still has some of their original 15 left to stream in for the first time.
   function opt1Applies(player){
-    return gameOptions.opt1 && !everFullyEntered[player];
+    return gameOptions.opt1 && !everFullyEntered[player] && !hitDuringOpening[player];
   }
 
   // Attempt a move; returns {legal:bool, dest:'off'|number, hit:bool}
@@ -1473,6 +1490,12 @@
     } else {
       const cell = board[result.dest];
       if(result.hit){
+        // If the player being hit is still mid-opening (hasn't gotten all 15 off the bar for
+        // the first time yet), this specific checker is a "hit" checker, not just one more of
+        // the original 15 - flag it so opt1Applies() stops relaxing the bar-first rule for
+        // them until it (and the rest of the bar) is entered. Once everFullyEntered is true
+        // this flag is moot - a hit always requires entering first regardless, option or not.
+        if(!everFullyEntered[opp(player)]) hitDuringOpening[opp(player)] = true;
         bar[opp(player)]++;
         board[result.dest] = {owner:player, count:1};
       } else if(cell.owner === player){
@@ -1537,36 +1560,30 @@
   }
 
   // ---------------- setup screen ----------------
-  document.querySelectorAll('.mode-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      mode = btn.dataset.mode;
-      // Syncs EVERY mode-btn on the page (Setup screen's originals + the game-screen copies)
-      // to match whichever mode was just picked, rather than only toggling the one clicked -
-      // otherwise clicking a button in one panel wouldn't update the other panel's buttons.
-      document.querySelectorAll('.mode-btn').forEach(b=>{
-        const isSelected = b.dataset.mode === mode;
-        b.classList.toggle('selected', isSelected);
-        b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
-      });
-      // Same idea for the "Black" name field/label - only one pair now that the Setup screen
-      // (and its duplicate copy of these controls) has been removed.
-      const p2Input = document.getElementById('gsP2Name');
-      const p2Label = document.getElementById('gsP2Label');
-      if(mode==='ai'){
-        p2Label.childNodes[0].textContent = 'Black (AI) ';
-        // Disabled field - fine to use a real value here since the player can't click into it anyway
-        p2Input.value = 'The AI'; p2Input.disabled = true;
-      } else {
-        p2Label.childNodes[0].textContent = 'Black (Player 2) ';
-        // Editable field - use placeholder (greyed hint text) + empty value, so clicking in
-        // gives a blank box to type into instead of text the player has to delete first
-        p2Input.value = ''; p2Input.placeholder = 'Player 2'; p2Input.disabled = false;
-      }
-      // Mode changes need a fresh game to apply safely (switching who controls a seat
-      // mid-turn would be disruptive), but shouldn't interrupt the CURRENT game just from
-      // clicking the toggle - defer the actual restart until the next Roll Dice click.
-      pendingRestart = true;
-    });
+  // Single self-contained ON/OFF toggle (there's no longer a separate "Human Opponent" button
+  // to select instead, same change as Othello) - each click just flips mode between 'ai' and
+  // 'human'.
+  document.getElementById('gsAiBtn').addEventListener('click', ()=>{
+    const btn = document.getElementById('gsAiBtn');
+    mode = (mode === 'ai') ? 'human' : 'ai';
+    const isOn = mode === 'ai';
+    btn.textContent = btn.dataset.label + (isOn ? ': ON' : ': OFF');
+    const p2Input = document.getElementById('gsP2Name');
+    const p2Label = document.getElementById('gsP2Label');
+    if(mode==='ai'){
+      p2Label.childNodes[0].textContent = 'Black (AI) ';
+      // Disabled field - fine to use a real value here since the player can't click into it anyway
+      p2Input.value = 'The AI'; p2Input.disabled = true;
+    } else {
+      p2Label.childNodes[0].textContent = 'Black (Player 2) ';
+      // Editable field - use placeholder (greyed hint text) + empty value, so clicking in
+      // gives a blank box to type into instead of text the player has to delete first
+      p2Input.value = ''; p2Input.placeholder = 'Player 2'; p2Input.disabled = false;
+    }
+    // Mode changes need a fresh game to apply safely (switching who controls a seat
+    // mid-turn would be disruptive), but shouldn't interrupt the CURRENT game just from
+    // clicking the toggle - defer the actual restart until the next Roll Dice click.
+    pendingRestart = true;
   });
 
   // Entering a name mid-game just relabels the current player live (header, session-wins
@@ -1622,12 +1639,14 @@
     document.getElementById('nameWhite').textContent = p1 + ' (White)';
     document.getElementById('sessionWinsP1Name').textContent = p1;
     document.getElementById('pipsWhiteLabel').textContent = p1;
+    document.getElementById('gsP1Label').textContent = 'White (' + p1 + ')';
     if(mode !== 'ai'){
       const p2 = document.getElementById('gsP2Name').value.trim() || 'Player 2';
       names.black = p2;
       document.getElementById('nameBlack').textContent = p2 + ' (Black)';
       document.getElementById('sessionWinsP2Name').textContent = p2;
       document.getElementById('pipsBlackLabel').textContent = p2;
+      document.getElementById('gsP2Label').childNodes[0].textContent = 'Black (' + p2 + ') ';
     }
     persistSettings();
   }
@@ -1674,6 +1693,7 @@
     isDoubleBonusPending = false;
     doublesStreak = 0;
     everFullyEntered = {white:false, black:false};
+    hitDuringOpening = {white:false, black:false};
     selected = null; legalMap = [];
 
     document.getElementById('game').classList.add('show');
@@ -1883,7 +1903,7 @@
       sessionStorage.setItem(RESUME_KEY, JSON.stringify({
         names, isAI, board, bar, off, current, nextStarter, dice, originalRoll, usedCount,
         phase, awaitingDoubleChoice, isDoubleFromAceyDeucey, isDoubleBonusPending, doublesStreak,
-        everFullyEntered, selected, legalMap,
+        everFullyEntered, hitDuringOpening, selected, legalMap,
         logHtml: document.getElementById('log').innerHTML
       }));
     } catch (err) {
@@ -1919,6 +1939,9 @@
       isDoubleBonusPending = saved.isDoubleBonusPending;
       doublesStreak = saved.doublesStreak;
       everFullyEntered = saved.everFullyEntered;
+      // Falls back to {white:false, black:false} for a snapshot saved by an older version of
+      // this page (from before this field existed) that's still sitting in sessionStorage.
+      hitDuringOpening = saved.hitDuringOpening || {white:false, black:false};
       selected = saved.selected;
       legalMap = saved.legalMap || [];
 
@@ -2769,16 +2792,19 @@
     } catch (err) { console.error('restorePersistedSettings (names) error', err); }
     try {
       if(savedNames.p1Name) document.getElementById('gsP1Name').value = savedNames.p1Name;
+      // Label reflects whatever ends up in the field, restored name or the untouched default -
+      // same "White (<name>)" format applyNameChangeLive() uses while typing.
+      document.getElementById('gsP1Label').textContent = 'White (' + (savedNames.p1Name || 'Player 1') + ')';
       const rawSettings = sessionStorage.getItem('aceyDeuceySettings_v1');
       if(rawSettings){
         const saved = JSON.parse(rawSettings);
         if(saved.mode && saved.mode !== mode){
           mode = saved.mode;
-          document.querySelectorAll('.mode-btn').forEach(b=>{
-            const isSelected = b.dataset.mode === mode;
-            b.classList.toggle('selected', isSelected);
-            b.textContent = b.dataset.label + (isSelected ? ': ON' : ': OFF');
-          });
+          // Single-button toggle now (see the gsAiBtn click handler above) - just update its
+          // text to match the restored mode. The button keeps its 'selected' class permanently
+          // (background never changes), so there's nothing to toggle there.
+          const aiBtn = document.getElementById('gsAiBtn');
+          aiBtn.textContent = aiBtn.dataset.label + (mode === 'ai' ? ': ON' : ': OFF');
         }
       }
       const p2Input = document.getElementById('gsP2Name');
@@ -2787,7 +2813,7 @@
         p2Label.childNodes[0].textContent = 'Black (AI) ';
         p2Input.value = 'The AI'; p2Input.disabled = true;
       } else {
-        p2Label.childNodes[0].textContent = 'Black (Player 2) ';
+        p2Label.childNodes[0].textContent = 'Black (' + (savedNames.p2Name || 'Player 2') + ') ';
         p2Input.value = savedNames.p2Name || ''; p2Input.disabled = false;
       }
     } catch (err) { console.error('restorePersistedSettings error', err); }
