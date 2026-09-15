@@ -1,6 +1,6 @@
 
-<!-- Revision 28 | Monday, September 14, 2026 | Replaced the Pass/Surrender workflow: the "Can't Move" popup now reads "[Player] can't make a legal move and will Pass this turn." and has a single "Continue" button that dismisses it and passes automatically, so the separate sidebar Pass and Surrender buttons (and the surrender confirmation flow) are gone entirely. The remaining right-side buttons (New Game, Recorded Scores, Instructions, Exit) are now top-aligned with the playing board, same technique as the Game Setup panel on the left. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 744 -->
+<!-- Revision 41 | Monday, September 14, 2026 | Replaced the Pass/Surrender workflow: the "Can't Move" popup now reads "[Player] can't make a legal move and will Pass this turn." and has a single "Continue" button that dismisses it and passes automatically, so the separate sidebar Pass and Surrender buttons (and the surrender confirmation flow) are gone entirely. The remaining right-side buttons (New Game, Recorded Scores, Instructions, Exit) are now top-aligned with the playing board, same technique as the Game Setup panel on the left. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 752 -->
 
 <!doctype html>
 <html lang="en">
@@ -35,9 +35,6 @@
     --wood:#5f1f58;
     --wood-dark:#3d1237;
 
-
-
-
     /* Light surface color, also used as body text color - used by: body text,
        mode-btn text, gs-field input background, universal modal box background,
        gameover-box background, log text */
@@ -45,7 +42,8 @@
    
     /* Slightly darker than --cream - used by: session-wins-box background,
        universal modal's secondary-button background */
-    --cream-dark:#efcfef;
+    --cream-dark:#edcfee;
+    --session-winsbg:#e3e3ca;  /* #e6e6e6; */
 
     --h1-shadow:rgba(0,0,0,0.35);
 
@@ -68,7 +66,7 @@
     
     /* White text drawn directly over the purple board/frame area - used by: the
        "AI's Turn" banner, and the column (A-H) / row (1-8) position labels */
-    --board-area-text:#ffffff;
+    --board-area-text:#000000;
     
     /* Marks the single most recently placed piece */
     --last-move-dot:#ff1a1a;
@@ -83,7 +81,7 @@
        selected mode button, the modal's primary button, and the log panel's
        title + win-line text */
     --accent-bright:#ee7ff5;
-    --action-buttons:#6b7afa;
+    --action-buttons-bg:#6b7afa;
 
     /* "Black (...)"/"White (...)" field labels above the two name inputs in
        the Game Setup panel */
@@ -184,7 +182,7 @@
   .turn-banner{
     text-align:center;
     font-family:'Playfair Display',serif;
-    font-size:0.95rem;
+    font-size:1.2rem;
     font-weight:bold;
     color:var(--board-area-text);
     margin-bottom:6px;
@@ -218,8 +216,8 @@
   /* Padding widened (10px -> 26px) to leave room for the row/column position markers -
      see .col-labels/.row-labels below - along the top and left edges of the frame. */
   .board-frame{
-    background:linear-gradient(160deg, var(--wood), var(--wood-dark));
-    border:8px solid var(--wood-dark);
+    background:linear-gradient(160deg, var(--wood), var(--rev-badge-text));
+    border:8px solid var(--rev-badge-text);
     border-radius:10px;
     padding:26px;
     height:100%;
@@ -325,9 +323,13 @@
 
   .action-btn-small{
     padding:7px 13px;
-    background:var(--action-buttons);
-    color:var(--wood-dark);
-    border:none; border-radius:8px;
+    background:var(--action-buttons-bg);
+    color:var(--rev-badge-text);
+
+    /* border:none; border-radius:8px; */
+    border:2px solid var(--session-box-ink);
+    border-radius:8px;
+
     font-family:Arial, Helvetica, sans-serif;
     font-weight:700;
     font-size:13.6px;
@@ -349,7 +351,7 @@
     margin-top:16px;
     width:100%;
     box-sizing:border-box;
-    background:var(--cream-dark);
+    background:var(--session-winsbg);
     border:2px solid var(--session-box-ink);
     border-radius:8px;
     padding:8px 12px;
@@ -404,14 +406,16 @@
     font-weight:700;
     font-size:13.6px;
     cursor:pointer;
-    background:var(--wood-dark);
+    background:var(--rev-badge-text);
     color:var(--cream);}
 
   .mode-btn:hover{background:var(--wood);}
 
   .mode-btn.selected, .gs-mode-btn.selected{
-    background:var(--action-buttons);
-    color:var(--wood-dark);}
+    background:var(--action-buttons-bg);
+    border:2px solid var(--session-box-ink);
+    border-radius:8px;
+    color:var(--rev-badge-text);}
 
   .gs-field{width:100%; margin-top:6px;}
 
@@ -434,12 +438,16 @@
     width:100%;
     box-sizing:border-box;
     padding:7px 13px;
-    border-radius:5px;
-    border:none;
+    
+    /*border-radius:5px;
+    border:none;*/
+    border:2px solid var(--session-box-ink);
+    border-radius:8px;    
+
     font-family:Arial, Helvetica, sans-serif;
     font-size:13.6px;
-    background:var(--cream);
-    color:var(--wood-dark);}
+    background:var(--session-winsbg);
+    color:var(--rev-badge-text);}
 
   footer{
     text-align:center;
@@ -464,7 +472,7 @@
     top:50%; left:50%;
     transform:translate(-50%,-50%);
     background:var(--cream);
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     padding:24px;
     border-radius:10px;
     max-width:380px;
@@ -477,7 +485,7 @@
   #universalModalTitle{
     margin:0 0 8px;
     font-family:'Playfair Display',serif;
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     text-align:center;
     font-size:22.7px;
     display:none;}
@@ -485,14 +493,14 @@
   #universalModalSubtitle{
     margin:-4px 0 10px;
     font-family:'Playfair Display',serif;
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     text-align:center;
     font-size:16.72px;
     font-weight:normal;}
 
   #universalModalText{
     margin:0 0 18px;
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     white-space:pre-line;}
 
   #universalModalText.scores-list{
@@ -519,11 +527,11 @@
 
   #universalModalButtons button.primary{
     background:var(--accent-bright);
-    color:var(--wood-dark);}
+    color:var(--rev-badge-text);}
 
   #universalModalButtons button.secondary{
     background:var(--cream-dark);
-    color:var(--wood-dark);}
+    color:var(--rev-badge-text);}
 
   #universalModalButtons button:hover{filter:brightness(1.06);}
 
@@ -546,7 +554,7 @@
     width:90%;
     box-sizing:border-box;
     background:var(--cream);
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     border:2px solid var(--accent);
     border-radius:10px;
     padding:18px;
@@ -568,7 +576,7 @@
     text-align:center;
     font-family:'Playfair Display',serif;
     font-size:1.5rem;
-    color:var(--wood-dark);
+    color:var(--rev-badge-text);
     font-weight:bold;
     margin:4px 0 10px;}
 
@@ -615,7 +623,7 @@
     bottom:10px; left:10px;
     width:300px;
     max-height:520px;
-    background:var(--wood-dark);
+    background:var(--rev-badge-text);
     border:2px solid var(--accent);
     border-radius:8px;
     padding:8px 10px;
@@ -741,7 +749,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 28;
+  const PAGE_REVISION = 41;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
