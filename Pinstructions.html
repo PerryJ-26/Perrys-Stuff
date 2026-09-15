@@ -1,5 +1,7 @@
 
-<!-- Revision 4 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's light-blue background (#4a90c2). -->
+<!-- Revision 8 | Monday, September 14, 2026 | Corrected the reminder comment below: PAGE_REVISION isn't always at the bottom of the file, so it now says "AT LINE 346" instead of "AT BOTTOM". -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 346 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -248,7 +250,7 @@
   <div class="site-header-wrap">
     <header>
       <h1>Game Hub</h1>
-      <span class="revBadge">Rev. 4</span>
+      <span class="revBadge" id="revBadge"></span>
     </header>
 
     <nav>
@@ -297,7 +299,21 @@
       <p>Next, the declarer's partner chooses four cards from their hand and passes them to the declarer. The declarer then passes four cards back to their partner. The team that lost the bidding does not exchange cards that round.</p>
 
       <h2>Melding</h2>
-      <p><strong>Melds and scoring:</strong> During the melding phase, players score points by showing approved card combinations, called melds, from the cards in their own hands. Some cards may count toward more than one meld, but only when the combinations use the card in different ways. For example, a Q of hearts may count toward both a Marriage and Q Around, but it may not also count as part of a Run of Hearts if that same Q is already being used in the run. After all melds are shown face up, each player totals their meld points. Partners then combine their totals, and the team adds those points to its round score. Use the table below to score each player's melds.</p>
+      <p><strong>Melds and scoring:</strong> During the melding phase, players score points
+      by showing approved card combinations, called melds, from the cards in their own hands.
+      Some cards may count toward more than one meld, but only when the combinations use 
+      the card in different ways. </p>
+      
+      <div class="example-box">
+      <p><strong>Example:</strong> Hearts are Trump. A Queen of hearts may count toward a Marriage,
+      Queens Around, and a run in Trump. </p>
+      </div>
+      
+      <p>If you have a one King and two Queens of the same suit, you can only meld one marriage from the three cards. </p>
+
+      <p>After all melds are shown face up, each player totals 
+      their meld points. Partners then combine their totals, and the team adds those points 
+      to its round score. Use the table below to score each player's melds.</p>
 
       <p><strong>Meld table for each player's hand</strong></p>
       <table class="meld-table">
@@ -324,7 +340,7 @@
       </ul>
 
       <div class="example-box">
-        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the Q of hearts. Lisa has neither hearts nor spades, so she may play any card from her hand. You have the 9, 10, and A of hearts, so you must follow suit and play either the 10 or the ace because both beat the Q. You must take the trick if you can, even if your partner is currently winning it. Mike has no hearts but has the Q of spades, so he must play trump and wins the trick with that Q.</p>
+        <p><strong>Example:</strong> Trump is spades. Bill leads the trick with the Queenof hearts. Lisa has neither hearts nor spades, so she may play any card from her hand. You have the 9, 10, and A of hearts, so you must follow suit and play either the 10 or the ace because both beat the Q. You must take the trick if you can, even if your partner is currently winning it. Mike has no hearts but has the Queenof spades, so he must play trump and wins the trick with that Q.</p>
       </div>
 
       <p>The round ends when all 12 tricks have been taken.</p>
@@ -339,6 +355,11 @@
 
     </div>
   </main>
+
+<script>
+  const PAGE_REVISION = 8;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
 
 </body>
 </html>
