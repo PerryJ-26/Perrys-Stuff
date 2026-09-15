@@ -1,6 +1,6 @@
 
-<!-- Revision 60 | Monday, September 14, 2026 | Combined the separate "Human Opponent"/"AI Opponent" buttons into a single AI Opponent ON/OFF toggle button, same change made earlier to Othello - clicking it just flips between AI and Human mode. Changed the "White (...)"/"Black (...)" name-field labels in the Game Setup panel from gold to black text. Those labels now also update live the moment a name is typed/entered into either field (previously they stayed on the placeholder text like "Player 1" even after a real name was entered), and correctly show a restored/saved name after a page reload too. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1290 -->
+<!-- Revision 63 | Monday, September 14, 2026 | Moved the AI Opponent button and the two name fields/labels up about 0.125" (12px) from where they sat just above Remaining Pips - Remaining Pips itself didn't move, the gap between the two groups just grew by that amount. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
 <html lang="en">
@@ -741,9 +741,10 @@
     font-family:Arial, Helvetica, sans-serif;
     font-size:19.72px;}
 
-  /* ~30% smaller than .action-btn (padding and font-size scaled down) - used for the 4
-     secondary buttons (New Game/Recorded Scores/Instructions/Exit) but deliberately NOT
-     applied to Roll Dice, which keeps its original full size. */
+  /* ~30% smaller than .action-btn (padding and font-size scaled down) - used for 4 of the 5
+     buttons in #secondaryButtons (New Game/Recorded Scores/Instructions/Exit; Game Options
+     keeps its own .gs-mode-btn look) but deliberately NOT applied to Roll Dice, which keeps
+     its original full size. */
   .action-btn-small{
     padding:7px 13px;
     background:var(--gold-bright);
@@ -757,10 +758,10 @@
 
   .action-btn-small:hover{filter:brightness(1.08);}
 
-  /* Visually separates the Roll Dice/dice group above from the 4 smaller buttons below -
-     bigger than the standard 8px flex gap between individual buttons. */
+  /* New Game/Recorded Scores/Instructions/Game Options/Exit, all 5 spaced equally (the same
+     8px flex gap used elsewhere on the page) with no extra margin above New Game, so it lines
+     up with the top of the playing board next to it - same as Roll Dice does on the right. */
   #secondaryButtons{
-    margin-top:44px;
     display:flex;
     flex-direction:column;
     gap:8px;
@@ -781,19 +782,38 @@
   /* Pushed to the bottom of the .side-controls flex column (flush with the board's
      bottom edge, same as before) via margin-top:auto rather than position:absolute,
      so if the buttons above ever need more room than the column has, this box is
-     simply pushed further down in normal flow instead of overlapping them. */
+     simply pushed further down in normal flow instead of overlapping them. Used by
+     "This Session's Wins" on the left. On the right, #gsPanel (below) carries the
+     margin-top:auto instead, since Remaining Pips needs to stay snug just below it
+     rather than getting its own separate push to the bottom. */
   .session-wins-box-bottom{
     margin-top:auto;}
 
   /* Compact game-screen copy of the Setup screen's mode/name/start controls - narrow enough
-     to fit the 190px sidebar, and using Arial (matching the buttons on the right side of the
-     board) instead of the Setup screen's monospace font. */
+     to fit the 190px sidebar, and using Arial (matching the other buttons on this side of the
+     board) instead of the Setup screen's monospace font. Sits in the right side-controls column,
+     below Roll Dice/the dice row. margin-top:auto pushes it (and the Remaining Pips box right
+     after it) down to the bottom of the column, same way .session-wins-box-bottom does on the
+     left - so this group ends up sitting just above Remaining Pips instead of just below Roll
+     Dice. margin-bottom:12px (0.125") nudges the group itself back up from that bottom-aligned
+     position by that amount, per Perry's request - it widens the gap to Remaining Pips rather
+     than moving Remaining Pips, since the auto top margin just absorbs the difference. */
   #gsPanel{
     width:100%;
     display:flex;
     flex-direction:column;
     gap:6px;
+    margin-top:auto;
+    margin-bottom:12px;
     font-family:Arial, Helvetica, sans-serif;}
+
+  /* Remaining Pips no longer gets its own margin-top:auto push (see #gsPanel above) - it just
+     needs a small, fixed gap below the AI Opponent/name-fields group now sitting right above
+     it. Set to match the 6px gap #gsPanel uses between its own fields, per Perry's request,
+     rather than the 16px .session-wins-box default (which was sized for the bigger gap this
+     box used to sit in, right under Roll Dice/the dice row). */
+  #remainingPipsBox{
+    margin-top:6px;}
 
   .gs-mode-btn{
     flex:0 0 auto;
@@ -816,11 +836,9 @@
      background/text color, which is overridden below to the same gold-bright/wood-dark pairing
      as Roll Dice (and every other action button on the page) instead of the mode buttons' plain
      wood-dark/cream, since Game Options isn't a toggle and Perry asked for it to match Roll
-     Dice's yellow specifically. Its bottom margin is set at runtime by
-     alignPlayer1WithNewGame() instead of a fixed value here, since it's the last button in the
-     group sitting right above the name fields - AI Opponent itself (now the first button, since
-     Human Opponent was removed) just relies on the panel's normal 6px gap below it, same as
-     before. */
+     Dice's yellow specifically. Sits 4th of the 5 buttons in #secondaryButtons on the left
+     (New Game, Recorded Scores, Instructions, Game Options, Exit), spaced the same 8px as
+     the rest of that list - no special-cased margin needed just because it looks different. */
   #gameOptionsBtn{
     background:var(--gold-bright);
     color:var(--wood-dark);}
@@ -1204,18 +1222,12 @@
     <div class="board-row">
       <div class="side-controls">
         <div class="side-controls-inner side-controls-inner-top">
-          <div id="gsPanel">
-            <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-label="AI Opponent">AI Opponent: ON</button>
+          <div id="secondaryButtons">
+            <button class="action-btn-small" id="resetBtn">New Game</button>
+            <button class="action-btn-small" id="scoresBtn">Recorded Scores</button>
+            <button class="action-btn-small" id="instructionsBtn">Instructions</button>
             <button class="gs-mode-btn" id="gameOptionsBtn">Game Options</button>
-
-            <div class="gs-field">
-              <label id="gsP1Label" for="gsP1Name">White (Player 1)</label>
-              <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
-            </div>
-            <div class="gs-field">
-              <label id="gsP2Label" for="gsP2Name">Black (AI)</label>
-              <input type="text" id="gsP2Name" value="The AI" maxlength="16" disabled>
-            </div>
+            <button class="action-btn-small" id="exitBtn">Exit</button>
           </div>
         </div>
 
@@ -1235,16 +1247,22 @@
             <div class="cant-move-msg" id="cantMoveMsg">Can't Move</div>
           </div>
           <div class="double-choice" id="doubleChoice" style="display:none;"></div>
+        </div>
 
-          <div id="secondaryButtons">
-            <button class="action-btn-small" id="resetBtn">New Game</button>
-            <button class="action-btn-small" id="scoresBtn">Recorded Scores</button>
-            <button class="action-btn-small" id="instructionsBtn">Instructions</button>
-            <button class="action-btn-small" id="exitBtn">Exit</button>
+        <div id="gsPanel">
+          <button class="mode-btn gs-mode-btn selected" id="gsAiBtn" data-label="AI Opponent">AI Opponent: ON</button>
+
+          <div class="gs-field">
+            <label id="gsP1Label" for="gsP1Name">White (Player 1)</label>
+            <input type="text" id="gsP1Name" placeholder="Player 1" maxlength="16">
+          </div>
+          <div class="gs-field">
+            <label id="gsP2Label" for="gsP2Name">Black (AI)</label>
+            <input type="text" id="gsP2Name" value="The AI" maxlength="16" disabled>
           </div>
         </div>
 
-        <div class="session-wins-box session-wins-box-bottom">
+        <div class="session-wins-box" id="remainingPipsBox">
           <div class="session-wins-title">Remaining Pips</div>
           <div class="session-wins-stats">
             <div class="pips-row"><span><span id="pipsWhiteLabel">Player 1</span> pips</span><span class="pips-value" id="pipsWhite">0</span></div>
@@ -1287,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 60;
+  const PAGE_REVISION = 63;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2826,33 +2844,6 @@
     startGame();
   }
   applyPointNumbersVisibility(); // #boardGrid now exists - apply the restored/saved show-numbers state
-
-  // Aligns the top of the "Player 1" name field with the top of the "New Game" button, purely
-  // for visual balance between the two side panels. This is done at runtime (not a fixed CSS
-  // value) because "New Game"'s vertical position depends on the board's height, which changes
-  // with the window size - a hardcoded pixel margin only lined the two up at one specific
-  // viewport size and drifted out of alignment at any other. Re-run on resize (and after the
-  // page's own zoom-to-fit logic runs, since that changes effective layout too).
-  // Adjusts the LAST button before the name fields (Game Options, now that it sits below AI
-  // Opponent) rather than AI Opponent itself, so the added button doesn't throw this off.
-  function alignPlayer1WithNewGame(){
-    try {
-      const lastBtn = document.getElementById('gameOptionsBtn');
-      const p1Field = document.getElementById('gsP1Name');
-      const newGameBtn = document.getElementById('resetBtn');
-      if(!lastBtn || !p1Field || !newGameBtn) return;
-      lastBtn.style.marginBottom = '0px';
-      const currentGap = p1Field.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
-      const targetGap = newGameBtn.getBoundingClientRect().top - lastBtn.getBoundingClientRect().bottom;
-      const neededMargin = Math.max(0, targetGap - currentGap);
-      lastBtn.style.marginBottom = neededMargin + 'px';
-    } catch (err) {
-      console.error('alignPlayer1WithNewGame error', err);
-    }
-  }
-  alignPlayer1WithNewGame();
-  window.addEventListener('load', alignPlayer1WithNewGame);
-  window.addEventListener('resize', alignPlayer1WithNewGame);
 
 })();
 
