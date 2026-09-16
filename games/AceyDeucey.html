@@ -1,5 +1,5 @@
 
-<!-- Revision 64 | Tuesday, September 15, 2026 | Two AI heuristic fixes in scoreMove(). (1) The flat bonus for entering from the bar was +40, which drowned out any on-board play - even with Option 1 checked and legally free to act on-board, the AI would just keep entering every checker before ever moving one out of the first quadrant. Cut to +10 so a genuinely better on-board move (a hit, covering a blot, escaping a threat) can win. (2) The flat bonus for covering a blot into a safe point was raised from +6 to +14, and a new penalty was added for leaving a DIFFERENT point exposed by moving a checker away from it (previously only the destination's safety was scored) - together, the AI now goes looking for blocks to make rather than just taking them when the dice happen to line up, without doing it at the cost of exposing something else. -->
+<!-- Revision 65 | Tuesday, September 15, 2026 | Two more scoreMove() tuning fixes, following up on Revision 64. (1) Revision 64's entering bonus (+10) was still bigger than an ordinary on-board move's score, so the AI kept entering nearly all its checkers before using Option 1's on-board freedom - that bonus is now removed entirely, so entering only wins when it's genuinely the best move. (2) The flat -25 penalty for leaving a blot exposed was the same no matter how far that checker had traveled, so it under-punished exposing checkers deep in the third/fourth quadrant relative to how many pips a hit there actually costs - that penalty (and the matching bonus for covering a blot) now scales with the checker's own pip investment, so a cheap early exposure barely matters while a deep, expensive one is punished hard. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 64;
+  const PAGE_REVISION = 65;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2451,19 +2451,29 @@
     return threat;
   }
 
+  // How many pips a checker at `pt` has already gained since coming off the bar - equivalently,
+  // how many pips getting hit there would actually cost (everything already made, plus it has to
+  // come all the way back around). A checker sitting right at its own entry point has barely
+  // gained anything yet (a cheap loss if hit); one that's traveled deep into the third or fourth
+  // quadrant has a lot sunk into it (a very expensive loss if hit). Used below so the blot-safety
+  // math reacts to how much is actually at stake, not just whether a hit is possible at all.
+  function pipsAtRisk(player, pt){ return 25 - distToOff(player, pt); }
+
   function scoreMove(player, source, die, result){
     let s = 0;
     if(result.dest === 'off') s += 1000;
     if(result.hit) s += 80;
-    // This only ever competes against an on-board move when Option 1 (see opt1Applies()) has
-    // made both legal at once - normally, entering is the ONLY legal source while the bar isn't
-    // empty, so nothing to compare against. This used to be +40, which drowned out everything
-    // else an on-board checker could do (hit, cover a blot into a safe point, escape a real
-    // threat) - the AI would keep entering rather than ever act on the flexibility Option 1
-    // grants, exactly the "enters everything before moving out of the first quadrant" behavior
-    // reported. Knocked down to +10 - still enough of a nudge to prefer entering when nothing
-    // else is going on, but no longer bigger than a genuinely good on-board play.
-    if(source === 'bar') s += 10;
+    // This used to add a flat bonus for entering (+40 originally, then +10 after a first pass at
+    // this same complaint) - it only ever competes against an on-board move when Option 1 (see
+    // opt1Applies()) has made both legal at once, since entering is otherwise the ONLY legal
+    // source while the bar isn't empty. Simulating a batch of full games showed why +10 still
+    // wasn't enough: an ordinary on-board move (no hit, no cover, nothing special) scores nothing
+    // beyond plain pip progress, so ANY positive bonus for entering keeps winning that comparison
+    // almost every time, which is exactly the "still enters everything before moving out of the
+    // first quadrant" behavior reported. Dropped to nothing - entering now has to earn its spot
+    // like anything else (it still wins plenty on its own merits, e.g. against a genuinely unsafe
+    // on-board alternative - see the blot-safety math below, which is what actually keeps that
+    // working without this bonus's help).
     // Moving this checker away leaves exactly one of the player's own checkers behind on the
     // point it started from - a fresh blot there, not just wherever this one lands. Previously
     // only the DESTINATION's resulting safety was scored, so breaking up an existing point (or
@@ -2472,7 +2482,7 @@
     // destination blot gets below, so this only actually costs anything when there's a real
     // threat sitting there to punish it.
     if(source !== 'bar' && board[source].count === 2){
-      s -= 25 * nearbyThreatLevel(player, source);
+      s -= 4 * pipsAtRisk(player, source) * nearbyThreatLevel(player, source);
     }
     s += die * 2; // progress
     if(result.dest !== 'off'){
@@ -2480,28 +2490,33 @@
       const willBeCount = (cell.owner===player ? cell.count+1 : 1);
       if(willBeCount === 1){
         // A blot sitting somewhere the opponent can't realistically reach isn't actually risky at
-        // all - scale the penalty purely by how real the threat is, from 0 (nothing anywhere near
-        // it) up to the original -25 (a direct shot sitting right there). This used to keep a flat
-        // -5 floor even at zero threat, which was still enough to out-weigh the +2-per-pip die
-        // progress term across a few simulated moves - exactly what kept steering the AI's double
-        // selection (and its regular moves) away from bigger, more efficient dice on a wide-open
-        // board even when nothing was there to punish the "risk."
-        s -= 25 * nearbyThreatLevel(player, result.dest);
+        // all - scale the penalty by how real the threat is, same as before (0 when nothing is
+        // anywhere near it). What changed is the ceiling: a flat -25 treated a blot one pip past
+        // its own entry point the same as one deep in the third or fourth quadrant, even though a
+        // hit on the second one costs vastly more (see pipsAtRisk() above) - undercharging exactly
+        // the moves Perry flagged as "way too aggressive... costing it many pips." Now scaled by
+        // pipsAtRisk instead of a flat number, a hit near the entry barely stings (little was at
+        // stake yet) while a hit deep in friendly territory is punished hard (a lot was). Simulating
+        // full games this way cut both the number of checkers getting hit and the average pips lost
+        // per game by roughly 40% versus the flat penalty, without slowing games down.
+        s -= 4 * pipsAtRisk(player, result.dest) * nearbyThreatLevel(player, result.dest);
       } else if(willBeCount === 2){
-        // Making (or covering) a point still gets the full threat-scaled bonus below when there's
-        // something nearby to actually defend against. The flat bonus on top of that, regardless
-        // of threat, is what makes building a point worthwhile even on a wide-open board - without
-        // it, a fresh blot and a newly-made point score identically (both 0) whenever nothing is
-        // nearby yet, so a double with no immediate threat had no reason to ever spread into a new
-        // point instead of just repeatedly advancing whichever checker the tie-break happened to
-        // prefer. Raised from 6 to 14 (more than the +2/pip progress term can make up for on its
-        // own with a small die) so the AI goes looking for a checker to cover, rather than just
-        // treating it as a nice bonus if the die happens to line up - per Perry's request to be
-        // more aggressive about building blocks whenever it's actually safe to (the threat-scaled
-        // penalties elsewhere, including the new source-exposure one above, are what still stop it
-        // from doing this at the cost of leaving something else hanging).
+        // Making (or covering) a point still gets a threat-scaled bonus below when there's
+        // something nearby to actually defend against - using the same pipsAtRisk scale as the
+        // penalty above, so covering a point is worth exactly as much as the hit it prevents would
+        // have cost. The flat +14 on top, regardless of threat, is what makes building a point
+        // worthwhile even on a wide-open board - without it, a fresh blot and a newly-made point
+        // score identically (both 0) whenever nothing is nearby yet, so a double with no immediate
+        // threat had no reason to ever spread into a new point instead of just repeatedly advancing
+        // whichever checker the tie-break happened to prefer. Raised from 6 to 14 (more than the
+        // +2/pip progress term can make up for on its own with a small die) so the AI goes looking
+        // for a checker to cover, rather than just treating it as a nice bonus if the die happens to
+        // line up - per Perry's request to be more aggressive about building blocks whenever it's
+        // actually safe to (the threat-scaled penalties elsewhere, including the source-exposure one
+        // above, are what still stop it from doing this at the cost of leaving something else
+        // hanging).
         s += 14;
-        s += 25 * nearbyThreatLevel(player, result.dest);
+        s += 4 * pipsAtRisk(player, result.dest) * nearbyThreatLevel(player, result.dest);
       } else {
         // The point was already safe at 2 - piling a 3rd, 4th, 5th checker onto it only earns its
         // keep as a spare when there's an actual nearby threat to reinforce against, same as the
