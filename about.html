@@ -1,5 +1,7 @@
 
-<!-- Revision 4 | Saturday, September 12, 2026 | Made the "Rev. N" corner marker read its number from a single JS constant (PAGE_REVISION) instead of being typed as static text, so the badge and the revision comment can't drift out of sync with each other. -->
+<!-- Revision 7 | Tuesday, September 15, 2026 | Corrected the reminder comment below: PAGE_REVISION isn't always at the bottom of the file, so it now says "AT LINE 184" instead of "AT BOTTOM". -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 184 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -160,7 +162,11 @@
     <div class="about-card">
       <p>As a lot of you know, I'm a retired programmer with time on my hands. I wanted to exercise my brain, so I started doing Word Search Puzzles (now I'm addicted). I wanted something more stimulating, so I decided to learn how to design and develop websites, a skill that I didn't have any experience with. I'll never be as good as my brother Peter or Claude, an AI Tool, but it sure is fun to learn something new!</p>
 
-      <p>With help from Peter who provided his Web for Business course and Claude, I was able to develop this website. Claude helped with coding support while I shaped the design, functionality, and user experience. I've tried to make the games as realistic as possible and attempted to apply the same logic that humans would use.</p>
+      <p>With help from Peter who provided his "Web for Business" course and Claude,
+      I was able to develop this website.  My sons Aaron and Adam also played (literally and figuratively) a big role as Quality Control Inspectors. 
+      Claude helped with coding support while I shaped the design, functionality,
+      and user experience. I've tried to make the games as realistic as possible 
+      and attempted to apply the same logic that humans would use.</p>
 
       <p>My plan is to develop some additional games and then create a webpage without Claude's help.</p>
 <!--
@@ -179,7 +185,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 4;
+  const PAGE_REVISION = 7;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
