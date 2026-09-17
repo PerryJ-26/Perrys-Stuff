@@ -1,5 +1,5 @@
 
-<!-- Revision 65 | Tuesday, September 15, 2026 | Two more scoreMove() tuning fixes, following up on Revision 64. (1) Revision 64's entering bonus (+10) was still bigger than an ordinary on-board move's score, so the AI kept entering nearly all its checkers before using Option 1's on-board freedom - that bonus is now removed entirely, so entering only wins when it's genuinely the best move. (2) The flat -25 penalty for leaving a blot exposed was the same no matter how far that checker had traveled, so it under-punished exposing checkers deep in the third/fourth quadrant relative to how many pips a hit there actually costs - that penalty (and the matching bonus for covering a blot) now scales with the checker's own pip investment, so a cheap early exposure barely matters while a deep, expensive one is punished hard. -->
+<!-- Revision 66 | Wednesday, September 16, 2026 | With Option 1 checked, a double (or a bonus roll) could still waste its extra dice re-entering a 3rd or 4th checker onto a bar-entry point that was already made safe with just two - e.g. rolling double 6s would often stack all four checkers onto the entry point instead of using the leftover dice to develop other checkers, even when it was safe to. Added a direct penalty for a bar entry landing on an already-made point, so those extra dice now go toward developing/covering other checkers on the board instead of piling up uselessly. Verified by simulation that this doesn't increase how often checkers get hit or how many pips are lost - it only redirects otherwise-wasted dice. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 65;
+  const PAGE_REVISION = 66;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2483,6 +2483,16 @@
     // threat sitting there to punish it.
     if(source !== 'bar' && board[source].count === 2){
       s -= 4 * pipsAtRisk(player, source) * nearbyThreatLevel(player, source);
+    }
+    // A bar entry that lands on a point ALREADY made (count>=2) by this player before the
+    // move adds no safety - the point was already safe - so it's pure waste of a die that
+    // could have developed something else instead. Without this, a 3rd or 4th checker
+    // entering onto an already-safe point kept out-scoring a mildly-risky (but often quite
+    // reasonable) on-board alternative purely on progress alone - exactly what let a double
+    // like 6-6-6-6 pile four checkers onto one entry point instead of using the extra dice to
+    // develop other checkers once the point was already made with just two.
+    if(source === 'bar' && board[result.dest] && board[result.dest].owner === player && board[result.dest].count >= 2){
+      s -= 60;
     }
     s += die * 2; // progress
     if(result.dest !== 'off'){
