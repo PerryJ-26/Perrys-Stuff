@@ -1,0 +1,290 @@
+
+<!-- Revision 2 | Thursday, September 17, 2026 | Winning section now spells out the standard timing for the "runs out of Seeds" end condition: checked at the start of a player's turn, not the instant a row happens to empty mid-move (so an opponent's move sowing a seed back into that row in between keeps the game going). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 285 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mancala Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/Mancala.html">Back to Mancala</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Mancala Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>Mancala is not a single game but a large family of board games played around the world. Games in this family share a central mechanic: players sow counters, often called Seeds, into a series of holes or cups. Depending on the regional variant, players collect or capture Seeds according to different rules. Mancala games have been played in Africa for thousands of years and remain popular across Africa, the Middle East, and Asia. There are at least two hundred regional variations; West African Wari is among the best known.</p>
+
+      <h2>Terminology</h2>
+      <p>Some common terms for this game will be:</p>
+      <ul>
+        <li>The Board is the playing board with 14 depressions.</li>
+        <li>The six small depressions on each side of the Board are called Pits.</li>
+        <li>Each player's row consists of the six Pits closest to them.</li>
+        <li>The Mancalas are the two large depressions at each end. Each player's Mancala is located on the right side of their row.</li>
+        <li>The playing pieces are called Seeds.</li>
+      </ul>
+
+      <h2>Objective</h2>
+      <p>Each player tries to collect more Seeds in their Mancala than their opponent. Play continues until one player has no Seeds remaining in any of the six Pits in their row.</p>
+
+      <h2>Set Up</h2>
+      <p>The Board is placed in a horizontal line between the two players. Four Seeds are placed in each of the 12 Pits. The first player is randomly chosen.</p>
+
+      <h2 class="print-page-break">Playing</h2>
+      <p>On a turn, the player chooses one Pit in their row and picks up all the Seeds in it. Moving counterclockwise, they place one Seed in each Pit they pass. When they reach their own Mancala, they place one Seed in it and continue into the opponent's row if any Seeds remain. They always skip the opponent's Mancala.</p>
+      <p>If the player places their last Seed in their own Mancala, they take another turn.</p>
+      <div class="example-box">
+        <p><strong>Example:</strong> On the first turn, a player can choose the Pit third from the left in their row. They pick up its four Seeds and place one Seed in each of the next three Pits and the fourth Seed in their Mancala. Because the last Seed lands in their Mancala, they take another turn.</p>
+      </div>
+
+      <h2>Capturing</h2>
+      <p>If the player's last Seed lands in an empty Pit in their own row and the Pit directly opposite contains one or more Seeds, the player captures the Seeds from the opposite Pit together with the Seed they just placed. They move all captured Seeds to their Mancala.</p>
+
+      <h2>Winning</h2>
+      <p>The game ends when, at the start of a player's turn, all six Pits in their row are empty. If a player's row happens to empty out mid-turn, the game does not end right away &mdash; play continues, and the game only ends if that player's row is still empty when it becomes their turn again.</p>
+      <p>The opponent then takes all their Seeds still left in their Pits and places them in their own Mancala.</p>
+      <p>Each player counts the Seeds in their Mancala. The player with more Seeds wins. If both players have the same number of Seeds, the game is a tie.</p>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 2;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
