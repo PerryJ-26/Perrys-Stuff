@@ -1,5 +1,7 @@
 
-<!-- Revision 9 | Saturday, September 12, 2026 | Made the "Rev. N" corner marker read its number from a single JS constant (PAGE_REVISION) instead of being typed as static text, so the badge and the revision comment can't drift out of sync with each other. -->
+<!-- Revision 12 | Thursday, September 17, 2026 | Added a 9th game card (Mancala), starting a new third row in the 4-column grid with Mancala in its leftmost slot - the taller page now scrolls where it didn't before. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 268 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -253,12 +255,17 @@
         <div class="game-title">Hearts</div>
       </a>
 
+      <a class="game-row" href="games/Mancala.html">
+        <div class="game-thumb"><img src="images/Mancala.jpg" alt="Mancala game screenshot"></div>
+        <div class="game-title">Mancala</div>
+      </a>
+
     </div>
   </main>
 
 
 <script>
-  const PAGE_REVISION = 9;
+  const PAGE_REVISION = 12;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
