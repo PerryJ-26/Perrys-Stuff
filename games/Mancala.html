@@ -1,0 +1,1211 @@
+
+<!-- Revision 7 | Thursday, September 17, 2026 | The gold ring around a clickable Pit now only appears with AI Opponent OFF - Pits stay just as clickable (and still show the pointer cursor) with AI Opponent ON, they simply aren't ringed. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1169 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mancala</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - warm carved-wood theme, sampled from Perry's
+     reference photo of a wooden Mancala board =====
+     Every color used anywhere on this page is assigned here, named for what
+     it's used for, so the impact of changing any one of them is clear. */
+  :root {
+    /* Outer page background - solid fallback shown before/if the tiled photo
+       texture (applied directly to body below) loads - used by: body
+       background-color, header background, control-bar background. */
+    --page-wood: #4b2817;
+    --page-wood-dark: #341a0d;
+
+    /* The board's own surface color (the lighter honey-brown wood visible in
+       the photo) - used by: .board background gradient + border. */
+    --board-wood: #8a5226;
+    --board-wood-light: #a8703f;
+    --board-wood-dark: #5c3316;
+
+    /* Pit / Mancala interiors - used by: .pit background, .mancala background. */
+    --pit-dark: #140a04;
+    --pit-mid: #3a2010;
+    --mancala-dark: #1c0f06;
+    --mancala-mid: #4a2c14;
+
+    /* Seed-count numbers engraved into each pit/Mancala - used by: .pit .count,
+       .mancala .count, and the clickable-pit outline glow. */
+    --seed-text: #e8c78a;
+
+    /* Cool blue-green / soft teal action buttons - used by: .action-btn
+       background + border, and its hover/disabled states. */
+    --btn-teal: #3d8f86;
+    --btn-teal-dark: #2b675f;
+    --btn-teal-light: #5aada3;
+    --btn-text: #ffffff;
+
+    /* Name input fields - used by: .name-input background, border, text. */
+    --input-bg: #9cc9c4;
+    --input-border: #a8703f;
+    --input-text: #2c1c0f;
+
+    /* General text drawn directly over the wood background - used by: header
+       h1, revBadge, turn banner. */
+    --wood-area-text: #f3e2c8;
+    --wood-area-text-shadow: rgba(0,0,0,0.6);
+
+    /* Themed confirmation / scores modal - used by: #universalModal and its
+       children. */
+    --modal-overlay-bg: rgba(20,10,4,0.55);
+    --modal-box-bg: #f3e9da;
+    --modal-box-border: #8a5226;
+    --modal-text: #2c1c0f;
+    --modal-shadow: rgba(0,0,0,0.5);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  body {
+    background-color: var(--page-wood);
+    background-image: url('data:image/jpeg;base64,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');
+    background-repeat: repeat;
+    background-size: 620px auto;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px 40px;
+  }
+
+  header {
+    text-align: center;
+    padding: 1.3rem 1rem 1rem;
+    position: relative;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.6rem;
+    letter-spacing: 2px;
+    color: var(--wood-area-text);
+    text-shadow: 0 2px 4px var(--wood-area-text-shadow);
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--wood-area-text);
+    opacity: 0.85;
+  }
+
+  /* ---- Centered control row: buttons + name field(s), all one visible group ---- */
+  .control-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px 18px;
+  }
+
+  .action-btn {
+    background: var(--btn-teal);
+    color: var(--btn-text);
+    border: 1px solid var(--btn-teal-dark);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 1rem;
+    font-weight: bold;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .action-btn:hover {
+    background: var(--btn-teal-light);
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .name-input {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--input-text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    width: 150px;
+  }
+
+  .turn-banner {
+    text-align: center;
+    color: var(--wood-area-text);
+    text-shadow: 0 1px 3px var(--wood-area-text-shadow);
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-height: 1.6rem;
+    margin-bottom: 10px;
+  }
+
+  /* ---- The board itself ---- */
+  .board-wrap {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 30px;
+    overflow-x: auto;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: 100px repeat(6, 90px) 100px;
+    grid-template-rows: 110px 110px;
+    gap: 14px;
+    padding: 26px;
+    background: linear-gradient(155deg, var(--board-wood-light), var(--board-wood) 55%, var(--board-wood-dark));
+    border: 6px solid var(--board-wood-dark);
+    border-radius: 34px;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.55), inset 0 0 24px rgba(0,0,0,0.25);
+  }
+
+  .pit, .mancala {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    font-family: inherit;
+    cursor: default;
+  }
+
+  /* Pits are a true circle, sized to a fixed diameter (rather than
+     stretching to fill their grid cell) and centered in that cell - 81px is
+     90px (the old cell width) reduced 10%, per Perry's "round and 10%
+     smaller in diameter" request. */
+  .pit {
+    width: 81px;
+    height: 81px;
+    justify-self: center;
+    align-self: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 42% 38%, var(--pit-mid), var(--pit-dark) 70%);
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.7), inset 0 -2px 5px rgba(255,255,255,0.06);
+  }
+
+  .pit.clickable {
+    cursor: pointer;
+  }
+
+  /* The gold ring is a separate class from .clickable so it can be limited
+     to AI Opponent OFF (two human players) - a Pit stays fully clickable
+     (and shows the pointer cursor) with AI Opponent ON, it just doesn't get
+     the ring around it. */
+  .pit.ring {
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.7), inset 0 -2px 5px rgba(255,255,255,0.06), 0 0 0 3px var(--seed-text);
+  }
+
+  .pit.ring:hover {
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.7), inset 0 -2px 5px rgba(255,255,255,0.06), 0 0 0 4px var(--seed-text);
+  }
+
+  /* Player 2's own Pit numbers (1-6, right to left) - only shown above the
+     top row while AI Opponent is OFF, so a second human player can find
+     their own Pits. Sits above the Pit circle itself, in the board's own
+     wood padding. */
+  .pit-label {
+    display: none;
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #000000;
+    font-weight: bold;
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .pit-label.show {
+    display: block;
+  }
+
+  /* Mancalas keep their original footprint (full width/height of their
+     spanned cell) - only the corner rounding changes below, from a smooth
+     ellipse to a "stadium" capsule (flat sides, semicircle caps) to match
+     Perry's reference photo. The radius is fixed at half of the Mancala's
+     own width, which is what turns the two short ends into true semicircles
+     instead of curving the long sides too. */
+  .mancala {
+    width: 100%;
+    height: 100%;
+    border-radius: 50px;
+    background: radial-gradient(circle at 42% 32%, var(--mancala-mid), var(--mancala-dark) 72%);
+    box-shadow: inset 0 5px 14px rgba(0,0,0,0.7), inset 0 -3px 6px rgba(255,255,255,0.06);
+  }
+
+  /* ---- Colored seeds (glass-marble look, sampled from Perry's reference
+     photo: charcoal/black, pearl, and burgundy-red) ---- */
+  .seeds {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    padding: 10px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .seed {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.55);
+  }
+
+  .seed-0 {
+    background: radial-gradient(circle at 35% 30%, #6f6f6f, #232222 62%, #060606 100%);
+  }
+
+  .seed-1 {
+    background: radial-gradient(circle at 35% 30%, #ffffff, #ecdbd3 55%, #c9a99c 100%);
+  }
+
+  .seed-2 {
+    background: radial-gradient(circle at 35% 30%, #ea9490, #b5342f 58%, #6e1815 100%);
+  }
+
+  @keyframes seedDrop {
+    from { transform: scale(0.15); opacity: 0.25; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .seed-new {
+    animation: seedDrop 200ms ease-out;
+  }
+
+  @keyframes seedCapture {
+    to { transform: scale(0.25); opacity: 0; }
+  }
+
+  .seeds.capturing {
+    animation: seedCapture 560ms ease-in forwards;
+  }
+
+  @keyframes cellBump {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  .pit.bump, .mancala.bump {
+    animation: cellBump 200ms ease-out;
+  }
+
+  /* The quantity number always stays on top of the seed dots, centered, on
+     its own small dark backdrop so it stays legible over busy seed colors. */
+  .count {
+    position: relative;
+    z-index: 2;
+    color: var(--seed-text);
+    font-weight: bold;
+    font-size: 1.375rem;
+    pointer-events: none;
+    background: rgba(10,5,2,0.6);
+    border-radius: 8px;
+    padding: 0 5px;
+    line-height: 1.35;
+  }
+
+  .mancala .count {
+    font-size: 1.575rem;
+  }
+
+  @media (max-width: 760px) {
+    .board {
+      grid-template-columns: 60px repeat(6, 52px) 60px;
+      grid-template-rows: 64px 64px;
+      gap: 8px;
+      padding: 14px;
+    }
+    .pit { width: 47px; height: 47px; }
+    .mancala { border-radius: 30px; }
+    .seed { width: 8px; height: 8px; }
+    .count { font-size: 1.05rem; }
+    .mancala .count { font-size: 1.2rem; }
+    .pit-label { top: -15px; font-size: 0.7rem; }
+    header h1 { font-size: 1.9rem; }
+  }
+
+  /* Phone-width screens: the 760px-breakpoint board is still wider than a
+     typical phone screen, so shrink the pits/Mancalas further here so the
+     whole board fits without needing to scroll sideways. */
+  @media (max-width: 480px) {
+    .board {
+      grid-template-columns: 42px repeat(6, 36px) 42px;
+      grid-template-rows: 46px 46px;
+      gap: 5px;
+      padding: 10px;
+      border-width: 4px;
+      border-radius: 22px;
+    }
+    .pit { width: 32px; height: 32px; }
+    .mancala { border-radius: 21px; }
+    .seed { width: 6px; height: 6px; }
+    .seeds { padding: 5px; gap: 1px; }
+    .count { font-size: 0.8rem; }
+    .mancala .count { font-size: 0.9rem; }
+    .pit-label { top: -11px; font-size: 0.55rem; }
+    header h1 { font-size: 1.6rem; }
+    .action-btn { padding: 8px 12px; font-size: 0.85rem; }
+    .name-input { width: 110px; font-size: 0.85rem; }
+  }
+
+  /* Themed confirmation / scores modal (matches the rest of the Game Hub's
+     universalModal pattern, retinted to this page's wood theme). */
+  #universalModal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: var(--modal-overlay-bg);
+    z-index: 99998;
+  }
+
+  #universalModal .modal-box {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--modal-box-bg);
+    color: var(--modal-text);
+    padding: 24px;
+    border-radius: 10px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 8px 30px var(--modal-shadow);
+    border: 2px solid var(--modal-box-border);
+  }
+
+  #universalModal .modal-box.wide {
+    max-width: 500px;
+  }
+
+  #universalModalTitle {
+    margin: 0 0 8px;
+    color: var(--modal-text);
+    font-size: 1.4rem;
+    display: none;
+  }
+
+  #universalModalSubtitle {
+    margin: -4px 0 10px;
+    color: var(--modal-text);
+    font-size: 0.95rem;
+    font-weight: normal;
+  }
+
+  #universalModalText {
+    margin: 0 0 18px;
+    color: var(--modal-text);
+    white-space: pre-line;
+  }
+
+  #universalModalText.scores-list {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    text-align: left;
+    white-space: pre;
+    display: inline-block;
+  }
+
+  #universalModalButtons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  #universalModalButtons button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+
+  #universalModalButtons button.primary {
+    background: var(--btn-teal);
+    color: var(--btn-text);
+  }
+
+  #universalModalButtons button.secondary {
+    background: #d8c6ac;
+    color: var(--modal-text);
+  }
+
+  #universalModalButtons button:hover {
+    filter: brightness(1.08);
+  }
+</style>
+</head>
+<body>
+
+<div id="universalModal" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <h3 id="universalModalTitle"></h3>
+    <p id="universalModalSubtitle" style="display:none;"></p>
+    <p id="universalModalText"></p>
+    <div id="universalModalButtons"></div>
+  </div>
+</div>
+
+<div class="page">
+  <header>
+    <h1>Mancala</h1>
+    <span class="revBadge" id="revBadge"></span>
+  </header>
+
+  <div class="control-bar">
+    <button class="action-btn" id="resetBtn">New Game</button>
+    <button class="action-btn" id="scoresBtn">Recorded Scores</button>
+    <button class="action-btn" id="instructionsBtn">Instructions</button>
+    <button class="action-btn" id="aiBtn" data-label="AI Opponent">AI Opponent: ON</button>
+    <button class="action-btn" id="exitBtn">Exit</button>
+    <input type="text" class="name-input" id="p1NameInput" placeholder="Your Name" maxlength="16">
+    <input type="text" class="name-input" id="p2NameInput" placeholder="Player 2" maxlength="16" style="display:none;">
+  </div>
+
+  <div class="turn-banner" id="turnBanner"></div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---------------- board indexing ----------------
+  // 14 cells: 0-5 = Player 1's pits (left to right), 6 = Player 1's Mancala,
+  // 7-12 = Player 2's pits (continuing the counterclockwise sowing order),
+  // 13 = Player 2's Mancala. Sowing always moves index -> index+1 (mod 14),
+  // skipping the sower's OWN opponent's Mancala.
+  const STORE_OF = { p1: 6, p2: 13 };
+  const OPP_STORE_OF = { p1: 13, p2: 6 };
+  const ROW_OF = { p1: [0,1,2,3,4,5], p2: [7,8,9,10,11,12] };
+
+  // Where each of the 14 cells sits in the visual grid (columns 2-7 are the
+  // shared pit columns; column 1 / column 8 are the two Mancalas, each
+  // spanning both rows so they render as a tall, vertically-elongated oval).
+  const CELL_POS = {
+    13: { c: 1, r: '1 / 3' },
+    12: { c: 2, r: 1 }, 11: { c: 3, r: 1 }, 10: { c: 4, r: 1 }, 9: { c: 5, r: 1 }, 8: { c: 6, r: 1 }, 7: { c: 7, r: 1 },
+    6:  { c: 8, r: '1 / 3' },
+    0:  { c: 2, r: 2 }, 1:  { c: 3, r: 2 }, 2:  { c: 4, r: 2 }, 3:  { c: 5, r: 2 }, 4:  { c: 6, r: 2 }, 5:  { c: 7, r: 2 }
+  };
+
+  // Player 2's own Pit numbers 1-6, read right to left on screen (Pit 1 sits
+  // nearest Player 1's Mancala, Pit 6 nearest Player 2's own Mancala) - shown
+  // above the top row only when AI Opponent is OFF, so a second human player
+  // can identify their own Pits.
+  const PIT_LABEL_OF = { 7: 1, 8: 2, 9: 3, 10: 4, 11: 5, 12: 6 };
+
+  function opposite(i){ return 12 - i; }
+  function other(player){ return player === 'p1' ? 'p2' : 'p1'; }
+  function rowEmpty(board, player){ return ROW_OF[player].every(i => board[i] === 0); }
+
+  function newBoard(){
+    const b = new Array(14).fill(0);
+    ROW_OF.p1.forEach(i => b[i] = 4);
+    ROW_OF.p2.forEach(i => b[i] = 4);
+    b[STORE_OF.p1] = 0;
+    b[STORE_OF.p2] = 0;
+    return b;
+  }
+
+  // Sows the seeds from startIdx one at a time, skipping the sowing player's
+  // OWN opponent's Mancala, and returns the index the last seed landed in.
+  function sow(board, startIdx, player){
+    let seeds = board[startIdx];
+    board[startIdx] = 0;
+    let idx = startIdx;
+    const skip = OPP_STORE_OF[player];
+    while(seeds > 0){
+      idx = (idx + 1) % 14;
+      if(idx === skip) continue;
+      board[idx]++;
+      seeds--;
+    }
+    return idx;
+  }
+
+  // Given the index the last sown seed landed in, decides whether that earns
+  // an extra turn or triggers a capture, applying the capture directly to
+  // the board it's given. Pulled out on its own so the instant (scratch
+  // board, AI-evaluation) path and the animated (real board, on-screen)
+  // path apply the exact same rule in exactly the same way.
+  function resolveLanding(board, last, player){
+    let extraTurn = false;
+    let captured = 0;
+    if(last === STORE_OF[player]){
+      extraTurn = true;
+    } else if(ROW_OF[player].includes(last) && board[last] === 1){
+      const oppIdx = opposite(last);
+      if(board[oppIdx] > 0){
+        captured = board[oppIdx] + 1;
+        board[STORE_OF[player]] += captured;
+        board[last] = 0;
+        board[oppIdx] = 0;
+      }
+    }
+    return { last, extraTurn, captured };
+  }
+
+  // Applies one full move (sow + capture check) and reports what happened,
+  // so the caller can decide whether to grant an extra turn. Used for AI
+  // move evaluation (on scratch boards) and by the test suite; real
+  // on-screen moves go through the animated equivalent, animateMove(),
+  // below, which shares the same sowing order and resolveLanding() rule.
+  function applyMove(board, startIdx, player){
+    const last = sow(board, startIdx, player);
+    return resolveLanding(board, last, player);
+  }
+
+  // Pure helper: works out the exact sequence of cell indices a sow from
+  // startIdx with the given seed count will visit, in order, skipping the
+  // sower's opponent's Mancala - identical rule to sow() above, but without
+  // touching the board, so animateMove() can replay it one step at a time
+  // for the on-screen sowing animation.
+  function computeSowSequence(startIdx, seedCount, skipIdx){
+    const seq = [];
+    let idx = startIdx;
+    let remaining = seedCount;
+    while(remaining > 0){
+      idx = (idx + 1) % 14;
+      if(idx === skipIdx) continue;
+      seq.push(idx);
+      remaining--;
+    }
+    return seq;
+  }
+
+  // ---------------- game state ----------------
+  let board = newBoard();
+  let current = 'p1';
+  let aiOn = true;
+  let busy = false;
+  let gameOver = false;
+
+  const RESUME_KEY = 'mancalaResumeState_v1';
+  const NAMES_KEY = 'mancalaPlayerNames_v1';
+
+  function names(){
+    return {
+      p1: document.getElementById('p1NameInput').value.trim() || 'Player 1',
+      p2: aiOn ? 'AI' : (document.getElementById('p2NameInput').value.trim() || 'Player 2')
+    };
+  }
+
+  function saveNames(){
+    try {
+      localStorage.setItem(NAMES_KEY, JSON.stringify({
+        p1: document.getElementById('p1NameInput').value,
+        p2: document.getElementById('p2NameInput').value
+      }));
+    } catch (err) { console.error('saveNames error', err); }
+  }
+
+  function restoreNames(){
+    try {
+      const raw = localStorage.getItem(NAMES_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(parsed.p1) document.getElementById('p1NameInput').value = parsed.p1;
+        if(parsed.p2) document.getElementById('p2NameInput').value = parsed.p2;
+      }
+    } catch (err) { console.error('restoreNames error', err); }
+  }
+
+  document.getElementById('p1NameInput').addEventListener('change', saveNames);
+  document.getElementById('p2NameInput').addEventListener('change', saveNames);
+
+  // Keeps the turn banner in sync with the name fields as you type, instead
+  // of only picking up the new name the next time a turn starts.
+  document.getElementById('p1NameInput').addEventListener('input', updateTurnBanner);
+  document.getElementById('p2NameInput').addEventListener('input', updateTurnBanner);
+
+  // ---------------- sound (procedural - no audio files, same technique the
+  // other Game Hub titles use for their disc/dice sounds) ----------------
+  let audioCtx = null;
+  function getAudioCtx(){
+    try {
+      if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (err) {
+      console.error('getAudioCtx error', err);
+      return null;
+    }
+  }
+
+  // A short, high, wooden "tick" - one seed dropping into a Pit.
+  function playSeedSound(){
+    try {
+      const ctx = getAudioCtx();
+      if(!ctx) return;
+      const now = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.03);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i = 0; i < bufferSize; i++){
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.value = 1400 + Math.random() * 800;
+      bandpass.Q.value = 1.4;
+      const gain = ctx.createGain();
+      const peak = 0.14 + Math.random() * 0.05;
+      gain.gain.setValueAtTime(peak, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      noise.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.05);
+    } catch (err) { console.error('playSeedSound error', err); }
+  }
+
+  // A fuller, lower "sweep" - seeds being captured into a Mancala.
+  function playCaptureSound(){
+    try {
+      const ctx = getAudioCtx();
+      if(!ctx) return;
+      const now = ctx.currentTime;
+      const bufferSize = Math.floor(ctx.sampleRate * 0.14);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for(let i = 0; i < bufferSize; i++){
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 1.5);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const bandpass = ctx.createBiquadFilter();
+      bandpass.type = 'bandpass';
+      bandpass.frequency.setValueAtTime(900, now);
+      bandpass.frequency.exponentialRampToValueAtTime(400, now + 0.13);
+      bandpass.Q.value = 1.1;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      noise.connect(bandpass);
+      bandpass.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.15);
+    } catch (err) { console.error('playCaptureSound error', err); }
+  }
+
+  function delay(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  // ---------------- rendering ----------------
+  // Deterministic (not truly random) so a given Pit's dots don't visibly
+  // re-shuffle color on every render - purely decorative, since seeds are
+  // otherwise identical/fungible for scoring purposes.
+  function seedColorClass(cellIndex, seedNumber){
+    return 'seed-' + ((cellIndex * 13 + seedNumber * 7) % 3);
+  }
+
+  function buildBoardDOM(){
+    const boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+    for(let i = 0; i < 14; i++){
+      const pos = CELL_POS[i];
+      const isStore = (i === STORE_OF.p1 || i === STORE_OF.p2);
+      const cell = document.createElement('div');
+      cell.className = isStore ? 'mancala' : 'pit';
+      cell.id = 'cell' + i;
+      cell.style.gridColumn = String(pos.c);
+      cell.style.gridRow = String(pos.r);
+      const seedsEl = document.createElement('div');
+      seedsEl.className = 'seeds';
+      seedsEl.id = 'seeds' + i;
+      cell.appendChild(seedsEl);
+      const countEl = document.createElement('span');
+      countEl.className = 'count';
+      countEl.id = 'count' + i;
+      cell.appendChild(countEl);
+      if(PIT_LABEL_OF[i]){
+        const labelEl = document.createElement('span');
+        labelEl.className = 'pit-label';
+        labelEl.id = 'label' + i;
+        labelEl.textContent = PIT_LABEL_OF[i];
+        cell.appendChild(labelEl);
+      }
+      if(!isStore){
+        cell.addEventListener('click', () => onPitClick(i));
+      }
+      boardEl.appendChild(cell);
+    }
+    renderBoard();
+    updatePitLabels();
+  }
+
+  // Shows/hides Player 2's Pit-number labels: only relevant (and only
+  // shown) when AI Opponent is OFF, i.e. a second human is actually using
+  // those Pits.
+  function updatePitLabels(){
+    Object.keys(PIT_LABEL_OF).forEach(i => {
+      const el = document.getElementById('label' + i);
+      if(el) el.classList.toggle('show', !aiOn);
+    });
+  }
+
+  // Redraws one cell's seed-count number and its cluster of colored seed
+  // dots. The dot count is capped (dots are decoration; the number above
+  // them is always the exact count) so a Pit or Mancala holding a lot of
+  // seeds doesn't try to cram dozens of circles into a small space.
+  function renderCell(i){
+    const isStore = (i === STORE_OF.p1 || i === STORE_OF.p2);
+    const n = board[i];
+    document.getElementById('count' + i).textContent = n;
+    const seedsEl = document.getElementById('seeds' + i);
+    const maxDots = isStore ? 24 : 11;
+    const shown = Math.min(n, maxDots);
+    seedsEl.innerHTML = '';
+    for(let k = 0; k < shown; k++){
+      const dot = document.createElement('span');
+      dot.className = 'seed ' + seedColorClass(i, k);
+      seedsEl.appendChild(dot);
+    }
+  }
+
+  function renderBoard(){
+    for(let i = 0; i < 14; i++){
+      renderCell(i);
+    }
+    updateClickable();
+  }
+
+  function updateClickable(){
+    for(let i = 0; i < 14; i++){
+      if(i === STORE_OF.p1 || i === STORE_OF.p2) continue;
+      const cell = document.getElementById('cell' + i);
+      const isHumanTurn = !busy && !gameOver && !(current === 'p2' && aiOn);
+      const canClick = isHumanTurn && ROW_OF[current].includes(i) && board[i] > 0;
+      cell.classList.toggle('clickable', canClick);
+      // The gold ring itself only shows with AI Opponent OFF - a Pit stays
+      // just as clickable with AI Opponent ON, it simply isn't ringed.
+      cell.classList.toggle('ring', canClick && !aiOn);
+    }
+  }
+
+  function updateTurnBanner(){
+    if(gameOver){ return; }
+    const n = names();
+    const label = current === 'p1' ? n.p1 : n.p2;
+    document.getElementById('turnBanner').textContent = label + "'s Turn";
+  }
+
+  // ---------------- turn flow ----------------
+  function startTurn(){
+    if(rowEmpty(board, current)){
+      endGame();
+      return;
+    }
+    updateTurnBanner();
+    updateClickable();
+    if(current === 'p2' && aiOn){
+      busy = true;
+      updateClickable();
+      setTimeout(aiPlay, 700);
+    }
+  }
+
+  function onPitClick(idx){
+    if(busy || gameOver) return;
+    if(current === 'p2' && aiOn) return;
+    if(!ROW_OF[current].includes(idx) || board[idx] <= 0) return;
+    playPit(idx);
+  }
+
+  const SOW_STEP_MS = 280;
+  const CAPTURE_FADE_MS = 560;
+
+  // Plays out one move on the real board and on screen: empties the chosen
+  // Pit, then places its seeds one at a time (each placement bumps that
+  // cell, plays a soft "tick", and pauses briefly) before checking for a
+  // capture or an extra turn via the same resolveLanding() rule applyMove()
+  // uses. Returns the same {last, extraTurn, captured} shape applyMove()
+  // does, once the animation has finished.
+  async function animateMove(startIdx, player){
+    const seedCount = board[startIdx];
+    const skip = OPP_STORE_OF[player];
+    const seq = computeSowSequence(startIdx, seedCount, skip);
+
+    board[startIdx] = 0;
+    renderCell(startIdx);
+
+    for(const idx of seq){
+      board[idx]++;
+      renderCell(idx);
+      const cellEl = document.getElementById('cell' + idx);
+      cellEl.classList.remove('bump');
+      void cellEl.offsetWidth; // restart the bump animation even if it's still running
+      cellEl.classList.add('bump');
+      const newestDot = document.getElementById('seeds' + idx).lastElementChild;
+      if(newestDot) newestDot.classList.add('seed-new');
+      playSeedSound();
+      await delay(SOW_STEP_MS);
+    }
+
+    const last = seq[seq.length - 1];
+    const result = resolveLanding(board, last, player);
+
+    if(result.captured > 0){
+      const oppIdx = opposite(last);
+      const landSeeds = document.getElementById('seeds' + last);
+      const oppSeeds = document.getElementById('seeds' + oppIdx);
+      landSeeds.classList.add('capturing');
+      oppSeeds.classList.add('capturing');
+      playCaptureSound();
+      await delay(CAPTURE_FADE_MS);
+      landSeeds.classList.remove('capturing');
+      oppSeeds.classList.remove('capturing');
+      renderCell(last);
+      renderCell(oppIdx);
+      renderCell(STORE_OF[player]);
+    }
+
+    return result;
+  }
+
+  async function playPit(idx){
+    busy = true;
+    updateClickable();
+    const player = current;
+    const result = await animateMove(idx, player);
+    if(!result.extraTurn){
+      current = other(player);
+    }
+    busy = false;
+    startTurn();
+  }
+
+  // ---------------- simple AI (Player 2, when AI Opponent is ON) ----------------
+  // Greedy: tries every legal pit, simulates the sow + capture on a scratch
+  // copy of the board, and scores it by how many seeds it nets into its own
+  // Mancala this move plus a bonus for earning an extra turn. Not a deep
+  // lookahead, but it reliably takes free captures and chains extra turns.
+  function chooseAiMove(){
+    let best = null, bestScore = -Infinity;
+    for(const idx of ROW_OF.p2){
+      if(board[idx] <= 0) continue;
+      const scratch = board.slice();
+      const before = scratch[STORE_OF.p2];
+      const result = applyMove(scratch, idx, 'p2');
+      const gained = scratch[STORE_OF.p2] - before;
+      let score = gained + (result.extraTurn ? 3 : 0) + Math.random() * 0.01;
+      if(score > bestScore){ bestScore = score; best = idx; }
+    }
+    return best;
+  }
+
+  async function aiPlay(){
+    const idx = chooseAiMove();
+    if(idx === null){ busy = false; startTurn(); return; }
+    await playPit(idx);
+  }
+
+  // ---------------- end game ----------------
+  function endGame(){
+    gameOver = true;
+    busy = true;
+    updateClickable();
+    // The player whose row is empty (current) does not move; the OTHER
+    // player sweeps whatever is left in their own row into their own Mancala.
+    const sweeper = other(current);
+    ROW_OF[sweeper].forEach(i => { board[STORE_OF[sweeper]] += board[i]; board[i] = 0; });
+    renderBoard();
+
+    const n = names();
+    const p1Total = board[STORE_OF.p1];
+    const p2Total = board[STORE_OF.p2];
+    document.getElementById('turnBanner').textContent = 'Game Over';
+
+    let message, title;
+    if(p1Total === p2Total){
+      title = "It's a Tie!";
+      message = `Both players finished with ${p1Total} Seeds.`;
+    } else {
+      const winnerIsP1 = p1Total > p2Total;
+      const winnerName = winnerIsP1 ? n.p1 : n.p2;
+      const loserName = winnerIsP1 ? n.p2 : n.p1;
+      const winnerTotal = winnerIsP1 ? p1Total : p2Total;
+      const loserTotal = winnerIsP1 ? p2Total : p1Total;
+      const margin = winnerTotal - loserTotal;
+      title = winnerName + ' Wins!';
+      message = `${winnerName} finished with ${winnerTotal} Seeds to ${loserName}'s ${loserTotal}.`;
+      recordScore(winnerName, margin, loserName);
+    }
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
+    showModal({ title, message, buttons: [
+      { label: 'New Game', value: true, primary: true }
+    ]}).then(() => startGame());
+  }
+
+  // ---------------- new game / exit / instructions ----------------
+  document.getElementById('resetBtn').addEventListener('click', async () => {
+    const ok = await showConfirm('Start a new game? Your current game will be lost.', 'New Game');
+    if(ok) startGame();
+  });
+
+  document.getElementById('exitBtn').addEventListener('click', async () => {
+    const ok = await showConfirm('Are you sure you want to exit?', 'Exit Game');
+    if(ok) performExit();
+  });
+
+  function performExit(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
+    window.location.href = '../index.html';
+  }
+
+  document.getElementById('instructionsBtn').addEventListener('click', () => {
+    saveResumeState();
+    window.location.href = '../ManInstructions.html';
+  });
+
+  // ---------------- AI Opponent toggle ----------------
+  document.getElementById('aiBtn').addEventListener('click', () => {
+    const btn = document.getElementById('aiBtn');
+    aiOn = !aiOn;
+    btn.textContent = btn.dataset.label + (aiOn ? ': ON' : ': OFF');
+    document.getElementById('p2NameInput').style.display = aiOn ? 'none' : '';
+    try { sessionStorage.setItem('mancalaSettings_v1', JSON.stringify({ aiOn })); } catch (err) {}
+    startGame();
+  });
+
+  // ---------------- resume across Instructions navigation ----------------
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({ board, current, aiOn, gameOver }));
+    } catch (err) { console.error('saveResumeState error', err); }
+  }
+
+  function tryRestoreResumeState(){
+    try {
+      const raw = sessionStorage.getItem(RESUME_KEY);
+      if(!raw) return false;
+      const parsed = JSON.parse(raw);
+      if(!Array.isArray(parsed.board) || parsed.board.length !== 14) return false;
+      board = parsed.board;
+      current = parsed.current === 'p2' ? 'p2' : 'p1';
+      gameOver = !!parsed.gameOver;
+      buildBoardDOM();
+      if(!gameOver) startTurn(); else renderBoard();
+      return true;
+    } catch (err) {
+      console.error('tryRestoreResumeState error', err);
+      return false;
+    }
+  }
+
+  // ---------------- start / restart ----------------
+  function startGame(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
+    board = newBoard();
+    gameOver = false;
+    busy = false;
+    current = Math.random() < 0.5 ? 'p1' : 'p2';
+    buildBoardDOM();
+    document.getElementById('universalModal').style.display = 'none';
+    startTurn();
+  }
+
+  // ---------------- themed modal (New Game / Exit confirm, Recorded Scores) ----------------
+  function showModal({ title, message, buttons } = {}){
+    return new Promise((resolve) => {
+      const modal = document.getElementById('universalModal');
+      const titleEl = document.getElementById('universalModalTitle');
+      const textEl = document.getElementById('universalModalText');
+      const buttonsEl = document.getElementById('universalModalButtons');
+      const subtitleEl = document.getElementById('universalModalSubtitle');
+
+      if(title){ titleEl.textContent = title; titleEl.style.display = 'block'; }
+      else { titleEl.style.display = 'none'; }
+      subtitleEl.textContent = '';
+      subtitleEl.style.display = 'none';
+      textEl.textContent = message || '';
+      textEl.classList.remove('scores-list');
+      buttonsEl.innerHTML = '';
+      (buttons || [{ label: 'OK', value: undefined, primary: true }]).forEach((def) => {
+        const btn = document.createElement('button');
+        btn.textContent = def.label;
+        btn.className = def.primary ? 'primary' : 'secondary';
+        btn.onclick = () => {
+          modal.style.display = 'none';
+          resolve(def.value);
+        };
+        buttonsEl.appendChild(btn);
+      });
+      modal.style.display = 'block';
+      modal.querySelector('.modal-box').classList.remove('wide');
+    });
+  }
+
+  function showConfirm(text, title){
+    return showModal({ title, message: text, buttons: [
+      { label: 'Yes', value: true, primary: true },
+      { label: 'Cancel', value: false, primary: false }
+    ]});
+  }
+
+  // ---------------- ranked score history (shared, via Firebase) ----------------
+  const MAX_RECORDED_SCORES = 15;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    // Refreshes the Recorded Scores modal in place if it's the one currently
+    // open - checked by its title rather than by whether it already had rows
+    // to show, since "still Loading" and "no scores yet" both leave the
+    // scores-list CSS class off, which used to make Recorded Scores stay
+    // stuck on "Loading scores..." forever if you opened it before the very
+    // first Firebase read finished (even though the read succeeded soon
+    // after - it just never told the already-open modal to redraw itself).
+    if(modal.style.display === 'block' && document.getElementById('universalModalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+
+  function recordScore(winnerName, margin, opponentName){
+    try {
+      const entry = { name: winnerName, margin, opponent: opponentName, date: new Date().toLocaleDateString() };
+      if(window.pushSharedScore) window.pushSharedScore(entry);
+    } catch (err) { console.error('recordScore error', err); }
+  }
+
+  function formatScoreLine(entry, rank){
+    const pad = (str, len) => {
+      str = String(str);
+      const extra = Math.max(0, len - str.length);
+      return str + ' '.repeat(extra);
+    };
+    const rankStr = String(rank).padStart(2, ' ') + '.';
+    const nameStr = pad(entry.name, 9);
+    const marginStr = String(entry.margin).padStart(2, ' ');
+    const ptsStr = pad(`${marginStr} Seeds`, 10);
+    const vsStr = pad('vs ' + (entry.opponent || 'Unknown'), 12);
+    const dateStr = String(entry.date).padStart(10, ' ');
+    return `${rankStr} ${nameStr} ${ptsStr} ${vsStr} ${dateStr}`;
+  }
+
+  function showScoresModal(){
+    let message;
+    if(sharedScores === null){
+      message = 'Loading scores… (or unable to reach the shared scoreboard right now)';
+    } else {
+      const list = [...sharedScores].sort((a, b) => b.margin - a.margin).slice(0, MAX_RECORDED_SCORES);
+      message = list.length === 0
+        ? 'No scores recorded yet. Play a game to add one!'
+        : list.map((entry, i) => formatScoreLine(entry, i + 1)).join('\n');
+    }
+    const hasRows = sharedScores !== null && sharedScores.length > 0;
+    showModal({ title: 'Recorded Scores', message, buttons: [
+      { label: 'OK', value: true, primary: true }
+    ]});
+    const subtitleEl = document.getElementById('universalModalSubtitle');
+    subtitleEl.textContent = 'The number of Seeds the winner was ahead.';
+    subtitleEl.style.display = '';
+    document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
+    document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
+  }
+
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  // ---------------- boot ----------------
+  restoreNames();
+  (function restoreSettings(){
+    try {
+      const raw = sessionStorage.getItem('mancalaSettings_v1');
+      if(raw){
+        const parsed = JSON.parse(raw);
+        if(typeof parsed.aiOn === 'boolean') aiOn = parsed.aiOn;
+      }
+    } catch (err) { console.error('restoreSettings error', err); }
+    const btn = document.getElementById('aiBtn');
+    btn.textContent = btn.dataset.label + (aiOn ? ': ON' : ': OFF');
+    document.getElementById('p2NameInput').style.display = aiOn ? 'none' : '';
+  })();
+
+  if(!tryRestoreResumeState()){
+    startGame();
+  }
+
+  const PAGE_REVISION = 7;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+})();
+</script>
+
+<!-- -------------------------------------------------------------------------
+     Shared (cross-device) recorded scores via Firebase Realtime Database.
+     Same Firebase project the other games already use (perrys-stuff) - just
+     a separate database path (mancalaScores) so this game's scores stay
+     independent of the others. -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getDatabase, ref, push, onValue
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'mancalaScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+</body>
+</html>
