@@ -1,5 +1,5 @@
 
-<!-- Revision 66 | Wednesday, September 16, 2026 | With Option 1 checked, a double (or a bonus roll) could still waste its extra dice re-entering a 3rd or 4th checker onto a bar-entry point that was already made safe with just two - e.g. rolling double 6s would often stack all four checkers onto the entry point instead of using the leftover dice to develop other checkers, even when it was safe to. Added a direct penalty for a bar entry landing on an already-made point, so those extra dice now go toward developing/covering other checkers on the board instead of piling up uselessly. Verified by simulation that this doesn't increase how often checkers get hit or how many pips are lost - it only redirects otherwise-wasted dice. -->
+<!-- Revision 67 | Friday, September 18, 2026 | With Option 1 checked, getting hit during your opening entry used to lock you into bar-only play for the rest of that opening, even after you'd re-entered the hit checker(s) - so if you still had original checkers left to stream in for the first time, you couldn't move anything else on the board until every last one of them was also in. Now, once the hit checker(s) are back off the bar, Option 1 goes back to relaxing things for whatever's left of your opening entry, same as before the hit happened. Getting hit again after you've fully entered all 15 for the first time still always requires re-entering before anything else moves, unchanged. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 66;
+  const PAGE_REVISION = 67;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -1338,13 +1338,15 @@
   // a player has gotten every one of their 15 checkers off the bar for the first time this game,
   // this flips true for good (see applyMove()) and Option 1 stops applying to them.
   let everFullyEntered = {white:false, black:false};
-  // A checker that gets hit WHILE the player is still mid-opening (before everFullyEntered)
-  // is a "hit" checker, not just one more of the original 15 still streaming in - it must be
-  // entered before anything else moves even though the player hasn't finished their first
-  // entry yet, same as a hit always does once the opening is over. So the instant that
-  // happens, Option 1 stops relaxing things for this player for the rest of this opening -
-  // see opt1Applies() and the hit branch of applyMove().
-  let hitDuringOpening = {white:false, black:false};
+  // Counts how many of the checkers currently on this player's bar got there from being HIT
+  // while they were still mid-opening (before everFullyEntered), as opposed to being one of
+  // the original 15 still streaming in for the first time. While this is above zero, Option 1
+  // stops relaxing things for this player - those hit checkers must be entered before anything
+  // else moves, same as a hit always requires once the opening is over. Each bar entry this
+  // player makes while it's above zero counts as clearing one of them, and once it's back down
+  // to zero, Option 1 resumes relaxing things for whatever's left of their opening (see
+  // opt1Applies() and the hit/bar-entry branches of applyMove()).
+  let hitBarCount = {white:0, black:0};
   let selected = null; // 'bar' or point number
   let legalMap = [];    // [{die, dest, hit}] for currently selected source
   let rolling = false;  // True while the tumble animation is playing, guards against double-rolls
@@ -1446,11 +1448,13 @@
   // Option 1 ("move before all checkers are entered") only ever relaxes the bar-first rule
   // during a player's OPENING entry - once they've gotten all 15 off the bar for the first
   // time this game, a later hit always has to re-enter before anything else moves, exactly as
-  // if the option were off. It also stops relaxing things the instant a checker gets hit
-  // during that opening (hitDuringOpening) - a hit checker always needs entering first, even
-  // if the player still has some of their original 15 left to stream in for the first time.
+  // if the option were off. It also pauses relaxing things while any hit checkers from that
+  // opening (hitBarCount) are still sitting on the bar - those need entering first, even if
+  // the player still has some of their original 15 left to stream in for the first time. Once
+  // all of those hit checkers are back off the bar, the relaxation resumes for whatever
+  // opening entry remains.
   function opt1Applies(player){
-    return gameOptions.opt1 && !everFullyEntered[player] && !hitDuringOpening[player];
+    return gameOptions.opt1 && !everFullyEntered[player] && hitBarCount[player] === 0;
   }
 
   // Attempt a move; returns {legal:bool, dest:'off'|number, hit:bool}
@@ -1496,6 +1500,10 @@
   function applyMove(player, source, die, result){
     if(source === 'bar'){
       bar[player]--;
+      // Every bar entry clears one outstanding "hit during opening" checker first, if there
+      // are any (see hitBarCount above) - once this reaches 0, Option 1 resumes relaxing
+      // things for whatever's left of this player's opening entry.
+      if(hitBarCount[player] > 0) hitBarCount[player]--;
       // The moment this player's bar count reaches 0 for the first time this game, their
       // opening entry is complete - Option 1 (see opt1Applies()) stops applying to them from
       // here on, even if they get hit and land back on the bar again later.
@@ -1510,10 +1518,11 @@
       if(result.hit){
         // If the player being hit is still mid-opening (hasn't gotten all 15 off the bar for
         // the first time yet), this specific checker is a "hit" checker, not just one more of
-        // the original 15 - flag it so opt1Applies() stops relaxing the bar-first rule for
-        // them until it (and the rest of the bar) is entered. Once everFullyEntered is true
-        // this flag is moot - a hit always requires entering first regardless, option or not.
-        if(!everFullyEntered[opp(player)]) hitDuringOpening[opp(player)] = true;
+        // the original 15 - count it so opt1Applies() pauses relaxing the bar-first rule for
+        // them until it's back off the bar (see the bar-entry branch above, which counts it
+        // back down). Once everFullyEntered is true this count is moot - a hit always requires
+        // entering first regardless, option or not.
+        if(!everFullyEntered[opp(player)]) hitBarCount[opp(player)]++;
         bar[opp(player)]++;
         board[result.dest] = {owner:player, count:1};
       } else if(cell.owner === player){
@@ -1711,7 +1720,7 @@
     isDoubleBonusPending = false;
     doublesStreak = 0;
     everFullyEntered = {white:false, black:false};
-    hitDuringOpening = {white:false, black:false};
+    hitBarCount = {white:0, black:0};
     selected = null; legalMap = [];
 
     document.getElementById('game').classList.add('show');
@@ -1921,7 +1930,7 @@
       sessionStorage.setItem(RESUME_KEY, JSON.stringify({
         names, isAI, board, bar, off, current, nextStarter, dice, originalRoll, usedCount,
         phase, awaitingDoubleChoice, isDoubleFromAceyDeucey, isDoubleBonusPending, doublesStreak,
-        everFullyEntered, hitDuringOpening, selected, legalMap,
+        everFullyEntered, hitBarCount, selected, legalMap,
         logHtml: document.getElementById('log').innerHTML
       }));
     } catch (err) {
@@ -1957,9 +1966,12 @@
       isDoubleBonusPending = saved.isDoubleBonusPending;
       doublesStreak = saved.doublesStreak;
       everFullyEntered = saved.everFullyEntered;
-      // Falls back to {white:false, black:false} for a snapshot saved by an older version of
-      // this page (from before this field existed) that's still sitting in sessionStorage.
-      hitDuringOpening = saved.hitDuringOpening || {white:false, black:false};
+      // Falls back to {white:0, black:0} for a snapshot saved by an older version of this page
+      // (from before this field existed, or when it was still a true/false flag rather than a
+      // count) that's still sitting in sessionStorage.
+      hitBarCount = (saved.hitBarCount && typeof saved.hitBarCount.white === 'number')
+        ? saved.hitBarCount
+        : {white:0, black:0};
       selected = saved.selected;
       legalMap = saved.legalMap || [];
 
