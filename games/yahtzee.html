@@ -1,5 +1,7 @@
 
-<!-- Revision 15 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header bar, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's green background (#19a519). -->
+<!-- Revision 19 | Thursday, September 17, 2026 | Fixed the Bonus Yahtzee award: it was only giving 50 points per extra Yahtzee instead of the 100 the Instructions page (and the standard rules) call for - YAHTZEE_BONUS_POINTS was set to 50, now 100. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 625 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -483,8 +485,8 @@
 
     <!-- Rev. N marker - top-right corner of this full-width header bar. Black text: more
          contrast than white against the green header background (#19a519). -->
-    <div class="revBadge"
-      style="position:absolute; top:8px; right:16px; font-size:0.7rem; font-weight:600; color:#000000; pointer-events:none;">Rev. 15</div>
+    <div class="revBadge" id="revBadge"
+      style="position:absolute; top:8px; right:16px; font-size:0.7rem; font-weight:600; color:#000000; pointer-events:none;"></div>
 
     <div style="font-size:50px; font-weight:bold; line-height:1; white-space:nowrap;">Yahtzee</div>
 
@@ -620,6 +622,9 @@
 
 
 <script>
+  const PAGE_REVISION = 19;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* Global safety: capture errors and show overlay */
 (function(){
   const overlay = document.getElementById('errorOverlay');
@@ -772,7 +777,7 @@ const upperBonusEl = document.getElementById('upperBonus');
 const lowerTotalEl = document.getElementById('lowerTotal');
 const yahtzeeBonusEl = document.getElementById('yahtzeeBonus');
 const grandTotalEl = document.getElementById('grandTotal');
-const YAHTZEE_BONUS_POINTS = 50;
+const YAHTZEE_BONUS_POINTS = 100;
 let yahtzeeBonusCount = 0;
 
 const highScoresList = document.getElementById('highScoresList');
