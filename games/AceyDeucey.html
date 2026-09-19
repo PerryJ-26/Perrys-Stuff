@@ -1,5 +1,5 @@
 
-<!-- Revision 67 | Friday, September 18, 2026 | With Option 1 checked, getting hit during your opening entry used to lock you into bar-only play for the rest of that opening, even after you'd re-entered the hit checker(s) - so if you still had original checkers left to stream in for the first time, you couldn't move anything else on the board until every last one of them was also in. Now, once the hit checker(s) are back off the bar, Option 1 goes back to relaxing things for whatever's left of your opening entry, same as before the hit happened. Getting hit again after you've fully entered all 15 for the first time still always requires re-entering before anything else moves, unchanged. -->
+<!-- Revision 68 | Saturday, September 19, 2026 | Found the real cause of yesterday's "needed to enter more checkers than were actually hit" report: the AI's double-acceptance evaluation simulates hypothetical moves on a scratch copy of the board to score each possible double, and while that scratch copy correctly threw away its board/bar/off changes afterward, it was NOT throwing away changes to the two trackers Option 1 depends on (everFullyEntered and hitBarCount) - so a hit that only ever happened in one of those hypothetical "what if" simulations was permanently counted as a real hit against the human player, on top of any hit that actually happened for real. Now those two trackers are saved and restored around every simulation, exactly like board/bar/off already were, so a purely hypothetical hit can no longer leak into the real game. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 67;
+  const PAGE_REVISION = 68;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2586,12 +2586,20 @@
   }
 
   // Deep-copies just enough of the board state to simulate moves without touching the real
-  // game - board (owner+count per point), bar, and off. Nothing else (dice, phase, log, etc.)
-  // needs copying since simulation never touches those.
+  // game - board (owner+count per point), bar, off, and (see the bug this fixed) the two
+  // opening-entry trackers everFullyEntered/hitBarCount, since applyMove() writes to those too
+  // and a hypothetical simulated hit must never leak into the real game's entry rules. Nothing
+  // else (dice, phase, log, etc.) needs copying since simulation never touches those.
   function cloneBoardState(){
     const b = {};
     for(let p=1;p<=24;p++){ b[p] = { owner: board[p].owner, count: board[p].count }; }
-    return { board: b, bar: { white: bar.white, black: bar.black }, off: { white: off.white, black: off.black } };
+    return {
+      board: b,
+      bar: { white: bar.white, black: bar.black },
+      off: { white: off.white, black: off.black },
+      everFullyEntered: { white: everFullyEntered.white, black: everFullyEntered.black },
+      hitBarCount: { white: hitBarCount.white, black: hitBarCount.black }
+    };
   }
 
   // Simulates actually playing up to 4 uses of die value n for `player`, on a scratch copy of
@@ -2605,8 +2613,17 @@
   // many as you legally can) or if it would win the game outright.
   function simulateDoubleValue(player, n){
     const savedBoard = board, savedBar = bar, savedOff = off;
+    // Bug fix: everFullyEntered/hitBarCount were never saved/restored here, even though
+    // applyMove() (called below, for real, on the scratch board) writes to both of them. That
+    // let a hit that only ever happened in a hypothetical "what if I take this double" simulation
+    // permanently increment the real player's hitBarCount (or flip everFullyEntered) - so a
+    // player could see the "must clear the bar before moving freely" rule re-triggered by a hit
+    // that never actually happened on the real board. Saving/restoring them alongside
+    // board/bar/off, exactly the same way, keeps simulation fully sealed off from the real game.
+    const savedEverFullyEntered = everFullyEntered, savedHitBarCount = hitBarCount;
     const clone = cloneBoardState();
     board = clone.board; bar = clone.bar; off = clone.off;
+    everFullyEntered = clone.everFullyEntered; hitBarCount = clone.hitBarCount;
     let total = 0, movesPlayed = 0;
     try {
       for(let i=0;i<4;i++){
@@ -2630,6 +2647,7 @@
       }
     } finally {
       board = savedBoard; bar = savedBar; off = savedOff;
+      everFullyEntered = savedEverFullyEntered; hitBarCount = savedHitBarCount;
     }
     return { total, movesPlayed };
   }
