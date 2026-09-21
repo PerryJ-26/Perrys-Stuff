@@ -1,0 +1,236 @@
+
+<!-- Revision 2 | Saturday, September 19, 2026 | Nav bar: removed About and Contact, added "Back to the Game" (uses the browser's own back navigation, so it returns to whatever solitaire game sent you here without closing/resetting it - that game only actually ends once you pick a different one from this menu). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 231 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solitaire Games</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - matches the Home page's soft blue theme ===== */
+  :root {
+    /* Page structure */
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    /* Nav bar (Home / About / Contact Me) */
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    /* Game list rows */
+    --row-bg: #ffffff;
+    --row-border: #cfe0ef;
+    --row-hover-bg: #d6e9fb;
+    --row-title-text: #1c2b36;
+    --thumb-bg: #dceaf7;
+    --thumb-text: #5f89ab;
+    --thumb-border: #b9d4ec;
+
+    /* "Coming soon" state for games not yet published */
+    --soon-badge-bg: #f0f4f8;
+    --soon-badge-text: #8a99a8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Always reserve space for a vertical scrollbar, even on short pages,
+     so the header doesn't shift left/right between pages */
+  html {
+    overflow-y: scroll;
+  }
+
+  /* ---- Header ---- */
+  /* Keeps the header and nav visible at the top while the page scrolls */
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  /* ---- Nav bar ---- */
+  nav {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--row-border);
+  }
+
+  nav a {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  /* ---- Game list ---- */
+  /* Same 900px-wide, 4-column grid as the Home page, so this menu looks and
+     behaves like it. */
+  main {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  .game-list {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--row-border);
+    border: 1px solid var(--row-border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  /* Entire card is the clickable hotspot - thumbnail stacked above the title */
+  .game-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: var(--row-bg);
+    text-decoration: none;
+    padding: 18px 14px;
+    transition: background 150ms ease;
+  }
+
+  .game-row:hover {
+    background: var(--row-hover-bg);
+  }
+
+  /* Thumbnail placeholder - swap the inner <span> text for an <img> once you have a screenshot */
+  .game-thumb {
+    width: 100%;
+    max-width: 128px;
+    height: 72px;
+    background: var(--thumb-bg);
+    border: 1px dashed var(--thumb-border);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--thumb-text);
+    font-size: 0.85rem;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .game-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .game-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--row-title-text);
+    text-align: center;
+  }
+
+  /* Badge for games not yet linked up */
+  .soon-badge {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--soon-badge-text);
+    background: var(--soon-badge-bg);
+    padding: 4px 10px;
+    border-radius: 12px;
+    margin-left: 10px;
+  }
+
+  /* A row with no game yet behaves like plain text, not a link */
+  .game-row.disabled {
+    cursor: default;
+  }
+  .game-row.disabled:hover {
+    background: var(--row-bg);
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Solitaire Games</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <!-- Plain browser-back, not a link to a specific game file - this menu
+           can be reached from any solitaire game, and going back leaves that
+           game exactly as it was (nothing is closed or reset here). -->
+      <a href="javascript:void(0)" onclick="history.back()">Back to the Game</a>
+    </nav>
+  </div>
+
+  <main>
+    <div class="game-list">
+
+      <!-- Klondike doesn't have a game file yet, so this card is disabled
+           (no href, no hover highlight) with a "Coming soon" badge, the same
+           convention the Home page's CSS already sets up for an unfinished game. -->
+      <div class="game-row disabled">
+        <div class="game-thumb"><span>Klondike</span></div>
+        <div class="game-title">Klondike<span class="soon-badge">Coming soon</span></div>
+      </div>
+
+    </div>
+  </main>
+
+
+<script>
+  const PAGE_REVISION = 2;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
