@@ -1,6 +1,6 @@
 
-<!-- Revision 17 | Monday, September 21, 2026 | Fixed the "no more moves" detector missing real dead ends whenever Stock or Waste still had cards left (it previously only ever checked once both were completely empty) - it now also accounts for the current Waste card and for further draws that could never expose a playable card. Also fixed the popup re-appearing repeatedly while stuck (it now shows once per dead end, and re-arms if the board becomes playable again). Added a Hint: after 6 seconds with no move, a gold dotted halo appears around the card that could be played and the card (or empty slot/Foundation) it could go to, using that same detection logic. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1616 -->
+<!-- Revision 18 | Monday, September 21, 2026 | Recorded Scores popup: renamed "Scoring System" to "Scoring System Explanation" and moved it to the top of the popup, under the title; the OK button now sits alone at the bottom, centered. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1624 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -412,6 +412,11 @@
     text-align: center;
   }
   .scores-table th{ background: #e8e2c8; }
+
+  /* Recorded Scores modal only - the Scoring System Explanation button sits
+     at the top of the popup body, under the title, so it needs its own
+     bottom margin to separate it from the score list below. */
+  .scores-explain-btn{ margin-bottom: 12px; }
 
   .options-grid{
     display: grid;
@@ -1444,27 +1449,30 @@
     return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
   }
   function showScoresModal(){
-    let body;
+    let listHtml;
     if(sharedScores === null){
-      body = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
     } else {
       const list = [...sharedScores].sort((a,b)=>
         (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
       ).slice(0, MAX_RECORDED_SCORES);
       if(list.length === 0){
-        body = `<p>No scores recorded yet. Play a game to add one!</p>`;
+        listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
       } else {
         // The table itself scrolls (see .scores-scroll below) rather than
         // the whole popup, so the title and buttons stay put and only the
         // list of up to 30 rows grows a scroll bar once it runs out of room.
-        body = `<div class="scores-scroll"><table class="scores-table">
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
           <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
           ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
         </table></div>`;
       }
     }
+    // The Scoring System Explanation button lives at the top of the popup
+    // body, under the title, rather than alongside OK - that leaves OK by
+    // itself in the button row below, where it's centered automatically.
+    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System Explanation</button>${listHtml}`;
     showModal('Recorded Scores', body, `
-      <button onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System</button>
       <button onclick="closeModal()">OK</button>
     `, true, 'scoresModal');
   }
@@ -1613,7 +1621,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 17;
+  const PAGE_REVISION = 18;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
