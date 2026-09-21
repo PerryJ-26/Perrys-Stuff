@@ -1,0 +1,1345 @@
+
+<!-- Revision 10 | Sunday, September 20, 2026 | Options popup: "1 card"/"3 cards" and "On"/"Off" no longer wrap onto a second line, so they stay on the same row as their question. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1340 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klondike - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - matches the rest of the site's card-game theme (from Pinochle) ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --cardback-1: #d6394a;
+    --cardback-2: #ffffff;
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Centers the whole button-column + felt group as one unit within the
+     page, both horizontally and vertically, so the empty margin above
+     the felt matches the empty margin below it instead of the group
+     sitting pinned to the top with all the leftover space at the
+     bottom. */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #gameLayout {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 10px;
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack ----
+     No longer position:fixed - it's now a normal flex child inside
+     #gameLayout so it can be centered as a group with the felt (see
+     body/#gameLayout above). Only the Rev. badge stays pinned to the
+     viewport corner. */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+
+  /* Name and Score fields, placed below the Exit button per Perry's instruction */
+  #nameScoreBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+  #nameScoreBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameScoreBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+    margin-bottom: 8px;
+  }
+  #scoreDisplay{
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+  .scoreLabel{ text-align: center; }
+
+  /* ---- Felt / board ----
+     Fixed width/height (box-sizing: border-box, so these totals already
+     include the padding and border below) - the felt no longer grows as
+     the tableau fills up. The height is sized so a column can hold up to
+     12 overlapping face-up cards (see .tableau-col .cardWrap's margin-top
+     below) without the felt ever needing to expand; it shrank from the
+     previous 600px now that the tighter overlap needs less headroom for
+     that same 12-card column, which also helps the page fit onscreen
+     without scrolling. Width is widened 1in (96px) on each side (192px
+     total) per Perry's request; the extra width shows as green margin
+     evenly split left/right of the 7-column grid, since #table-wrap
+     centers its rows (align-items: center). No more hard-coded left
+     margin to clear a fixed sidebar - #buttonGroup is a normal flex
+     sibling now (see #gameLayout above), spaced with `gap`. */
+  #table-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin: 0;
+    width: 872px;
+    height: 460px;
+    box-sizing: border-box;
+  }
+  .board-row{
+    display: grid;
+    grid-template-columns: repeat(7, 71.4px);
+    gap: 12px;
+  }
+  .pile{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.55);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.65);
+    font-size: 1.87rem;
+    font-weight: 800;
+    cursor: pointer;
+    position: relative;
+  }
+  .pile.empty-hint{ font-size: 2.04rem; }
+  /* Waste pile shows only the single top/playable card, stacked straight
+     (no horizontal fan/offset) - perspective is still needed here so the
+     two-sided flip below renders in 3D instead of flat. */
+  #wastePile{ perspective: 700px; }
+  .tableau-col{
+    position: relative;
+    min-height: 100.3px;
+  }
+  .tableau-col .empty-slot{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.35);
+    border-radius: 6px;
+  }
+  .cardWrap{ position: relative; perspective: 700px; }
+  /* Visible sliver of a covered card cut in half from the previous
+     revision (29.9px -> 14.95px), tightening the stack per Perry's
+     request. A column of 12 overlapping face-up cards (100.3px tall
+     each) still comfortably fits within the felt's fixed 460px height
+     alongside the top row, gap, padding and border - see the
+     #table-wrap comment above - with headroom to spare now that each
+     card needs so much less vertical space. */
+  .tableau-col .cardWrap:not(:first-child){ margin-top: -85.35px; }
+
+  /* ---- Dramatic reveal animations ----
+     .flip3d: a GENUINE two-sided flip for a card turning face up - unlike
+     an earlier version of this that just spun the already-face-up card
+     into view, this one actually shows the cardback first, rotates
+     through edge-on (where neither face is visible, same as a real card
+     mid-flip), and only then reveals the front - so you can watch what
+     was underneath actually turn over. Built from two stacked faces
+     inside a rotating wrapper; each face has backface-visibility:hidden
+     so only whichever one is currently facing the viewer shows.
+     .foundation-anim: a card that just landed on a Foundation - a
+     separate, simpler pop/glow effect, unchanged. Both are one-shot,
+     added only to the specific card that changed on a given render()
+     pass, so cards that didn't change never replay them. */
+  .flip3d{
+    width: 71.4px; height: 100.3px;
+    position: relative;
+    transform-style: preserve-3d;
+    /* Pivoting around the left edge instead of the center, below, is what
+       makes the card look like it's hinging down flat starting from its
+       left side, instead of spinning in place around its own middle. */
+    transform-origin: left center;
+    /* 0.3s per card, per Perry's request. animation-fill-mode: both is
+       essential here, not just "backwards" - backwards alone only holds
+       the 0% pose (showing the back) during the animation-delay before it
+       starts; the instant the animation finishes, the element snaps back
+       to its un-animated state, which for a rotation means it would
+       immediately flip right back to showing the cardback again. "both"
+       keeps it locked at the 100% pose (front facing the viewer) once
+       the flip completes, the same way it holds the 0% pose beforehand. */
+    animation: flip3dRotate 0.3s ease-out both;
+  }
+  @keyframes flip3dRotate{
+    /* Rotating around the left edge (transform-origin above) swings the
+       card 180 degrees around that edge, which - on its own - would leave
+       it sitting a full card-width to the left of where it started (the
+       same way a hinged door ends up on the far side of its hinge). The
+       translateX(100%) at 100% cancels that drift out so the card still
+       lands exactly back in its own spot, having visibly pivoted from its
+       left edge along the way rather than spun around its center. */
+    0%   { transform: translateX(0) rotateY(0deg); }
+    100% { transform: translateX(100%) rotateY(180deg); }
+  }
+  .flip3d-face{
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip3d-face.flip3d-back{
+    /* identical look to .cardback */
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .flip3d-face.flip3d-front{
+    transform: rotateY(180deg);
+  }
+  .flip3d-face.flip3d-front .card{
+    width: 100%;
+    height: 100%;
+  }
+
+  @keyframes foundationLand{
+    0%   { transform: scale(1.9) rotate(-12deg); box-shadow: 0 0 0 6px #fff, 0 0 30px 12px rgba(255,215,0,.9); }
+    55%  { transform: scale(0.9) rotate(4deg); box-shadow: 0 0 0 3px #fff, 0 0 16px 6px rgba(255,215,0,.55); }
+    100% { transform: scale(1) rotate(0deg); box-shadow: 1px 2px 3px var(--shadow-medium); }
+  }
+  .foundation-anim{ animation: foundationLand 0.55s cubic-bezier(.34,1.56,.64,1); }
+
+  /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
+  .card{
+    width: 71.4px; height: 100.3px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px;
+    font-weight: 800;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    color: var(--ink);
+    user-select: none;
+  }
+  .card.red{ color: var(--red); }
+  .card .corner{ font-size: 0.935rem; line-height: 1; }
+  .card .center-suit{ font-size: 1.87rem; text-align: center; }
+  .cardback{
+    width: 71.4px; height: 100.3px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .card.clickable, .cardback.clickable, .flip3d.clickable{ cursor: pointer; }
+  .card.clickable:hover{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+  /* Same hover ring as .card.clickable:hover, applied to the front face
+     while a card is still sitting in its post-flip .flip3d wrapper (it
+     stays that way until the next render() rebuilds it as a plain card). */
+  .flip3d.clickable:hover .flip3d-front .card{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: .85rem;
+  }
+  .scores-table th, .scores-table td{
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .scores-table th{ background: #e8e2c8; }
+
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">Klondike</h1>
+    <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
+    <button id="restartBtn" title="Restart the current game.">Restart</button>
+    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
+    <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="autoplayBtn" title="Automatically move eligible cards to the foundation">Autoplay: ON</button>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
+    <button id="optionsBtn" title="Customize the game.">Options</button>
+    <button id="exitBtn" title="Quit the game.">Exit</button>
+
+    <div id="nameScoreBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="scoreLabel">Score</label>
+      <div id="scoreDisplay" title="The current score.">0</div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div class="board-row top-row">
+      <div class="pile empty-hint" id="stockPile" onclick="onStockClick()"></div>
+      <div class="pile empty-hint" id="wastePile"></div>
+      <div></div>
+      <div class="pile empty-hint" id="foundation-s" onclick="onFoundationClick('&spades;')"></div>
+      <div class="pile empty-hint" id="foundation-h" onclick="onFoundationClick('&hearts;')"></div>
+      <div class="pile empty-hint" id="foundation-c" onclick="onFoundationClick('&clubs;')"></div>
+      <div class="pile empty-hint" id="foundation-d" onclick="onFoundationClick('&diams;')"></div>
+    </div>
+    <div class="board-row tableau-row">
+      <div class="tableau-col" id="tableau-0"></div>
+      <div class="tableau-col" id="tableau-1"></div>
+      <div class="tableau-col" id="tableau-2"></div>
+      <div class="tableau-col" id="tableau-3"></div>
+      <div class="tableau-col" id="tableau-4"></div>
+      <div class="tableau-col" id="tableau-5"></div>
+      <div class="tableau-col" id="tableau-6"></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (SolKlondikeScores) so Klondike's leaderboard is separate
+  // from every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'SolKlondikeScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     KLONDIKE SOLITAIRE - game engine
+     Move interaction: one click. Clicking an eligible card sends it
+     straight to its correct destination - Foundation is tried first,
+     then the Tableau (scanning columns left to right for the first
+     legal spot). See handleTableauCardClick/handleWasteClick.
+     ============================================================ */
+
+  // The onclick="" attributes in the HTML use entities like &spades; (the
+  // browser decodes these to real characters before this script ever sees
+  // them), so the JS side only ever deals in the actual unicode glyphs below.
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RED_SUITS = ['♥','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
+  const SUIT_ID = { '♠':'s', '♥':'h', '♣':'c', '♦':'d' };
+
+  const PLAYER_NAME_KEY = 'solKlondikePlayerName_v1';
+  const RESUME_KEY = 'solKlondikeResumeState_v1';
+
+  function isRed(suit){ return RED_SUITS.includes(suit); }
+
+  function makeDeck(){
+    const deck = [];
+    SUIT_CHARS.forEach(suit => RANKS.forEach(rank => deck.push({ suit, rank })));
+    return deck;
+  }
+  function shuffle(deck){
+    const d = [...deck];
+    for(let i=d.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [d[i],d[j]] = [d[j],d[i]];
+    }
+    return d;
+  }
+
+  const state = {
+    tableau: [[],[],[],[],[],[],[]],
+    foundations: { '♠':[], '♥':[], '♣':[], '♦':[] },
+    stock: [],
+    waste: [],
+    drawCount: 3,
+    autoplay: true,
+    soundEnabled: true,
+    moves: 0,
+    startTime: 0,
+    dealOrder: null,
+    gameActive: true,
+    undoStack: []
+  };
+
+  // One-shot animation flags - which specific cards should play their
+  // "just changed" animation on the very next render() call. Kept
+  // separate from `state` on purpose: `state` gets JSON-serialized whole
+  // for Undo snapshots and the resume-state save, and a Set doesn't
+  // survive that round-trip cleanly.
+  const animFlags = {
+    flipCols: [],        // ordered list of tableau column indexes that just turned face up - order sets the 0.3s stagger
+    flipWasteCount: 0,    // number of cards just drawn from Stock to Waste this render (0 = none)
+    foundationSuits: new Set() // suits whose Foundation just received a new top card
+  };
+  // Normally 0 - how long (in seconds) render() should wait before starting
+  // the flip-reveal stagger. Set briefly during dealNewGame() so the 7
+  // starting cards don't start flipping over until AFTER the deal's
+  // fly-in-from-the-Stock animation has actually finished landing them.
+  let dealFlipBaseDelay = 0;
+
+  /* ---- Sound effects (Web Audio API - synthesized, no external audio
+     files, keeping this a single self-contained file like every other
+     Game Hub game). Respects the Options "Sound: On/Off" setting. ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    // The very first deal happens on page load, before any click - browsers
+    // create that AudioContext in a "suspended" state and won't make sound
+    // until a real user gesture resumes it. Calling resume() here, every
+    // time, means the first actual click (which always runs through this
+    // function) reliably unlocks sound from then on.
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'move':
+        tone(320, now, 0.09, 'triangle', 0.14);
+        break;
+      case 'foundation':
+        tone(659, now, 0.11, 'sine', 0.16);
+        tone(988, now + 0.08, 0.16, 'sine', 0.16);
+        break;
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'stuck':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+    }
+  }
+  /* A quick card flip doesn't ring like a musical tone (a pure oscillator
+     "tick" reads as an electronic chirp/blip, which is what Perry heard) -
+     physically it's a very brief burst of paper noise: a snap/flick as the
+     card leaves your fingers. This synthesizes that as a short, filtered
+     noise burst (an AudioBuffer of random values through a bandpass
+     filter) instead of an oscillator tone - no external audio file
+     needed, still fits the single-file convention. */
+  function playFlipSnap(ctx, startTime){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2); // fast decay - a snap, not a ring
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime); // papery high-mid snap, not a low thud
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+  // Schedules `count` flip-snaps 0.3s apart, matching the 0.3s-per-card
+  // visual stagger below - so watching several cards turn face up in a
+  // batch (the deal, or a multi-card Autoplay reveal) sounds like a real
+  // riffle instead of one instant chirp.
+  function scheduleFlipSounds(count, baseDelay){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime + (baseDelay || 0);
+    for(let i=0;i<count;i++){
+      playFlipSnap(ctx, now + i * 0.3);
+    }
+  }
+
+  // Shared by animateDealFlyIn() and dealNewGame()'s dealFlipBaseDelay
+  // calculation below, so the two stay in sync if either timing changes.
+  const DEAL_FLIGHT_MS = 260, DEAL_STAGGER_MS = 28;
+
+  /* ---- Deal animation: cards fly in from the Stock, then the 7 starting
+     cards flip face up in sequence ----
+     Same FLIP (First-Last-Invert-Play) technique as Pinochle's
+     animateDealIn(): render() has already built the exact final tableau
+     markup, so this never changes WHAT gets shown, only how it arrives -
+     each already-positioned card is offset back to the Stock pile with a
+     transform (layout doesn't move), then that offset is animated back to
+     zero, staggered card by card in the same order they were dealt. */
+  function animateDealFlyIn(){
+    const flat = [];
+    for(let col=0; col<7; col++){
+      const el = document.getElementById('tableau-' + col);
+      Array.from(el.children).forEach(wrap => flat.push(wrap));
+    }
+    if(flat.length === 0) return;
+
+    const stockRect = document.getElementById('stockPile').getBoundingClientRect();
+    const deckCenter = { x: stockRect.left + stockRect.width/2, y: stockRect.top + stockRect.height/2 };
+    const FLIGHT_MS = DEAL_FLIGHT_MS, STAGGER_MS = DEAL_STAGGER_MS;
+
+    // #table-wrap clips its own content (overflow isn't set to hidden
+    // explicitly, but its fixed size means a mid-flight card outside its
+    // own column's box could otherwise be clipped by an ancestor) - relax
+    // it for the duration of the animation only, then restore it exactly.
+    const tableWrap = document.getElementById('table-wrap');
+    const prevOverflow = tableWrap.style.overflow;
+    tableWrap.style.overflow = 'visible';
+
+    flat.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const dx = deckCenter.x - (r.left + r.width/2);
+      const dy = deckCenter.y - (r.top + r.height/2);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
+    });
+
+    flat.forEach((el, i) => {
+      setTimeout(() => {
+        void el.offsetWidth; // force the offset state above to commit before animating away from it
+        el.style.transition = `transform ${FLIGHT_MS}ms cubic-bezier(.22,.85,.4,1), opacity 180ms ease`;
+        requestAnimationFrame(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translate(0,0) scale(1)';
+        });
+      }, i * STAGGER_MS);
+    });
+
+    setTimeout(() => {
+      tableWrap.style.overflow = prevOverflow;
+      flat.forEach(el => {
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }, (flat.length - 1) * STAGGER_MS + FLIGHT_MS + 60);
+  }
+
+  function dealNewGame(freshShuffle){
+    if(freshShuffle || !state.dealOrder){
+      state.dealOrder = shuffle(makeDeck());
+    }
+    const order = state.dealOrder;
+    state.tableau = [[],[],[],[],[],[],[]];
+    state.foundations = { '♠':[], '♥':[], '♣':[], '♦':[] };
+    state.waste = [];
+    state.moves = 0;
+    state.startTime = Date.now();
+    state.gameActive = true;
+    state.undoStack = [];
+
+    let idx = 0;
+    for(let col=0; col<7; col++){
+      for(let n=0; n<=col; n++){
+        const card = { ...order[idx++] };
+        card.faceUp = (n === col); // only the last card dealt to a column starts face up
+        if(card.faceUp) animFlags.flipCols.push(col);
+        state.tableau[col].push(card);
+      }
+    }
+    state.stock = order.slice(idx).map(c => ({ ...c }));
+
+    closeModal();
+    if(state.autoplay) autoplaySweep();
+    // The 7 starting cards shouldn't start their flip-reveal until the
+    // fly-in-from-the-Stock animation below has actually finished landing
+    // all 28 tableau cards - otherwise they'd flip face up while still
+    // mid-flight, before a real dealer would have even set them down.
+    dealFlipBaseDelay = ((28 - 1) * DEAL_STAGGER_MS + DEAL_FLIGHT_MS) / 1000;
+    render(); // render() plays the staggered flip sounds/animation for whatever's in animFlags.flipCols
+    animateDealFlyIn();
+    dealFlipBaseDelay = 0; // only applies to this one deal render - back to normal for every other render() call
+    saveResumeState();
+  }
+
+  /* ---- Legality checks ---- */
+  function canMoveToFoundation(card){
+    const pile = state.foundations[card.suit];
+    if(pile.length === 0) return card.rank === 'A';
+    return RANK_VALUE[card.rank] === RANK_VALUE[pile[pile.length-1].rank] + 1;
+  }
+  function canMoveToTableau(card, colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length === 0) return card.rank === 'K';
+    const top = col[col.length-1];
+    if(!top.faceUp) return false;
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1 && isRed(top.suit) !== isRed(card.suit);
+  }
+  function firstLegalTableauTarget(card, skipCol){
+    for(let i=0;i<7;i++){
+      if(i === skipCol) continue;
+      if(canMoveToTableau(card, i)) return i;
+    }
+    return -1;
+  }
+
+  // Centralizes every "a card just landed on a Foundation" move so the
+  // landing animation and sound always fire together, from every call site.
+  function moveCardToFoundation(card){
+    state.foundations[card.suit].push(card);
+    state.moves++;
+    animFlags.foundationSuits.add(card.suit);
+    playSound('foundation');
+  }
+
+  /* ---- Snapshot / Undo (up to MAX_UNDO levels, oldest dropped once full) ---- */
+  const MAX_UNDO = 8;
+  function takeSnapshot(){
+    return JSON.parse(JSON.stringify({
+      tableau: state.tableau, foundations: state.foundations,
+      stock: state.stock, waste: state.waste, moves: state.moves
+    }));
+  }
+  // Called right before a move is applied, with the snapshot taken just
+  // before that move. Pushes onto the undo stack and trims the oldest
+  // entry off the front once there are more than MAX_UNDO.
+  function pushUndoSnapshot(snap){
+    state.undoStack.push(snap);
+    if(state.undoStack.length > MAX_UNDO) state.undoStack.shift();
+  }
+  function restoreSnapshot(snap){
+    state.tableau = snap.tableau;
+    state.foundations = snap.foundations;
+    state.stock = snap.stock;
+    state.waste = snap.waste;
+    state.moves = snap.moves;
+  }
+  function undoLastMove(){
+    if(state.undoStack.length === 0) return;
+    restoreSnapshot(state.undoStack.pop());
+    // Undoing the move that ended the game (a win or a stuck/no-moves state)
+    // should bring the game back to life, not leave it frozen.
+    state.gameActive = true;
+    render();
+    saveResumeState();
+  }
+
+  function flipExposedTop(colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length > 0 && !col[col.length-1].faceUp){
+      col[col.length-1].faceUp = true;
+      animFlags.flipCols.push(colIndex);
+    }
+  }
+
+  /* ---- Click handlers - one click, automatic destination ---- */
+  function handleTableauCardClick(colIndex, cardIndex){
+    if(!state.gameActive) return;
+    const col = state.tableau[colIndex];
+    const card = col[cardIndex];
+    if(!card.faceUp) return;
+    const isLastCard = (cardIndex === col.length - 1);
+    const run = col.slice(cardIndex);
+    const tentative = takeSnapshot();
+    let moved = false;
+
+    if(run.length === 1 && isLastCard && canMoveToFoundation(card)){
+      col.pop();
+      moveCardToFoundation(card);
+      moved = true;
+    }
+    if(!moved){
+      const target = firstLegalTableauTarget(run[0], colIndex);
+      if(target !== -1){
+        state.tableau[target].push(...run);
+        col.length = cardIndex;
+        state.moves++;
+        playSound('move');
+        moved = true;
+      }
+    }
+    if(moved){
+      pushUndoSnapshot(tentative);
+      flipExposedTop(colIndex);
+      afterMove();
+    }
+  }
+
+  function onWasteClick(){
+    if(!state.gameActive || state.waste.length === 0) return;
+    const card = state.waste[state.waste.length-1];
+    const tentative = takeSnapshot();
+    let moved = false;
+    if(canMoveToFoundation(card)){
+      state.waste.pop();
+      moveCardToFoundation(card);
+      moved = true;
+    } else {
+      const target = firstLegalTableauTarget(card, -1);
+      if(target !== -1){
+        state.tableau[target].push(state.waste.pop());
+        state.moves++;
+        playSound('move');
+        moved = true;
+      }
+    }
+    if(moved){
+      pushUndoSnapshot(tentative);
+      afterMove();
+    }
+  }
+
+  function onFoundationClick(suit){
+    // Note: the onclick="" attributes pass HTML entities like '&spades;', but
+    // the browser decodes entities in attribute text before this function
+    // ever sees it, so `suit` here already arrives as the real character.
+    if(!state.gameActive) return;
+    const pile = state.foundations[suit];
+    if(pile.length === 0) return;
+    if(state.autoplay){
+      flashMessage('Turn Autoplay off first to move a card back from a Foundation.');
+      return;
+    }
+    const card = pile[pile.length-1];
+    const tentative = takeSnapshot();
+    const target = firstLegalTableauTarget(card, -1);
+    if(target !== -1){
+      state.tableau[target].push(pile.pop());
+      state.moves++;
+      playSound('move');
+      pushUndoSnapshot(tentative);
+      afterMove();
+    }
+  }
+
+  function onStockClick(){
+    if(!state.gameActive) return;
+    const tentative = takeSnapshot();
+    if(state.stock.length === 0){
+      if(state.waste.length === 0) return;
+      state.stock = state.waste.slice().reverse();
+      state.waste = [];
+      playSound('move');
+    } else {
+      const n = Math.min(state.drawCount, state.stock.length);
+      for(let i=0;i<n;i++){
+        const card = state.stock.pop();
+        card.faceUp = true;
+        state.waste.push(card);
+      }
+      animFlags.flipWasteCount = n;
+    }
+    pushUndoSnapshot(tentative);
+    afterMove();
+  }
+
+  function afterMove(){
+    if(state.autoplay) autoplaySweep();
+    render();
+    checkGameEnd();
+    saveResumeState();
+  }
+
+  // Returns whether it actually moved anything, so a caller that isn't
+  // already inside another move's tentative/pushUndoSnapshot pair (see the
+  // Autoplay toggle handler below) can record its own moves for Undo.
+  function autoplaySweep(){
+    let madeAnyMove = false;
+    let changed = true;
+    while(changed){
+      changed = false;
+      if(state.waste.length){
+        const c = state.waste[state.waste.length-1];
+        if(canMoveToFoundation(c)){
+          state.waste.pop();
+          moveCardToFoundation(c);
+          changed = true;
+          madeAnyMove = true;
+          continue;
+        }
+      }
+      for(let i=0;i<7;i++){
+        const col = state.tableau[i];
+        if(col.length){
+          const c = col[col.length-1];
+          if(c.faceUp && canMoveToFoundation(c)){
+            col.pop();
+            moveCardToFoundation(c);
+            flipExposedTop(i);
+            changed = true;
+            madeAnyMove = true;
+            break;
+          }
+        }
+      }
+    }
+    return madeAnyMove;
+  }
+
+  function foundationCount(){
+    return Object.values(state.foundations).reduce((sum,pile)=> sum + pile.length, 0);
+  }
+  function currentScore(){
+    return -52 + 5 * foundationCount();
+  }
+
+  function anyLegalTableauOrFoundationMove(){
+    for(let i=0;i<7;i++){
+      const col = state.tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(!top.faceUp) continue;
+      if(canMoveToFoundation(top)) return true;
+      if(firstLegalTableauTarget(top, i) !== -1) return true;
+    }
+    return false;
+  }
+
+  function checkGameEnd(){
+    if(!state.gameActive) return;
+    if(foundationCount() === 52){
+      state.gameActive = false;
+      playSound('win');
+      showEndModal(true);
+      return;
+    }
+    if(state.stock.length === 0 && state.waste.length === 0 && !anyLegalTableauOrFoundationMove()){
+      state.gameActive = false;
+      playSound('stuck');
+      showEndModal(false);
+    }
+  }
+
+  function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  function showEndModal(won){
+    const score = currentScore();
+    const time = elapsedSeconds();
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, score, moves: state.moves, time,
+        date: new Date().toLocaleDateString()
+      });
+    }
+    const title = won ? 'You Win!' : 'No Moves Remain';
+    const body = `
+      <p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+      <p>${won ? 'All 52 cards are on the Foundations.' : 'There are no more legal moves available.'}</p>
+    `;
+    showModal(title, body, `<button onclick="closeModal()">OK</button>`, true);
+    render();
+  }
+
+  function flashMessage(msg){
+    showModal('One Moment', `<p>${msg}</p>`, `<button onclick="closeModal()">OK</button>`, true);
+  }
+
+  /* ---- Rendering ---- */
+  function cardHtml(card){
+    const red = isRed(card.suit) ? 'red' : '';
+    return `<div class="card ${red} clickable">
+      <div class="corner">${card.rank}${card.suit}</div>
+      <div class="center-suit">${card.suit}</div>
+      <div class="corner" style="align-self:flex-end;">${card.rank}${card.suit}</div>
+    </div>`;
+  }
+  // A card that's actively turning face up this render - a two-sided
+  // flip3d wrapper (see the CSS) showing the cardback first, then the
+  // real card, instead of the plain, non-animating cardHtml() above.
+  function flipperHtml(card, delaySeconds){
+    const style = delaySeconds > 0 ? ` style="animation-delay:${delaySeconds.toFixed(2)}s"` : '';
+    return `<div class="flip3d clickable"${style}>
+      <div class="flip3d-face flip3d-back"></div>
+      <div class="flip3d-face flip3d-front">${cardHtml(card)}</div>
+    </div>`;
+  }
+
+  // Plays a single flip-snap tick right now, independent of the batch
+  // scheduleFlipSounds() used for the tableau - the waste pile's reveal
+  // sequence below drives its own sound one tick at a time so each tick
+  // fires in the same instant as its card's flip, not on a separate clock.
+  function playWasteTick(){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    playFlipSnap(ctx, ctx.currentTime);
+  }
+
+  // Reveals a batch of newly-drawn waste cards one at a time, stacked
+  // straight in the same spot (no fan/offset): flip the first, play its
+  // tick, wait 0.3s, flip the next, play its tick, and so on until the
+  // last (top, playable) card is showing and stays there. Cards are given
+  // in draw order (earliest-drawn first, top card last). wasteRevealToken
+  // guards against an in-progress sequence's later timers still firing
+  // after a new draw (or Undo/New Game) has already moved on.
+  let wasteRevealToken = 0;
+  function playWasteRevealSequence(cards){
+    const token = ++wasteRevealToken;
+    const wasteEl = document.getElementById('wastePile');
+    function showCard(i){
+      if(wasteRevealToken !== token) return;
+      wasteEl.innerHTML = flipperHtml(cards[i], 0);
+      wasteEl.onclick = onWasteClick;
+      playWasteTick();
+      if(i < cards.length - 1){
+        setTimeout(()=>showCard(i+1), 300);
+      }
+    }
+    showCard(0);
+  }
+
+  function render(){
+    // Stock
+    const stockEl = document.getElementById('stockPile');
+    stockEl.innerHTML = state.stock.length ? '<div class="cardback clickable"></div>' : (state.waste.length ? '&#8635;' : '');
+
+    // Waste: shows only the single top/playable card, stacked straight (no
+    // horizontal fan/offset). If more than one card was just drawn, they
+    // aren't all shown at once - each is revealed in its own turn, in the
+    // order it was drawn: flip, play its tick, wait 0.3s, flip the next,
+    // until the final (top) card is showing and stays there.
+    const wasteEl = document.getElementById('wastePile');
+    if(state.waste.length){
+      const topCard = state.waste[state.waste.length - 1];
+      const newlyDrawn = animFlags.flipWasteCount;
+      if(newlyDrawn > 0){
+        playWasteRevealSequence(state.waste.slice(-newlyDrawn));
+      } else {
+        wasteRevealToken++; // invalidate any still-pending reveal-sequence timer from an earlier draw
+        wasteEl.innerHTML = cardHtml(topCard);
+        wasteEl.onclick = onWasteClick;
+      }
+    } else {
+      wasteRevealToken++; // invalidate any still-pending reveal-sequence timer from an earlier draw
+      wasteEl.innerHTML = '';
+      wasteEl.onclick = null;
+    }
+
+    // Foundations
+    ['♠','♥','♣','♦'].forEach(suit=>{
+      const el = document.getElementById('foundation-' + SUIT_ID[suit]);
+      const pile = state.foundations[suit];
+      if(pile.length){
+        const fCard = pile[pile.length-1];
+        const red = isRed(fCard.suit) ? 'red' : '';
+        const anim = animFlags.foundationSuits.has(suit) ? ' foundation-anim' : '';
+        el.innerHTML = `<div class="card ${red} clickable${anim}">
+          <div class="corner">${fCard.rank}${fCard.suit}</div>
+          <div class="center-suit">${fCard.suit}</div>
+          <div class="corner" style="align-self:flex-end;">${fCard.rank}${fCard.suit}</div>
+        </div>`;
+      } else {
+        el.innerHTML = 'A';
+      }
+    });
+    animFlags.foundationSuits.clear();
+
+    // Tableau
+    for(let i=0;i<7;i++){
+      const el = document.getElementById('tableau-' + i);
+      const col = state.tableau[i];
+      if(col.length === 0){
+        el.innerHTML = '<div class="empty-slot"></div>';
+        continue;
+      }
+      el.innerHTML = col.map((card, idx)=>{
+        if(!card.faceUp) return '<div class="cardWrap"><div class="cardback"></div></div>';
+        const isTop = (idx === col.length - 1);
+        // animFlags.flipCols is in the order columns were revealed - that
+        // position (0, 1, 2...) is also each card's 0.3s stagger slot, so
+        // several cards revealed in the same batch (e.g. the initial deal)
+        // visibly turn over one at a time instead of all at once.
+        // dealFlipBaseDelay adds an extra head start only during the
+        // initial deal, so the flip-reveal waits for the fly-in animation
+        // to actually land all the cards first.
+        const staggerIndex = isTop ? animFlags.flipCols.indexOf(i) : -1;
+        if(staggerIndex !== -1){
+          return `<div class="cardWrap">${flipperHtml(card, dealFlipBaseDelay + staggerIndex*0.3)}</div>`;
+        }
+        return `<div class="cardWrap">${cardHtml(card)}</div>`;
+      }).join('');
+      // wire click handlers (only meaningful on face-up cards, harmless no-op on face-down)
+      Array.from(el.children).forEach((wrap, idx)=>{
+        wrap.onclick = ()=> handleTableauCardClick(i, idx);
+      });
+    }
+
+    // Staggered "cards turning over" sound for the tableau (the deal, or
+    // an Autoplay reveal chain) - a waste draw's ticks are scheduled
+    // separately, one per card as it's actually revealed, by
+    // playWasteRevealSequence() above. flipCols is deduplicated with a
+    // Set before counting: during the initial deal, if Autoplay
+    // auto-collects one of the 7 starting cards to a foundation and
+    // flipExposedTop() reveals the card underneath it in that same
+    // column, that column gets pushed into flipCols twice even though
+    // only 7 columns (and 7 visible flips) exist - counting raw array
+    // length was inflating the tick count past 7 whenever that
+    // chain-reaction happened.
+    scheduleFlipSounds(new Set(animFlags.flipCols).size, dealFlipBaseDelay);
+    animFlags.flipCols = [];
+    animFlags.flipWasteCount = 0;
+
+    document.getElementById('scoreDisplay').textContent = currentScore();
+    document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+    document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
+  }
+
+  /* ---- Options (draw 1 vs draw 3) ---- */
+  document.getElementById('optionsBtn').addEventListener('click', ()=>{
+    showModal('Options', `
+      <div class="options-grid">
+        <div class="options-question">How many cards do you want to turn over at a time?</div>
+        <label for="drawOneRadio">1 card</label>
+        <input type="radio" id="drawOneRadio" name="drawCount" ${state.drawCount===1?'checked':''}>
+        <label for="drawThreeRadio">3 cards</label>
+        <input type="radio" id="drawThreeRadio" name="drawCount" ${state.drawCount===3?'checked':''}>
+
+        <div class="options-question">Listen to the game sounds?</div>
+        <label for="soundOnRadio">On</label>
+        <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
+        <label for="soundOffRadio">Off</label>
+        <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+      </div>
+    `, `
+      <button onclick="saveOptions()">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, true);
+  });
+  function saveOptions(){
+    state.drawCount = document.getElementById('drawOneRadio').checked ? 1 : 3;
+    state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    closeModal();
+    saveResumeState();
+  }
+
+  /* ---- Recorded Scores (Firebase-backed) ---- */
+  const MAX_RECORDED_SCORES = 12;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  function formatScoreRow(entry, rank){
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let body;
+    if(sharedScores === null){
+      body = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b)=>
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
+      ).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        body = `<p>No scores recorded yet. Play a game to add one!</p>`;
+      } else {
+        body = `<table class="scores-table">
+          <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
+          ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
+        </table>`;
+      }
+    }
+    showModal('Recorded Scores', body, `
+      <button onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System</button>
+      <button onclick="closeModal()">OK</button>
+    `, true);
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  /* ---- Autoplay toggle ---- */
+  document.getElementById('autoplayBtn').addEventListener('click', ()=>{
+    state.autoplay = !state.autoplay;
+    if(state.autoplay){
+      // Turning Autoplay back on can immediately send a card (an exposed
+      // Ace, say) straight to a Foundation on its own, with no separate
+      // click of the player's - that move needs its own Undo snapshot
+      // taken first, or it can never be undone (this was the bug: an
+      // Autoplay-collected card stuck on the Foundation even after
+      // Undo-ing the move that came after it).
+      const tentative = takeSnapshot();
+      if(autoplaySweep()) pushUndoSnapshot(tentative);
+      checkGameEnd();
+    }
+    render();
+    saveResumeState();
+  });
+
+  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    showModal('Restart This Game?', '<p>This replays the exact same deal from the very beginning. Your current progress will be lost.</p>', `
+      <button onclick="dealNewGame(false)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolMenu.html';
+  });
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolKlondikeInstruc.html';
+  });
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    showModal('Exit Klondike', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+
+  /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
+  const nameInput = document.getElementById('playerNameInput');
+  try {
+    const saved = localStorage.getItem(PLAYER_NAME_KEY);
+    if(saved) nameInput.value = saved;
+  } catch(e) {}
+  nameInput.addEventListener('change', ()=>{
+    const newName = nameInput.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    box.style.left = '50%';
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+  }
+  document.getElementById('universalModal').addEventListener('click', (e)=>{
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions/SolMenu and back ---- */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
+    } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      render();
+      return true;
+    } catch(e) {
+      console.error('tryRestoreResumeState error', e);
+      return false;
+    }
+  }
+
+  /* ---- Startup ---- */
+  if(!tryRestoreResumeState()){
+    dealNewGame(true);
+  } else {
+    render();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 10;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
