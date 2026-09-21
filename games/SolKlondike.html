@@ -1,6 +1,6 @@
 
-<!-- Revision 14 | Sunday, September 20, 2026 | The Options popup is now centered horizontally on the felt itself instead of the whole page (the button column to the felt's left was pulling the page's own center off to one side). -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1475 -->
+<!-- Revision 15 | Monday, September 21, 2026 | Every popup (not just Options) is now centered horizontally on the felt itself instead of the whole page. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1471 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1423,16 +1423,12 @@
     box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
     box.style.top = '50%';
     box.style.transform = 'translate(-50%, -50%)';
-    if(extraClass === 'optionsModal'){
-      // Centered horizontally on the felt itself, not the whole page - the
-      // button column sitting to the felt's left otherwise pulls the
-      // page's own horizontal center (and every other popup, which still
-      // uses it) off to the left of where the felt actually is.
-      const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
-      box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
-    } else {
-      box.style.left = '50%';
-    }
+    // Every popup is centered horizontally on the felt itself, not the
+    // whole page - the button column sitting to the felt's left otherwise
+    // pulls the page's own horizontal center off to the left of where the
+    // felt actually is.
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
   }
   function closeModal(){
     document.getElementById('universalModal').style.display = 'none';
@@ -1472,7 +1468,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 14;
+  const PAGE_REVISION = 15;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
