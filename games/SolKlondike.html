@@ -1,6 +1,6 @@
 
-<!-- Revision 20 | Monday, September 21, 2026 | "Select a Game" now clears the saved resume state before going to the Solitaire Menu, so coming back into Klondike from the menu always deals a fresh game - the Instructions round-trip still resumes your game in progress, unchanged. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1656 -->
+<!-- Revision 21 | Monday, September 21, 2026 | Tableau cards now stagger by a different amount depending on face-up vs. face-down: face-up cards show more of their rank/suit corner (14.95px sliver -> 17px), while face-down cards - which all look the same anyway - stack tighter (14.95px -> 10px) to make room. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1668 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -206,14 +206,26 @@
     border-radius: 6px;
   }
   .cardWrap{ position: relative; perspective: 700px; }
-  /* Visible sliver of a covered card cut in half from the previous
-     revision (29.9px -> 14.95px), tightening the stack per Perry's
-     request. A column of 12 overlapping face-up cards (100.3px tall
-     each) still comfortably fits within the felt's fixed 460px height
-     alongside the top row, gap, padding and border - see the
-     #table-wrap comment above - with headroom to spare now that each
-     card needs so much less vertical space. */
-  .tableau-col .cardWrap:not(:first-child){ margin-top: -85.35px; }
+  /* Face-up and face-down cards now stagger by different amounts, so a
+     face-up card's rank/suit corner shows more clearly while face-down
+     cards (which all look identical anyway - there's nothing to read)
+     stay tight to make room for that. The felt's height is fixed
+     (872x460 - see the #table-wrap comment above), so both numbers are
+     capped by what a single column can still hold onscreen: a column
+     can have at most 6 face-down cards (only the deepest initial deal
+     column, index 6, starts with that many) but its face-up portion can
+     legally grow into one continuous alternating-color run up to 13
+     cards long (a full King-to-Ace sequence, built by moving cards onto
+     it over the course of play) - the 17px face-up sliver below still
+     keeps a full 13-card face-up column safely inside the felt with
+     room to spare; the 10px face-down sliver leaves an already-rare
+     column of 6 face-down cards plus a long face-up run comfortably
+     clear too. (A column deep enough to combine both worst cases at
+     once - 6 buried face-down cards under a full 13-card run - is
+     possible but exceedingly unlikely in real play, and isn't
+     guaranteed to fit.) */
+  .tableau-col .cardWrap.faceDown:not(:first-child){ margin-top: -90.3px; }
+  .tableau-col .cardWrap.faceUp:not(:first-child){ margin-top: -83.3px; }
 
   /* ---- Dramatic reveal animations ----
      .flip3d: a GENUINE two-sided flip for a card turning face up - unlike
@@ -1383,7 +1395,7 @@
         continue;
       }
       el.innerHTML = col.map((card, idx)=>{
-        if(!card.faceUp) return '<div class="cardWrap"><div class="cardback"></div></div>';
+        if(!card.faceUp) return '<div class="cardWrap faceDown"><div class="cardback"></div></div>';
         const isTop = (idx === col.length - 1);
         // animFlags.flipCols is in the order columns were revealed - that
         // position (0, 1, 2...) is also each card's 0.3s stagger slot, so
@@ -1394,9 +1406,9 @@
         // to actually land all the cards first.
         const staggerIndex = isTop ? animFlags.flipCols.indexOf(i) : -1;
         if(staggerIndex !== -1){
-          return `<div class="cardWrap">${flipperHtml(card, dealFlipBaseDelay + staggerIndex*0.3)}</div>`;
+          return `<div class="cardWrap faceUp">${flipperHtml(card, dealFlipBaseDelay + staggerIndex*0.3)}</div>`;
         }
-        return `<div class="cardWrap">${cardHtml(card)}</div>`;
+        return `<div class="cardWrap faceUp">${cardHtml(card)}</div>`;
       }).join('');
       // wire click handlers (only meaningful on face-up cards, harmless no-op on face-down)
       Array.from(el.children).forEach((wrap, idx)=>{
@@ -1653,7 +1665,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 20;
+  const PAGE_REVISION = 21;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
