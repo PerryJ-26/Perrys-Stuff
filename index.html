@@ -1,5 +1,5 @@
 
-<!-- Revision 14 | Saturday, September 19, 2026 | Added an 11th card, "Solitaire Games", linking to the new SolMenu.html sub-menu page (this replaces having each individual solitaire game get its own card here). -->
+<!-- Revision 15 | Sunday, September 20, 2026 | Gave the "Solitaire Games" card a real thumbnail (the Klondike screenshot) instead of the placeholder text, now that a solitaire game is actually built. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 282 -->
 
 <!DOCTYPE html>
@@ -266,11 +266,11 @@
       </a>
 
       <!-- Leads to SolMenu.html, a separate sub-menu page listing the individual
-           solitaire games - those don't get their own card here. No screenshot
-           for this one (it isn't a single game), so it uses the placeholder
-           text style until a real thumbnail image is decided on. -->
+           solitaire games - those don't get their own card here. Uses the
+           Klondike screenshot as the representative thumbnail for the whole
+           solitaire sub-menu. -->
       <a class="game-row" href="SolMenu.html">
-        <div class="game-thumb"><span>Solitaire Games</span></div>
+        <div class="game-thumb"><img src="images/SolKlondike.jpg" alt="Solitaire Games screenshot"></div>
         <div class="game-title">Solitaire Games</div>
       </a>
 
@@ -279,7 +279,7 @@
 
 
 <script>
-  const PAGE_REVISION = 14;
+  const PAGE_REVISION = 15;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
