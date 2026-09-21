@@ -1,6 +1,6 @@
 
-<!-- Revision 19 | Monday, September 21, 2026 | "There Are No More Moves." popup now shows a Score/Moves/Time line and a plain-language description, matching the format of the other popups (was just a bare title and OK button). Also fixed the stuck-move detector counting a card shuffled back and forth between two equally-exposed tableau cards (e.g. a red 3 relocated from one black 4 to another) as a real move - it now only counts a Tableau-to-Tableau move if it actually accomplishes something: flips a new card face up, empties the column, or exposes a card that can go straight to a Foundation. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1648 -->
+<!-- Revision 20 | Monday, September 21, 2026 | "Select a Game" now clears the saved resume state before going to the Solitaire Menu, so coming back into Klondike from the menu always deals a fresh game - the Instructions round-trip still resumes your game in progress, unchanged. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1656 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1541,7 +1541,10 @@
   });
   document.getElementById('undoBtn').addEventListener('click', undoLastMove);
   document.getElementById('selectGameBtn').addEventListener('click', ()=>{
-    saveResumeState();
+    // Deliberately clears (rather than saves) the resume state - going out
+    // through the Solitaire Menu should always deal a fresh game on the
+    // way back in, unlike the Instructions round-trip below.
+    clearResumeState();
     window.location.href = '../SolMenu.html';
   });
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
@@ -1614,11 +1617,16 @@
     if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
   });
 
-  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions/SolMenu and back ---- */
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
+     back, but NOT a trip through the Solitaire Menu (see selectGameBtn
+     below), which should always deal a fresh game. ---- */
   function saveResumeState(){
     try {
       sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
     } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
   }
   function tryRestoreResumeState(){
     let raw;
@@ -1645,7 +1653,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 19;
+  const PAGE_REVISION = 20;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
