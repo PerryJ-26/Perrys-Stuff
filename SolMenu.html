@@ -1,6 +1,6 @@
 
-<!-- Revision 2 | Saturday, September 19, 2026 | Nav bar: removed About and Contact, added "Back to the Game" (uses the browser's own back navigation, so it returns to whatever solitaire game sent you here without closing/resetting it - that game only actually ends once you pick a different one from this menu). -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 231 -->
+<!-- Revision 3 | Sunday, September 20, 2026 | Activated the Klondike card - it's now a real link to games/SolKlondike.html with the actual screenshot thumbnail, instead of the disabled "Coming soon" placeholder. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 228 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -215,20 +215,17 @@
   <main>
     <div class="game-list">
 
-      <!-- Klondike doesn't have a game file yet, so this card is disabled
-           (no href, no hover highlight) with a "Coming soon" badge, the same
-           convention the Home page's CSS already sets up for an unfinished game. -->
-      <div class="game-row disabled">
-        <div class="game-thumb"><span>Klondike</span></div>
-        <div class="game-title">Klondike<span class="soon-badge">Coming soon</span></div>
-      </div>
+      <a class="game-row" href="games/SolKlondike.html">
+        <div class="game-thumb"><img src="images/SolKlondike.jpg" alt="Klondike game screenshot"></div>
+        <div class="game-title">Klondike</div>
+      </a>
 
     </div>
   </main>
 
 
 <script>
-  const PAGE_REVISION = 2;
+  const PAGE_REVISION = 3;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
