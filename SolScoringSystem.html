@@ -1,0 +1,226 @@
+
+<!-- Revision 1 | Sunday, September 20, 2026 | New page: the shared Solitaire Scoring System write-up, built from Perry's Solitaire Scoring System document. Opened from a button on each solitaire game's Recorded Scores popup. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 221 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solitaire Scoring System - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    body { background: #ffffff; }
+    .site-header-wrap { position: static; }
+    nav { display: none; }
+    header { display: none; }
+    main { max-width: 100%; margin: 0; padding: 0; }
+    .instructions-card { border: none; padding: 0; }
+    .instructions-card h2 { border-bottom: 1px solid #999999; }
+    .example-box { border-left: 3px solid #666666; background: #f5f5f5; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="SolMenu.html">Solitaire Games</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Solitaire Scoring System</h2>
+    <div class="instructions-card">
+
+      <p>This methodology applies to all Game Hub solitaire games.</p>
+
+      <h2>Calculating Scores</h2>
+      <p>The starting score equals: &minus;52 points for games with one deck; &minus;104 points for games with two decks.</p>
+      <p>5 points are awarded for each card properly built on the foundations.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If you play Klondike (1 deck = 52 cards), you start with a score of &minus;52; when you add a card to a foundation, the score is increased by 5 points (&minus;47, &minus;42, &minus;37, etc.).</p>
+      </div>
+
+      <p>The highest possible score is 208 points for one deck and 416 for two decks.</p>
+
+      <h2>Recorded Scores</h2>
+      <p>The Recorded Scores will be displayed in ranking order of the highest score, the least number of moves, and the lowest time. This combination will eliminate the chance of a tie score.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If there are two scores with 208 points and one score has 117 moves and the second has 127 moves, the first score will be above the second score on the scorecard. If they also have the same number of moves, the score with the lowest time will be above the other score.</p>
+      </div>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 1;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
