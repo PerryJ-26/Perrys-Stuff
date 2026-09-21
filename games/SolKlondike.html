@@ -1,6 +1,6 @@
 
-<!-- Revision 12 | Sunday, September 20, 2026 | Cards auto-collected to the Foundations (via Autoplay) now land one at a time instead of jumping there all at once in a batch. Widened the Options popup by about 1.5 inches since it felt crowded. Left-aligned the two Options questions ("How many cards..." / "Listen to...") with each other. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1451 -->
+<!-- Revision 14 | Sunday, September 20, 2026 | The Options popup is now centered horizontally on the felt itself instead of the whole page (the button column to the felt's left was pulling the page's own center off to one side). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1475 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -419,6 +419,18 @@
      560px max-width, since the two-column grid of questions/choices felt
      crowded at the standard width. */
   #universalModal .modalBox.optionsModal{ max-width: 704px; }
+
+  /* Recorded Scores modal only - allowed to grow up to (but not past) the
+     felt's own footprint (#table-wrap is a fixed 872x460 - see that rule),
+     instead of the shared modal's normal viewport-relative sizing, since
+     showing up to 30 rows needs more room than the standard 560px/85vh
+     popup. Sized a bit smaller than the felt itself so it visually sits
+     inside the green area with a little breathing room. */
+  #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
+  /* The scores list scrolls on its own within that fixed-height popup, so
+     the title and the Scoring System/OK buttons always stay visible - only
+     the table grows a scroll bar once its rows run past this height. */
+  .scores-scroll{ max-height: 280px; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -1274,7 +1286,7 @@
   }
 
   /* ---- Recorded Scores (Firebase-backed) ---- */
-  const MAX_RECORDED_SCORES = 12;
+  const MAX_RECORDED_SCORES = 30;
   let sharedScores = null;
   window.onSharedScoresUpdate = function(list){
     sharedScores = list;
@@ -1297,16 +1309,19 @@
       if(list.length === 0){
         body = `<p>No scores recorded yet. Play a game to add one!</p>`;
       } else {
-        body = `<table class="scores-table">
+        // The table itself scrolls (see .scores-scroll below) rather than
+        // the whole popup, so the title and buttons stay put and only the
+        // list of up to 30 rows grows a scroll bar once it runs out of room.
+        body = `<div class="scores-scroll"><table class="scores-table">
           <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
           ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
-        </table>`;
+        </table></div>`;
       }
     }
     showModal('Recorded Scores', body, `
       <button onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System</button>
       <button onclick="closeModal()">OK</button>
-    `, true);
+    `, true, 'scoresModal');
   }
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
 
@@ -1406,9 +1421,18 @@
     // the Options modal's extra width) never leaks into the next,
     // unrelated modal.
     box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
-    box.style.left = '50%';
     box.style.top = '50%';
     box.style.transform = 'translate(-50%, -50%)';
+    if(extraClass === 'optionsModal'){
+      // Centered horizontally on the felt itself, not the whole page - the
+      // button column sitting to the felt's left otherwise pulls the
+      // page's own horizontal center (and every other popup, which still
+      // uses it) off to the left of where the felt actually is.
+      const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+      box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+    } else {
+      box.style.left = '50%';
+    }
   }
   function closeModal(){
     document.getElementById('universalModal').style.display = 'none';
@@ -1448,7 +1472,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 12;
+  const PAGE_REVISION = 14;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
