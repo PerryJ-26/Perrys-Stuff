@@ -1,6 +1,6 @@
 
-<!-- Revision 3 | Sunday, September 20, 2026 | Activated the Klondike card - it's now a real link to games/SolKlondike.html with the actual screenshot thumbnail, instead of the disabled "Coming soon" placeholder. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 228 -->
+<!-- Revision 4 | Monday, September 21, 2026 | Removed the "Back to the Game" nav link - only "Home" remains, which now sits centered on its own. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 224 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -205,10 +205,6 @@
 
     <nav>
       <a href="index.html">Home</a>
-      <!-- Plain browser-back, not a link to a specific game file - this menu
-           can be reached from any solitaire game, and going back leaves that
-           game exactly as it was (nothing is closed or reset here). -->
-      <a href="javascript:void(0)" onclick="history.back()">Back to the Game</a>
     </nav>
   </div>
 
@@ -225,7 +221,7 @@
 
 
 <script>
-  const PAGE_REVISION = 3;
+  const PAGE_REVISION = 4;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
