@@ -1,6 +1,6 @@
 
-<!-- Revision 15 | Monday, September 21, 2026 | Every popup (not just Options) is now centered horizontally on the felt itself instead of the whole page. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1471 -->
+<!-- Revision 16 | Monday, September 21, 2026 | Running out of legal moves without winning now shows a plain "There Are No More Moves." popup instead of ending the game - the board stays active, and the score is recorded once the popup's OK button is clicked rather than the instant the no-moves state is detected. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1487 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1052,14 +1052,34 @@
     if(foundationCount() === 52){
       state.gameActive = false;
       playSound('win');
-      showEndModal(true);
+      showEndModal();
       return;
     }
     if(state.stock.length === 0 && state.waste.length === 0 && !anyLegalTableauOrFoundationMove()){
-      state.gameActive = false;
+      // Unlike a win, running out of moves doesn't end the game - gameActive
+      // stays true so Undo and the other controls keep working, and the
+      // score is only recorded once the player dismisses this popup (see
+      // dismissNoMovesModal), not the instant it's detected.
       playSound('stuck');
-      showEndModal(false);
+      showModal('There Are No More Moves.', '', `<button onclick="dismissNoMovesModal()">OK</button>`, true);
     }
+  }
+
+  // Shared by the win popup and the no-more-moves popup below, so a score
+  // gets recorded to the shared leaderboard the same way either time.
+  function recordScore(){
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, score: currentScore(), moves: state.moves, time: elapsedSeconds(),
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+
+  function dismissNoMovesModal(){
+    closeModal();
+    recordScore();
   }
 
   function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
@@ -1068,22 +1088,18 @@
     return m + ':' + String(s).padStart(2,'0');
   }
 
-  function showEndModal(won){
+  // The win case only now - running out of moves without winning has its
+  // own, simpler popup (see dismissNoMovesModal above) that doesn't end
+  // the game.
+  function showEndModal(){
     const score = currentScore();
     const time = elapsedSeconds();
-    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
-    if(window.pushSharedScore){
-      window.pushSharedScore({
-        name, score, moves: state.moves, time,
-        date: new Date().toLocaleDateString()
-      });
-    }
-    const title = won ? 'You Win!' : 'No Moves Remain';
+    recordScore();
     const body = `
       <p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
-      <p>${won ? 'All 52 cards are on the Foundations.' : 'There are no more legal moves available.'}</p>
+      <p>All 52 cards are on the Foundations.</p>
     `;
-    showModal(title, body, `<button onclick="closeModal()">OK</button>`, true);
+    showModal('You Win!', body, `<button onclick="closeModal()">OK</button>`, true);
     render();
   }
 
@@ -1468,7 +1484,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 15;
+  const PAGE_REVISION = 16;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
