@@ -1,6 +1,6 @@
 
-<!-- Revision 21 | Monday, September 21, 2026 | Tableau cards now stagger by a different amount depending on face-up vs. face-down: face-up cards show more of their rank/suit corner (14.95px sliver -> 17px), while face-down cards - which all look the same anyway - stack tighter (14.95px -> 10px) to make room. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1668 -->
+<!-- Revision 22 | Monday, September 21, 2026 | Fixed Klondike sometimes opening a game already in progress even when opened fresh from the Solitaire Menu - resuming now only happens when arriving via the Instructions page's own "Back to Klondike" link (tagged ?resume=1), instead of resuming any time a saved snapshot happened to still be sitting around from an earlier Instructions trip that came back some other way (e.g. through Home). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1680 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1631,7 +1631,13 @@
 
   /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
      back, but NOT a trip through the Solitaire Menu (see selectGameBtn
-     below), which should always deal a fresh game. ---- */
+     below), which should always deal a fresh game. Resuming only actually
+     happens when the page is opened via the Instructions page's own "Back
+     to Klondike" link, which tags the URL with ?resume=1 (see Startup
+     below) - just checking "is there saved data?" isn't enough on its
+     own, since leaving Instructions any OTHER way (Home, say) still left
+     a saved snapshot sitting here that a later, unrelated trip through
+     the Solitaire Menu would otherwise pick back up by mistake. ---- */
   function saveResumeState(){
     try {
       sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
@@ -1656,16 +1662,22 @@
     }
   }
 
-  /* ---- Startup ---- */
-  if(!tryRestoreResumeState()){
+  /* ---- Startup ----
+     Only resume if this load came from the Instructions page's tagged
+     "Back to Klondike" link (?resume=1) - any other way of opening this
+     page (the Solitaire Menu, a bookmark, a fresh tab, typing the
+     address) always deals a brand-new game, even if a stale snapshot is
+     still sitting in sessionStorage from an earlier Instructions trip
+     that never came back through that exact link. */
+  const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
+  if(!(arrivedViaInstructionsBack && tryRestoreResumeState())){
+    clearResumeState();
     dealNewGame(true);
-  } else {
-    render();
   }
 </script>
 
 <script>
-  const PAGE_REVISION = 21;
+  const PAGE_REVISION = 22;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
