@@ -1,6 +1,6 @@
 
-<!-- Revision 18 | Monday, September 21, 2026 | Recorded Scores popup: renamed "Scoring System" to "Scoring System Explanation" and moved it to the top of the popup, under the title; the OK button now sits alone at the bottom, centered. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1624 -->
+<!-- Revision 19 | Monday, September 21, 2026 | "There Are No More Moves." popup now shows a Score/Moves/Time line and a plain-language description, matching the format of the other popups (was just a bare title and OK button). Also fixed the stuck-move detector counting a card shuffled back and forth between two equally-exposed tableau cards (e.g. a red 3 relocated from one black 4 to another) as a real move - it now only counts a Tableau-to-Tableau move if it actually accomplishes something: flips a new card face up, empties the column, or exposes a card that can go straight to a Foundation. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1648 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1067,6 +1067,23 @@
   // Tableau - Autoplay blocks that move anyway while it's on (the
   // default), and it doesn't represent the board being out of forward
   // moves.
+  //
+  // A Tableau-to-Tableau move only counts as a real move if it actually
+  // accomplishes something - either it flips a new face-down card face up,
+  // or it empties the column outright (opening a spot for a King). A move
+  // that just relocates an already-exposed card onto an equally-exposed
+  // card elsewhere (e.g. a red 3 sitting on a black 4 could just as easily
+  // sit on a different black 4) changes nothing about what's playable, so
+  // it doesn't count - without this check, that kind of back-and-forth
+  // shuffle could mask a genuine dead end and the "There Are No More
+  // Moves." popup would never appear.
+  function tableauMoveIsProductive(col){
+    const remaining = col.length - 1;
+    if(remaining === 0) return true; // empties the column - opens a spot for a King
+    const newTop = col[remaining - 1];
+    if(!newTop.faceUp) return true; // flips a new card face up
+    return canMoveToFoundation(newTop); // exposes a card that can go straight to a Foundation
+  }
   function findAvailableMove(){
     for(let i=0;i<7;i++){
       const col = state.tableau[i];
@@ -1075,7 +1092,7 @@
       if(!top.faceUp) continue;
       if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
       const target = firstLegalTableauTarget(top, i);
-      if(target !== -1) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      if(target !== -1 && tableauMoveIsProductive(col)) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
     }
     if(state.waste.length){
       const top = state.waste[state.waste.length-1];
@@ -1138,7 +1155,14 @@
     // score is only recorded once the player dismisses this popup (see
     // dismissNoMovesModal), not the instant it's detected.
     playSound('stuck');
-    showModal('There Are No More Moves.', '', `<button onclick="dismissNoMovesModal()">OK</button>`, true);
+    // Body format matches the other popups (e.g. You Win!) - a stats line
+    // followed by a plain-language description - instead of the bare title
+    // and OK button this popup used to show on its own.
+    const body = `
+      <p>Score: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
+      <p>No legal moves remain. Click OK to record this score and continue playing.</p>
+    `;
+    showModal('There Are No More Moves.', body, `<button onclick="dismissNoMovesModal()">OK</button>`, true);
   }
 
   // Shared by the win popup and the no-more-moves popup below, so a score
@@ -1621,7 +1645,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 18;
+  const PAGE_REVISION = 19;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
