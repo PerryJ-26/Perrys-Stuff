@@ -1,6 +1,6 @@
 
-<!-- Revision 1 | Sunday, September 20, 2026 | New page: the shared Solitaire Scoring System write-up, built from Perry's Solitaire Scoring System document. Opened from a button on each solitaire game's Recorded Scores popup. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 221 -->
+<!-- Revision 2 | Monday, September 21, 2026 | Removed the "Solitaire Games" nav link. Changed "Home" to "OK", which now closes this tab and returns to the Recorded Scores popup still open on the game page behind it (this page is opened in its own tab from that popup). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 220 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -185,8 +185,7 @@
     </header>
 
     <nav>
-      <a href="index.html">Home</a>
-      <a href="SolMenu.html">Solitaire Games</a>
+      <button onclick="window.close()">OK</button>
       <button id="printBtn" onclick="window.print()">🖨 Print</button>
     </nav>
   </div>
@@ -218,7 +217,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 1;
+  const PAGE_REVISION = 2;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
