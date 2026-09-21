@@ -1,6 +1,6 @@
 
-<!-- Revision 22 | Monday, September 21, 2026 | Fixed Klondike sometimes opening a game already in progress even when opened fresh from the Solitaire Menu - resuming now only happens when arriving via the Instructions page's own "Back to Klondike" link (tagged ?resume=1), instead of resuming any time a saved snapshot happened to still be sitting around from an earlier Instructions trip that came back some other way (e.g. through Home). -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1680 -->
+<!-- Revision 23 | Monday, September 21, 2026 | Fixed the Recorded Scores popup's own outer scroll bar overlapping the OK button - adding the Scoring System Explanation button above the score list pushed the popup's total height past its fixed max-height, triggering a second, outer scroll bar. Shrunk the score list's own scroll area (280px -> 225px) so everything fits within the popup's existing height and only that inner list scrolls. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1684 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -455,9 +455,13 @@
      inside the green area with a little breathing room. */
   #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
   /* The scores list scrolls on its own within that fixed-height popup, so
-     the title and the Scoring System/OK buttons always stay visible - only
-     the table grows a scroll bar once its rows run past this height. */
-  .scores-scroll{ max-height: 280px; overflow-y: auto; }
+     the title and the Scoring System Explanation/OK buttons always stay
+     visible - only the table grows a scroll bar once its rows run past
+     this height. Shrunk from 280px to 225px to leave room for the
+     Scoring System Explanation button now living above the list (added
+     since this was first sized) - without that shrink, the popup's own
+     outer scrollbar kicked in too, which overlapped the OK button. */
+  .scores-scroll{ max-height: 225px; overflow-y: auto; }
 </style>
 </head>
 <body>
@@ -1677,7 +1681,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 22;
+  const PAGE_REVISION = 23;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
