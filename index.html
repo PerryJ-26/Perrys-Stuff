@@ -1,6 +1,6 @@
 
-<!-- Revision 13 | Saturday, September 19, 2026 | Added a 10th game card (Pfeffer), next to Mancala in the third row of the 4-column grid. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 273 -->
+<!-- Revision 14 | Saturday, September 19, 2026 | Added an 11th card, "Solitaire Games", linking to the new SolMenu.html sub-menu page (this replaces having each individual solitaire game get its own card here). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 282 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -265,12 +265,21 @@
         <div class="game-title">Pfeffer</div>
       </a>
 
+      <!-- Leads to SolMenu.html, a separate sub-menu page listing the individual
+           solitaire games - those don't get their own card here. No screenshot
+           for this one (it isn't a single game), so it uses the placeholder
+           text style until a real thumbnail image is decided on. -->
+      <a class="game-row" href="SolMenu.html">
+        <div class="game-thumb"><span>Solitaire Games</span></div>
+        <div class="game-title">Solitaire Games</div>
+      </a>
+
     </div>
   </main>
 
 
 <script>
-  const PAGE_REVISION = 13;
+  const PAGE_REVISION = 14;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
