@@ -1,5 +1,5 @@
 
-<!-- Revision 3 | Sunday, September 20, 2026 | Updated the layout diagram's filename reference to match the renamed SolKlondikeLayout.jpg (part of grouping all Solitaire-related files under a "Sol" prefix). -->
+<!-- Revision 4 | Monday, September 21, 2026 | Fixed the layout diagram not showing: SolKlondikeLayout.jpg lives in the images folder on GitHub, but the src was still pointing at the flat filename with no images/ prefix. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 313 -->
 
 <!DOCTYPE html>
@@ -282,7 +282,7 @@
       <p>Turn the top card on each column face up, so that there are seven face-up cards.</p>
       <p>Set the remaining 24 cards face down to form the Stock pile. Next to it, the Waste pile will hold cards face up turned from the Stock during play.</p>
 
-      <img class="layout-image" src="SolKlondikeLayout.jpg" alt="Klondike board layout: Stock and Waste Pile at top left, four Foundations at top right, seven Tableau Columns across the bottom">
+      <img class="layout-image" src="images/SolKlondikeLayout.jpg" alt="Klondike board layout: Stock and Waste Pile at top left, four Foundations at top right, seven Tableau Columns across the bottom">
 
       <h2>Foundations</h2>
       <p>As each ace becomes available, move it to one of the four Foundation piles above the Tableau. Build each Foundation with cards of the same suit in ascending order: Ace, 2 through 10, Jack, Queen, and King.</p>
@@ -310,7 +310,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 3;
+  const PAGE_REVISION = 4;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
