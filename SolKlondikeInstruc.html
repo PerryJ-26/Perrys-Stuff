@@ -1,0 +1,318 @@
+
+<!-- Revision 3 | Sunday, September 20, 2026 | Updated the layout diagram's filename reference to match the renamed SolKlondikeLayout.jpg (part of grouping all Solitaire-related files under a "Sol" prefix). -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 313 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Klondike Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Klondike layout diagram - centered, scales down on narrow screens,
+     never grows past its own natural size */
+  .layout-image {
+    display: block;
+    max-width: 100%;
+    width: 423px;
+    height: auto;
+    margin: 0 auto 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="games/SolKlondike.html">Back to Klondike</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Klondike Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>Klondike Solitaire is the classic single-player card game most people think of when they hear &ldquo;solitaire.&rdquo; It originated during the California Klondike Gold Rush era in the 1890s. In some regions, particularly in the United Kingdom, it&rsquo;s also known as &ldquo;Patience.&rdquo; Klondike is the most widely recognized version of solitaire worldwide.</p>
+
+      <h2>Overview</h2>
+      <p>The objective is to move all 52 cards to four Foundation piles, one for each suit, building each pile from Ace to King. To accomplish this, reveal and arrange cards in the Tableau and play available cards from the Stock and Waste. The game ends when all cards are on the Foundations or no legal moves remain.</p>
+
+      <h2>Players</h2>
+      <p>Klondike is a single-player game.</p>
+
+      <h2>Cards</h2>
+      <p>A standard 52-card deck. Cards can be moved by clicking on them or dragging and dropping them.</p>
+      <p>Autoplay is a feature that automatically moves eligible cards to the foundations. The Autoplay button toggles it On or Off. The default is On.</p>
+
+      <h2>Setup</h2>
+      <p>Deal 28 cards into seven Tableau columns from left to right. Place one card in the first column, two in the second, three in the third, and continue until the seventh column contains seven cards.</p>
+      <p>Turn the top card on each column face up, so that there are seven face-up cards.</p>
+      <p>Set the remaining 24 cards face down to form the Stock pile. Next to it, the Waste pile will hold cards face up turned from the Stock during play.</p>
+
+      <img class="layout-image" src="SolKlondikeLayout.jpg" alt="Klondike board layout: Stock and Waste Pile at top left, four Foundations at top right, seven Tableau Columns across the bottom">
+
+      <h2>Foundations</h2>
+      <p>As each ace becomes available, move it to one of the four Foundation piles above the Tableau. Build each Foundation with cards of the same suit in ascending order: Ace, 2 through 10, Jack, Queen, and King.</p>
+      <p>You may move a card from a Foundation back to the Tableau if the move follows the Tableau rule: descending rank and alternating color. You may also move eligible Tableau cards to the Foundations.</p>
+      <p class="note">Note: If Autoplay is on and you need to move one or more cards from a Foundation, turn Autoplay off first. Move the card or cards to the Tableau, make the intended Tableau play, and then turn Autoplay back on.</p>
+
+      <h2>The Tableau</h2>
+      <p>Build Tableau columns in descending rank while alternating card colors. You may move a single face-up card or a face-up sequence that already follows this pattern onto a card of the next higher rank and opposite color.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> The 10 of hearts may be played on the Jack of clubs or the Jack of spades. The 5 of clubs may be played on the 6 of hearts or the 6 of diamonds.</p>
+      </div>
+
+      <p>Whenever a Tableau column has no face-up cards but still contains face-down cards, turn the top face-down card face up. That card is then available to move or to receive another legal Tableau card.</p>
+      <p>When a Tableau column is empty, only a visible king may fill the space. You may move the king by itself or with any correctly ordered face-up sequence beneath it. A king may come from another Tableau column or from the top of the Waste pile.</p>
+
+      <h2>Gameplay</h2>
+      <p>Turn cards from the Stock three at a time onto the face-up Waste pile. Only the top card of the Waste is available to play on a Foundation or the Tableau. After you play that card, the next uncovered Waste card becomes available.</p>
+      <p>When the Stock is empty, turn the Waste pile face down and return it to the Stock position without shuffling. Continue turning three cards at a time. You may recycle the Waste and go through the Stock multiple times.</p>
+
+      <h2>Game Over</h2>
+      <p>The game ends in one of two ways: you win when all 52 cards reach the four Foundation piles, or play stops when no legal moves remain.</p>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 3;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
