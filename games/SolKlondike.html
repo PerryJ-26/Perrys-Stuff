@@ -1,6 +1,6 @@
 
-<!-- Revision 16 | Monday, September 21, 2026 | Running out of legal moves without winning now shows a plain "There Are No More Moves." popup instead of ending the game - the board stays active, and the score is recorded once the popup's OK button is clicked rather than the instant the no-moves state is detected. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1487 -->
+<!-- Revision 17 | Monday, September 21, 2026 | Fixed the "no more moves" detector missing real dead ends whenever Stock or Waste still had cards left (it previously only ever checked once both were completely empty) - it now also accounts for the current Waste card and for further draws that could never expose a playable card. Also fixed the popup re-appearing repeatedly while stuck (it now shows once per dead end, and re-arms if the board becomes playable again). Added a Hint: after 6 seconds with no move, a gold dotted halo appears around the card that could be played and the card (or empty slot/Foundation) it could go to, using that same detection logic. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1616 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -318,6 +318,16 @@
     100% { transform: scale(1) rotate(0deg); box-shadow: 1px 2px 3px var(--shadow-medium); }
   }
   .foundation-anim{ animation: foundationLand 0.55s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Hint: the gold dotted halo shown after 6s of no move (see the Hint
+     section of the script) around the card that could be played and the
+     card/pile it could go to. outline (not border) so it never disturbs
+     layout or the overlapping-card stack spacing. */
+  .hint-highlight{
+    outline: 3px dotted gold;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
 
   /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
   .card{
@@ -765,6 +775,7 @@
     state.startTime = Date.now();
     state.gameActive = true;
     state.undoStack = [];
+    noMovesAlreadyShown = false;
 
     let idx = 0;
     for(let col=0; col<7; col++){
@@ -1035,17 +1046,72 @@
     return -52 + 5 * foundationCount();
   }
 
-  function anyLegalTableauOrFoundationMove(){
+  // Finds ANY currently-available move - a Tableau/Foundation move using a
+  // visible top-of-column card, one using the current top of Waste, or (if
+  // neither exists yet) one that a future draw would expose, simulated
+  // through further Stock/Waste draws with no Tableau change in between
+  // (since drawing alone can never change the Tableau). The simulation
+  // stops once it cycles all the way back to today's exact Stock/Waste
+  // arrangement, so it can never loop forever. Returns null only when
+  // truly nothing is available anywhere - previously this was only ever
+  // checked once Stock AND Waste were both completely empty, which missed
+  // real dead ends that still had drawable cards left (cards that could
+  // never help no matter how many times they're cycled through) - so the
+  // "There Are No More Moves." popup could fail to appear. Deliberately
+  // does not consider moving a card back off a Foundation onto the
+  // Tableau - Autoplay blocks that move anyway while it's on (the
+  // default), and it doesn't represent the board being out of forward
+  // moves.
+  function findAvailableMove(){
     for(let i=0;i<7;i++){
       const col = state.tableau[i];
       if(!col.length) continue;
       const top = col[col.length-1];
       if(!top.faceUp) continue;
-      if(canMoveToFoundation(top)) return true;
-      if(firstLegalTableauTarget(top, i) !== -1) return true;
+      if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
+      const target = firstLegalTableauTarget(top, i);
+      if(target !== -1) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
     }
-    return false;
+    if(state.waste.length){
+      const top = state.waste[state.waste.length-1];
+      if(canMoveToFoundation(top)) return { from:{type:'waste'}, to:{type:'foundation', suit:top.suit} };
+      const target = firstLegalTableauTarget(top, -1);
+      if(target !== -1) return { from:{type:'waste'}, to:{type:'tableau', col:target} };
+    }
+    if(state.stock.length + state.waste.length > 0){
+      let stock = state.stock.slice();
+      let waste = state.waste.slice();
+      const keyOf = (s,w) => s.map(c=>c.rank+c.suit).join(',') + '|' + w.map(c=>c.rank+c.suit).join(',');
+      const startKey = keyOf(stock, waste);
+      for(let guard=0; guard<104; guard++){
+        if(stock.length === 0){
+          if(waste.length === 0) break;
+          stock = waste.slice().reverse();
+          waste = [];
+        } else {
+          const n = Math.min(state.drawCount, stock.length);
+          for(let i=0;i<n;i++) waste.push(stock.pop());
+        }
+        const top = waste[waste.length-1];
+        if(top){
+          if(canMoveToFoundation(top)) return { from:{type:'waste'}, to:{type:'foundation', suit:top.suit} };
+          const target = firstLegalTableauTarget(top, -1);
+          if(target !== -1) return { from:{type:'waste'}, to:{type:'tableau', col:target} };
+        }
+        if(keyOf(stock, waste) === startKey) break;
+      }
+    }
+    return null;
   }
+
+  // Since the no-moves popup no longer ends the game (see checkGameEnd
+  // below), checkGameEnd() can get called again and again while the board
+  // stays stuck - every stock draw, every Autoplay toggle - and without
+  // this flag it would pop the same notice up again each time. It's set
+  // once the popup is shown and only clears once the board is genuinely
+  // no longer stuck (a move became available - after an Undo, say), so it
+  // can correctly fire again the next time the game actually becomes stuck.
+  let noMovesAlreadyShown = false;
 
   function checkGameEnd(){
     if(!state.gameActive) return;
@@ -1055,14 +1121,19 @@
       showEndModal();
       return;
     }
-    if(state.stock.length === 0 && state.waste.length === 0 && !anyLegalTableauOrFoundationMove()){
-      // Unlike a win, running out of moves doesn't end the game - gameActive
-      // stays true so Undo and the other controls keep working, and the
-      // score is only recorded once the player dismisses this popup (see
-      // dismissNoMovesModal), not the instant it's detected.
-      playSound('stuck');
-      showModal('There Are No More Moves.', '', `<button onclick="dismissNoMovesModal()">OK</button>`, true);
+    const stuck = (findAvailableMove() === null);
+    if(!stuck){
+      noMovesAlreadyShown = false;
+      return;
     }
+    if(noMovesAlreadyShown) return;
+    noMovesAlreadyShown = true;
+    // Unlike a win, running out of moves doesn't end the game - gameActive
+    // stays true so Undo and the other controls keep working, and the
+    // score is only recorded once the player dismisses this popup (see
+    // dismissNoMovesModal), not the instant it's detected.
+    playSound('stuck');
+    showModal('There Are No More Moves.', '', `<button onclick="dismissNoMovesModal()">OK</button>`, true);
   }
 
   // Shared by the win popup and the no-more-moves popup below, so a score
@@ -1105,6 +1176,63 @@
 
   function flashMessage(msg){
     showModal('One Moment', `<p>${msg}</p>`, `<button onclick="closeModal()">OK</button>`, true);
+  }
+
+  /* ---- Hint: after 6s of no move, show what the computer sees is
+     playable - a gold dotted halo around the source card and the card (or
+     empty slot/Foundation) it could go to, using the exact same
+     findAvailableMove() the "no more moves" popup relies on, so the two
+     always agree. render() restarts this timer and clears any halo
+     already showing every time it runs, and render() runs after every
+     real move (see the render() call sites), so the countdown is always
+     measured from the player's last action. ---- */
+  const HINT_IDLE_MS = 6000;
+  let hintTimer = null;
+  let hintShowing = false;
+
+  function clearHint(){
+    if(!hintShowing) return;
+    document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
+    hintShowing = false;
+  }
+
+  function resetHintTimer(){
+    clearHint();
+    clearTimeout(hintTimer);
+    if(!state.gameActive) return;
+    hintTimer = setTimeout(showHint, HINT_IDLE_MS);
+  }
+
+  // Translates one findAvailableMove() endpoint into the actual element to
+  // put the halo on - the top card's own wrapper for a Tableau column (or
+  // its empty-slot placeholder if the column is empty), the single visible
+  // card for Waste, or the Foundation pile itself (already sized and
+  // bordered like one card, whether it's holding one or still empty).
+  function hintElementFor(loc){
+    if(loc.type === 'tableau'){
+      const col = document.getElementById('tableau-' + loc.col);
+      return col ? col.lastElementChild : null;
+    }
+    if(loc.type === 'waste'){
+      const pile = document.getElementById('wastePile');
+      return pile ? pile.firstElementChild : null;
+    }
+    if(loc.type === 'foundation'){
+      return document.getElementById('foundation-' + SUIT_ID[loc.suit]);
+    }
+    return null;
+  }
+
+  function showHint(){
+    if(!state.gameActive) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return; // a popup is already up - don't hint underneath it
+    const move = findAvailableMove();
+    if(!move) return; // truly nothing left - the "no more moves" popup already covers this
+    const fromEl = hintElementFor(move.from);
+    const toEl = hintElementFor(move.to);
+    if(fromEl) fromEl.classList.add('hint-highlight');
+    if(toEl) toEl.classList.add('hint-highlight');
+    hintShowing = true;
   }
 
   /* ---- Rendering ---- */
@@ -1265,6 +1393,7 @@
     document.getElementById('scoreDisplay').textContent = currentScore();
     document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
     document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
+    resetHintTimer();
   }
 
   /* ---- Options (draw 1 vs draw 3) ---- */
@@ -1484,7 +1613,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 16;
+  const PAGE_REVISION = 17;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
