@@ -1,6 +1,6 @@
 
-<!-- Revision 10 | Sunday, September 20, 2026 | Options popup: "1 card"/"3 cards" and "On"/"Off" no longer wrap onto a second line, so they stay on the same row as their question. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1340 -->
+<!-- Revision 12 | Sunday, September 20, 2026 | Cards auto-collected to the Foundations (via Autoplay) now land one at a time instead of jumping there all at once in a batch. Widened the Options popup by about 1.5 inches since it felt crowded. Left-aligned the two Options questions ("How many cards..." / "Listen to...") with each other. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1451 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -54,9 +54,14 @@
     justify-content: center;
     align-items: center;
   }
+  /* align-items: center (not flex-start) so the felt and the button
+     column share the same center line - the button column is actually
+     taller than the felt, so top-aligning them left the felt itself
+     sitting above true center even though the two columns together, as
+     a block, were centered on the page correctly. */
   #gameLayout {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 24px;
     padding: 10px;
   }
@@ -252,6 +257,38 @@
     0%   { transform: translateX(0) rotateY(0deg); }
     100% { transform: translateX(100%) rotateY(180deg); }
   }
+  /* ---- Waste pile: a card swinging from the Stock pile over into the
+     Waste pile, hinged at the boundary between the two piles - not
+     turning over in place like the tableau's .flip3d above. Reuses the
+     same .flip3d-face/.flip3d-back/.flip3d-front two-sided-card faces
+     below, just inside a differently-animated wrapper.
+     This element's own natural DOM position (before any transform) is
+     already Waste's box, since it's rendered inside #wastePile. The
+     83.4px below is the horizontal distance from Waste's left edge back
+     to Stock's left edge - Stock's own width (71.4px) plus the grid gap
+     between the two piles (12px). If a future game's Stock and Waste
+     piles sit a different distance apart, that's the one number to
+     change here.
+     0%: shifted left by that 83.4px distance so the card visually rests
+     on Stock, showing its back. 100%: transform-origin is the element's
+     own RIGHT edge - i.e. the boundary with Stock - and translateX(-100%)
+     cancels the drift a pure 180deg turn around that edge would
+     otherwise leave behind (the same kind of compensation flip3dRotate
+     above needs, just mirrored since the hinge is on the right instead
+     of the left), landing the card back in its own box: Waste, front
+     face showing. */
+  .wasteFlip{
+    width: 71.4px; height: 100.3px;
+    position: absolute;
+    top: 0; left: 0;
+    transform-style: preserve-3d;
+    transform-origin: right center;
+    animation: wasteFlipSwing 0.3s ease-out both;
+  }
+  @keyframes wasteFlipSwing{
+    0%   { transform: translateX(-83.4px) rotateY(0deg); }
+    100% { transform: translateX(-100%) rotateY(180deg); }
+  }
   .flip3d-face{
     position: absolute;
     inset: 0;
@@ -309,14 +346,16 @@
     border: 1px solid var(--cardback-border);
     border-radius: 6px;
   }
-  .card.clickable, .cardback.clickable, .flip3d.clickable{ cursor: pointer; }
+  .card.clickable, .cardback.clickable, .flip3d.clickable, .wasteFlip.clickable{ cursor: pointer; }
   .card.clickable:hover{
     box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
   }
   /* Same hover ring as .card.clickable:hover, applied to the front face
-     while a card is still sitting in its post-flip .flip3d wrapper (it
-     stays that way until the next render() rebuilds it as a plain card). */
-  .flip3d.clickable:hover .flip3d-front .card{
+     while a card is still sitting in its post-flip .flip3d/.wasteFlip
+     wrapper (it stays that way until the next render() rebuilds it as a
+     plain card). */
+  .flip3d.clickable:hover .flip3d-front .card,
+  .wasteFlip.clickable:hover .flip3d-front .card{
     box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
   }
 
@@ -374,7 +413,12 @@
     margin-top: 10px;
   }
   .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
-  .options-grid .options-question{ font-weight: 600; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+
+  /* Options modal only - widened ~1.5in (144px) from the shared modal's
+     560px max-width, since the two-column grid of questions/choices felt
+     crowded at the standard width. */
+  #universalModal .modalBox.optionsModal{ max-width: 704px; }
 </style>
 </head>
 <body>
@@ -482,6 +526,7 @@
 
   const PLAYER_NAME_KEY = 'solKlondikePlayerName_v1';
   const RESUME_KEY = 'solKlondikeResumeState_v1';
+  const OPTIONS_KEY = 'solKlondikeOptions_v1';
 
   function isRed(suit){ return RED_SUITS.includes(suit); }
 
@@ -721,7 +766,10 @@
     state.stock = order.slice(idx).map(c => ({ ...c }));
 
     closeModal();
-    if(state.autoplay) autoplaySweep();
+    // Silent, instant pre-deal sweep only - nothing has been shown to the
+    // player yet, so an Ace already exposed at deal time (Autoplay on from
+    // a previous game) doesn't need the animated one-at-a-time treatment.
+    if(state.autoplay){ while(takeOneAutoplayCard()){} }
     // The 7 starting cards shouldn't start their flip-reveal until the
     // fly-in-from-the-Stock animation below has actually finished landing
     // all 28 tableau cards - otherwise they'd flip face up while still
@@ -905,46 +953,67 @@
   }
 
   function afterMove(){
-    if(state.autoplay) autoplaySweep();
-    render();
-    checkGameEnd();
-    saveResumeState();
+    render(); // shows the result of the player's own move right away
+    if(state.autoplay){
+      autoplaySweep(()=>{ checkGameEnd(); saveResumeState(); });
+    } else {
+      checkGameEnd();
+      saveResumeState();
+    }
   }
 
-  // Returns whether it actually moved anything, so a caller that isn't
-  // already inside another move's tentative/pushUndoSnapshot pair (see the
-  // Autoplay toggle handler below) can record its own moves for Undo.
-  function autoplaySweep(){
-    let madeAnyMove = false;
-    let changed = true;
-    while(changed){
-      changed = false;
-      if(state.waste.length){
-        const c = state.waste[state.waste.length-1];
-        if(canMoveToFoundation(c)){
-          state.waste.pop();
-          moveCardToFoundation(c);
-          changed = true;
-          madeAnyMove = true;
-          continue;
-        }
+  // Finds ONE Foundation-eligible card (waste top takes priority, then the
+  // lowest-numbered tableau column with an eligible top card), moves it,
+  // and returns true - or returns false if nothing is eligible. Shared by
+  // the animated Autoplay sweep below and the silent pre-deal sweep in
+  // dealNewGame() (which runs before the board is ever shown, so it
+  // doesn't need to be animated one card at a time).
+  function takeOneAutoplayCard(){
+    if(state.waste.length){
+      const c = state.waste[state.waste.length-1];
+      if(canMoveToFoundation(c)){
+        state.waste.pop();
+        moveCardToFoundation(c);
+        return true;
       }
-      for(let i=0;i<7;i++){
-        const col = state.tableau[i];
-        if(col.length){
-          const c = col[col.length-1];
-          if(c.faceUp && canMoveToFoundation(c)){
-            col.pop();
-            moveCardToFoundation(c);
-            flipExposedTop(i);
-            changed = true;
-            madeAnyMove = true;
-            break;
-          }
+    }
+    for(let i=0;i<7;i++){
+      const col = state.tableau[i];
+      if(col.length){
+        const c = col[col.length-1];
+        if(c.faceUp && canMoveToFoundation(c)){
+          col.pop();
+          moveCardToFoundation(c);
+          flipExposedTop(i);
+          return true;
         }
       }
     }
-    return madeAnyMove;
+    return false;
+  }
+
+  // Auto-collects every Foundation-eligible card it can find, one at a
+  // time: move a card, render it landing, wait, then look for the next -
+  // instead of sweeping the whole batch onto the Foundations in a single
+  // instant re-render. The 300ms pacing matches the waste-pile reveal's
+  // own per-card timing, so a multi-card Autoplay run reads the same way.
+  // onDone(madeAnyMove), if given, fires once nothing more is eligible -
+  // callers that need to know whether anything was actually swept (for
+  // Undo, or for timing checkGameEnd/saveResumeState) use that instead of
+  // a return value, since the sweep is no longer instant.
+  const AUTOPLAY_STEP_MS = 300;
+  function autoplaySweep(onDone){
+    let madeAnyMove = false;
+    function step(){
+      if(!takeOneAutoplayCard()){
+        if(typeof onDone === 'function') onDone(madeAnyMove);
+        return;
+      }
+      madeAnyMove = true;
+      render();
+      setTimeout(step, AUTOPLAY_STEP_MS);
+    }
+    step();
   }
 
   function foundationCount(){
@@ -1029,6 +1098,16 @@
       <div class="flip3d-face flip3d-front">${cardHtml(card)}</div>
     </div>`;
   }
+  // Same two-sided card faces as flipperHtml() above, in the differently-
+  // animated .wasteFlip wrapper (see its CSS) that swings the card from
+  // the Stock pile over into the Waste pile instead of turning it over
+  // in place.
+  function wasteFlipHtml(card){
+    return `<div class="wasteFlip clickable">
+      <div class="flip3d-face flip3d-back"></div>
+      <div class="flip3d-face flip3d-front">${cardHtml(card)}</div>
+    </div>`;
+  }
 
   // Plays a single flip-snap tick right now, independent of the batch
   // scheduleFlipSounds() used for the tableau - the waste pile's reveal
@@ -1054,7 +1133,7 @@
     const wasteEl = document.getElementById('wastePile');
     function showCard(i){
       if(wasteRevealToken !== token) return;
-      wasteEl.innerHTML = flipperHtml(cards[i], 0);
+      wasteEl.innerHTML = wasteFlipHtml(cards[i]);
       wasteEl.onclick = onWasteClick;
       playWasteTick();
       if(i < cards.length - 1){
@@ -1179,13 +1258,19 @@
     `, `
       <button onclick="saveOptions()">Save</button>
       <button onclick="closeModal()">Cancel</button>
-    `, true);
+    `, true, 'optionsModal');
   });
   function saveOptions(){
     state.drawCount = document.getElementById('drawOneRadio').checked ? 1 : 3;
     state.soundEnabled = document.getElementById('soundOnRadio').checked;
     closeModal();
     saveResumeState();
+    // Persisted to the browser's own permanent storage, the same way the
+    // player name is - so these settings are still there the next time
+    // the game is opened, not just for the rest of this browser session.
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ drawCount: state.drawCount, soundEnabled: state.soundEnabled }));
+    } catch(e) {}
   }
 
   /* ---- Recorded Scores (Firebase-backed) ---- */
@@ -1228,19 +1313,25 @@
   /* ---- Autoplay toggle ---- */
   document.getElementById('autoplayBtn').addEventListener('click', ()=>{
     state.autoplay = !state.autoplay;
+    render(); // reflects the button's own new On/Off state right away
     if(state.autoplay){
       // Turning Autoplay back on can immediately send a card (an exposed
       // Ace, say) straight to a Foundation on its own, with no separate
       // click of the player's - that move needs its own Undo snapshot
       // taken first, or it can never be undone (this was the bug: an
       // Autoplay-collected card stuck on the Foundation even after
-      // Undo-ing the move that came after it).
+      // Undo-ing the move that came after it). The snapshot is taken
+      // before the (now animated, one-card-at-a-time) sweep starts, but
+      // only pushed once the whole sweep finishes.
       const tentative = takeSnapshot();
-      if(autoplaySweep()) pushUndoSnapshot(tentative);
-      checkGameEnd();
+      autoplaySweep((madeAnyMove)=>{
+        if(madeAnyMove) pushUndoSnapshot(tentative);
+        checkGameEnd();
+        saveResumeState();
+      });
+    } else {
+      saveResumeState();
     }
-    render();
-    saveResumeState();
   });
 
   /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
@@ -1272,6 +1363,22 @@
     `, false);
   });
 
+  /* ---- Options (draw count / sound), persisted the same permanent way
+     the player name is below - loaded here, before Startup further down
+     decides whether to deal a new game or resume one, so a fresh browser
+     session still opens with the drawing/sound choice from last time
+     instead of resetting to Draw 3 / Sound On. If a game is being resumed
+     instead (see tryRestoreResumeState below), that resumed state's own
+     drawCount/soundEnabled - already whatever was last in effect this
+     session - simply overrides these once it loads. ---- */
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
+    if(savedOptions){
+      if(savedOptions.drawCount === 1 || savedOptions.drawCount === 3) state.drawCount = savedOptions.drawCount;
+      if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+    }
+  } catch(e) {}
+
   /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
   const nameInput = document.getElementById('playerNameInput');
   try {
@@ -1287,7 +1394,7 @@
   });
 
   /* ---- Generic universalModal system ---- */
-  function showModal(title, bodyHtml, btnHtml, dismissable){
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalBody').innerHTML = bodyHtml;
     document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
@@ -1295,6 +1402,10 @@
     modal.style.display = 'flex';
     modal.dataset.dismissable = dismissable ? '1' : '0';
     const box = modal.querySelector('.modalBox');
+    // Reset to the base class every time so a one-off sizing class (like
+    // the Options modal's extra width) never leaks into the next,
+    // unrelated modal.
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
     box.style.left = '50%';
     box.style.top = '50%';
     box.style.transform = 'translate(-50%, -50%)';
@@ -1337,7 +1448,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 10;
+  const PAGE_REVISION = 12;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
