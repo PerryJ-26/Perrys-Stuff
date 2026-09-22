@@ -1,6 +1,6 @@
 
-<!-- Revision 23 | Monday, September 21, 2026 | Fixed the Recorded Scores popup's own outer scroll bar overlapping the OK button - adding the Scoring System Explanation button above the score list pushed the popup's total height past its fixed max-height, triggering a second, outer scroll bar. Shrunk the score list's own scroll area (280px -> 225px) so everything fits within the popup's existing height and only that inner list scrolls. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1684 -->
+<!-- Revision 24 | Monday, September 21, 2026 | Options popup: renamed "Listen to the game sounds?" to "Select the default for Sounds" and added a matching "Select the default for Autoplay" question with its own On/Off radio buttons - changing it immediately flips the live Autoplay setting too (the same as Sounds/Draw Count already do) and is remembered for future games the same permanent way. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1704 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1451,11 +1451,17 @@
         <label for="drawThreeRadio">3 cards</label>
         <input type="radio" id="drawThreeRadio" name="drawCount" ${state.drawCount===3?'checked':''}>
 
-        <div class="options-question">Listen to the game sounds?</div>
+        <div class="options-question">Select the default for Sounds</div>
         <label for="soundOnRadio">On</label>
         <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
         <label for="soundOffRadio">Off</label>
         <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+
+        <div class="options-question">Select the default for Autoplay</div>
+        <label for="autoplayOnRadio">On</label>
+        <input type="radio" id="autoplayOnRadio" name="autoplaySetting" ${state.autoplay?'checked':''}>
+        <label for="autoplayOffRadio">Off</label>
+        <input type="radio" id="autoplayOffRadio" name="autoplaySetting" ${!state.autoplay?'checked':''}>
       </div>
     `, `
       <button onclick="saveOptions()">Save</button>
@@ -1465,13 +1471,25 @@
   function saveOptions(){
     state.drawCount = document.getElementById('drawOneRadio').checked ? 1 : 3;
     state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    const autoplayDefault = document.getElementById('autoplayOnRadio').checked;
     closeModal();
-    saveResumeState();
+    // If the chosen Autoplay default differs from the game's current
+    // Autoplay setting, flip it the same way clicking the Autoplay button
+    // does, instead of just changing the flag out from under the button -
+    // reusing that click keeps the Undo snapshot and the animated
+    // collection sweep (when turning it on) working correctly. That click
+    // already saves its own resume snapshot, so this only needs to below
+    // when Autoplay itself didn't change.
+    if(autoplayDefault !== state.autoplay){
+      document.getElementById('autoplayBtn').click();
+    } else {
+      saveResumeState();
+    }
     // Persisted to the browser's own permanent storage, the same way the
     // player name is - so these settings are still there the next time
     // the game is opened, not just for the rest of this browser session.
     try {
-      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ drawCount: state.drawCount, soundEnabled: state.soundEnabled }));
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ drawCount: state.drawCount, soundEnabled: state.soundEnabled, autoplayDefault }));
     } catch(e) {}
   }
 
@@ -1574,19 +1592,21 @@
     `, false);
   });
 
-  /* ---- Options (draw count / sound), persisted the same permanent way
-     the player name is below - loaded here, before Startup further down
-     decides whether to deal a new game or resume one, so a fresh browser
-     session still opens with the drawing/sound choice from last time
-     instead of resetting to Draw 3 / Sound On. If a game is being resumed
-     instead (see tryRestoreResumeState below), that resumed state's own
-     drawCount/soundEnabled - already whatever was last in effect this
+  /* ---- Options (draw count / sound / Autoplay default), persisted the
+     same permanent way the player name is below - loaded here, before
+     Startup further down decides whether to deal a new game or resume
+     one, so a fresh browser session still opens with the drawing/sound/
+     Autoplay choice from last time instead of resetting to Draw 3 /
+     Sound On / Autoplay On. If a game is being resumed instead (see
+     tryRestoreResumeState below), that resumed state's own drawCount/
+     soundEnabled/autoplay - already whatever was last in effect this
      session - simply overrides these once it loads. ---- */
   try {
     const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
     if(savedOptions){
       if(savedOptions.drawCount === 1 || savedOptions.drawCount === 3) state.drawCount = savedOptions.drawCount;
       if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+      if(typeof savedOptions.autoplayDefault === 'boolean') state.autoplay = savedOptions.autoplayDefault;
     }
   } catch(e) {}
 
@@ -1681,7 +1701,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 23;
+  const PAGE_REVISION = 24;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
