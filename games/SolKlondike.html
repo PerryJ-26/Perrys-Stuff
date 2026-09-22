@@ -1,6 +1,6 @@
 
-<!-- Revision 29 | Tuesday, September 22, 2026 | Fixed a rare bug where the game could quietly get confused about the board: if a drag was started on a card right as Autoplay was in the middle of sweeping other cards to the Foundations in the background, Autoplay could move a card out from under an in-progress drag, and dropping it could then leave that same card sitting in two places at once - which could throw off the Hint halos and the "There Are No More Moves." check without any visible error. A new drag is now simply not allowed to start while Autoplay is actively sweeping (it only takes a moment). Also closed a smaller, related gap: releasing a drag over the Stock pile could trigger an extra unintended draw right after - the Stock pile now ignores that follow-on click the same way the other piles already did. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2021 -->
+<!-- Revision 30 | Tuesday, September 22, 2026 | Fixed a case where the Hint halos and the "There Are No More Moves." popup could both stay silent on a board that truly had nothing left to do - a lone King sitting alone in one column, with only an empty column to "move" it to, was being counted as a real move even though it changes nothing (it just swaps which column is empty). That kind of pointless King shuffle no longer counts as an available move, while a King move that actually flips a face-down card, or lands on a column that wasn't already empty, still correctly does. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2032 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1386,9 +1386,20 @@
   // it doesn't count - without this check, that kind of back-and-forth
   // shuffle could mask a genuine dead end and the "There Are No More
   // Moves." popup would never appear.
-  function tableauMoveIsProductive(col, removeFromIndex){
+  //
+  // "Empties the column" only actually opens up anything NEW when the
+  // column it's emptying INTO wasn't already empty itself - a whole
+  // column's run (this always means a King leading it - it's the only
+  // card an empty column can ever accept) sliding from one empty-except-
+  // itself column onto another already-empty column doesn't change
+  // anything: before and after, one column holds that run and one column
+  // is empty, just swapped. That exact case - one lone King, one empty
+  // column, nothing else - is a real dead end, and without this check it
+  // could keep the Hint halos lit and the "no more moves" popup from ever
+  // appearing on a board that truly has nothing left to do.
+  function tableauMoveIsProductive(col, removeFromIndex, targetCol){
     const remaining = removeFromIndex;
-    if(remaining === 0) return true; // empties the column - opens a spot for a King
+    if(remaining === 0) return targetCol.length > 0; // only a real gain if the target wasn't already empty too
     const newTop = col[remaining - 1];
     if(!newTop.faceUp) return true; // flips a new card face up
     return canMoveToFoundation(newTop); // exposes a card that can go straight to a Foundation
@@ -1411,7 +1422,7 @@
       while(runStart > 0 && col[runStart-1].faceUp) runStart--;
       for(let k=runStart; k<col.length; k++){
         const target = firstLegalTableauTarget(col[k], i);
-        if(target !== -1 && tableauMoveIsProductive(col, k)) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+        if(target !== -1 && tableauMoveIsProductive(col, k, state.tableau[target])) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
       }
     }
     if(state.waste.length){
@@ -2018,7 +2029,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 29;
+  const PAGE_REVISION = 30;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
