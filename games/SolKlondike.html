@@ -1,6 +1,6 @@
 
-<!-- Revision 26 | Monday, September 21, 2026 | Fixed the missing "tick" sound when a card drawn from the Stock gets immediately played to a Foundation by Autoplay - Autoplay was sweeping the new card away in the same instant it was drawn, so its Foundation sound played on top of (or before) the draw's own flip-tick had a chance to be heard. Autoplay now waits for the drawn card(s) to finish their tick reveal first. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1742 -->
+<!-- Revision 28 | Tuesday, September 22, 2026 | Dragging the Waste pile's top card now reveals the card underneath it (the one that will become playable next) as soon as you start pulling it away, instead of just dimming the same card in place - matching how lifting a Tableau card reveals what's beneath it. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2006 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -33,6 +33,8 @@
     --shadow-soft: rgba(255,255,255,.55);
     --shadow-medium: rgba(0,0,0,.4);
     --shadow-strong: rgba(0,0,0,.6);
+
+    --drop-target-color: #57e389;
   }
 
   * { box-sizing: border-box; }
@@ -195,7 +197,7 @@
   /* Waste pile shows only the single top/playable card, stacked straight
      (no horizontal fan/offset) - perspective is still needed here so the
      two-sided flip below renders in 3D instead of flat. */
-  #wastePile{ perspective: 700px; }
+  #wastePile{ perspective: 700px; touch-action: none; }
   .tableau-col{
     position: relative;
     min-height: 100.3px;
@@ -205,7 +207,11 @@
     border: 2px dashed rgba(255,255,255,.35);
     border-radius: 6px;
   }
-  .cardWrap{ position: relative; perspective: 700px; }
+  /* touch-action:none keeps a touch-drag of a card from also scrolling the
+     page - see the Drag and drop section of the script, which reads move
+     events for both mouse and touch through the same Pointer Events code
+     path. */
+  .cardWrap{ position: relative; perspective: 700px; touch-action: none; }
   /* Face-up and face-down cards now stagger by different amounts, so a
      face-up card's rank/suit corner shows more clearly while face-down
      cards (which all look identical anyway - there's nothing to read)
@@ -337,6 +343,31 @@
      layout or the overlapping-card stack spacing. */
   .hint-highlight{
     outline: 3px dotted gold;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Drag and drop (see the script section of the same name) ----
+     .dragGhost: the floating card-or-stack that follows the cursor while
+     dragging - fixed positioning plus pointer-events:none keeps it from
+     ever being what a drop-target lookup or a click actually lands on.
+     .dragSourceHidden: dims the real card(s) in place while they're being
+     dragged, so it reads as "picked up" without a gap opening in the felt.
+     .dropTargetValid: the live highlight on whichever Tableau column or
+     Foundation pile the drag is currently over AND could legally drop on -
+     a solid outline (rather than .hint-highlight's dotted gold) keeps the
+     two visually distinct at a glance. */
+  .dragGhost{
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0.92;
+    filter: drop-shadow(2px 4px 6px var(--shadow-strong));
+  }
+  .dragSourceHidden{ opacity: 0.35; }
+  .dropTargetValid{
+    outline: 3px solid var(--drop-target-color);
     outline-offset: 3px;
     border-radius: 6px;
   }
@@ -897,6 +928,10 @@
 
   /* ---- Click handlers - one click, automatic destination ---- */
   function handleTableauCardClick(colIndex, cardIndex){
+    // A completed drag-and-drop (see the Drag and drop section below) still
+    // gets a click event right behind it once the mouse/finger lifts -
+    // this stops that same card from also being moved a second time here.
+    if(suppressNextClick){ suppressNextClick = false; return; }
     if(!state.gameActive) return;
     const col = state.tableau[colIndex];
     const card = col[cardIndex];
@@ -929,6 +964,7 @@
   }
 
   function onWasteClick(){
+    if(suppressNextClick){ suppressNextClick = false; return; }
     if(!state.gameActive || state.waste.length === 0) return;
     const card = state.waste[state.waste.length-1];
     const tentative = takeSnapshot();
@@ -953,6 +989,7 @@
   }
 
   function onFoundationClick(suit){
+    if(suppressNextClick){ suppressNextClick = false; return; }
     // Note: the onclick="" attributes pass HTML entities like '&spades;', but
     // the browser decodes entities in attribute text before this function
     // ever sees it, so `suit` here already arrives as the real character.
@@ -1025,6 +1062,226 @@
     } else {
       proceedAfterMove();
     }
+  }
+
+  /* ---- Drag and drop - an alternative to click-to-move, added alongside
+     it (clicking a card still moves it exactly as it always has). Built on
+     Pointer Events (one code path covers mouse, touch, and pen) instead of
+     the native HTML5 drag-and-drop API, since the dragged card(s) need to
+     be drawn as a real floating stack that follows the cursor and the
+     current drop target needs to be highlighted live - both awkward to
+     control with the native API's own drag image and events.
+     A pointerdown on a face-up card only ARMS a possible drag; it only
+     becomes a real drag once the pointer moves past DRAG_MOVE_THRESHOLD,
+     so an ordinary click still reaches handleTableauCardClick()/
+     onWasteClick() above completely untouched. Right after a real drag
+     ends, the browser still fires an ordinary click on whatever the
+     pointer lifted over - suppressNextClick (checked at the top of each
+     click handler above) is what stops that same card from being moved a
+     second time. ---- */
+  const ID_TO_SUIT = { s:'♠', h:'♥', c:'♣', d:'♦' };
+  const DRAG_MOVE_THRESHOLD = 5; // px of pointer movement before a press counts as a real drag
+  let dragState = null;
+  let suppressNextClick = false;
+
+  function startDragCandidate(e, source){
+    if(dragState) return; // a drag is already armed/in progress (e.g. a second touch) - ignore
+    if(!state.gameActive) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return; // left/primary button (or touch/pen) only
+    if(document.getElementById('universalModal').style.display === 'flex') return; // a popup is open - don't start a drag underneath it
+
+    let cards;
+    if(source.type === 'tableau'){
+      const col = state.tableau[source.col];
+      const card = col[source.index];
+      if(!card || !card.faceUp) return;
+      cards = col.slice(source.index); // this card plus everything stacked on top of it
+    } else {
+      if(!state.waste.length) return;
+      cards = [ state.waste[state.waste.length - 1] ];
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      source, cards,
+      startX: e.clientX, startY: e.clientY,
+      grabOffsetX: e.clientX - rect.left, grabOffsetY: e.clientY - rect.top,
+      moved: false,
+      ghostEl: null,
+      hoverEl: null,
+    };
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+    document.addEventListener('pointercancel', onDragPointerUp);
+  }
+
+  // Builds the floating stack that follows the cursor - giving it the same
+  // "tableau-col" class the real columns use lets it pick up the exact
+  // same ".cardWrap.faceUp:not(:first-child)" overlap rule for free, so a
+  // multi-card drag staggers identically to the real tableau instead of
+  // needing its own separate copy of that spacing.
+  function beginVisualDrag(){
+    const ghost = document.createElement('div');
+    ghost.className = 'tableau-col dragGhost';
+    ghost.innerHTML = dragState.cards.map(card =>
+      `<div class="cardWrap faceUp">${cardHtml(card)}</div>`
+    ).join('');
+    document.body.appendChild(ghost);
+    dragState.ghostEl = ghost;
+
+    // Dim the real card(s) being dragged in place - makes it clear they've
+    // been picked up without hiding the column/pile they came from.
+    if(dragState.source.type === 'tableau'){
+      const colEl = document.getElementById('tableau-' + dragState.source.col);
+      Array.from(colEl.children).slice(dragState.source.index).forEach(el => el.classList.add('dragSourceHidden'));
+    } else {
+      // The Waste pile only ever shows its single top card (see render()) -
+      // there's nothing else already visible underneath to dim. So instead,
+      // partially lifting that card off the pile now shows whatever card
+      // would actually become the new top once it's gone, the same way
+      // lifting a Tableau card off a stack reveals what's under it.
+      // restoreWasteDisplay() below puts the real top card (and its click/
+      // drag handlers) back once the drag ends, however it ends.
+      const wasteEl = document.getElementById('wastePile');
+      const under = state.waste[state.waste.length - 2];
+      wasteEl.innerHTML = under ? cardHtml(under) : '';
+      wasteEl.onclick = null;
+      wasteEl.onpointerdown = null;
+    }
+  }
+
+  // Puts the Waste pile's real top card (and its handlers) back on screen -
+  // beginVisualDrag() above swaps in a preview of the card underneath while
+  // dragging the actual top card away; this undoes that once the drag ends,
+  // whether the drop succeeded or not (a successful drop's own afterMove()
+  // -> render() immediately redraws everything for real anyway).
+  function restoreWasteDisplay(){
+    const wasteEl = document.getElementById('wastePile');
+    if(state.waste.length){
+      const topCard = state.waste[state.waste.length - 1];
+      wasteEl.innerHTML = cardHtml(topCard);
+      wasteEl.onclick = onWasteClick;
+      wasteEl.onpointerdown = (e)=> startDragCandidate(e, { type:'waste' });
+    } else {
+      wasteEl.innerHTML = '';
+      wasteEl.onclick = null;
+      wasteEl.onpointerdown = null;
+    }
+  }
+
+  function updateGhostPosition(x, y){
+    dragState.ghostEl.style.transform = `translate(${x - dragState.grabOffsetX}px, ${y - dragState.grabOffsetY}px)`;
+  }
+
+  // Identifies whatever Tableau column or Foundation pile is under (x,y) -
+  // the ghost is pointer-events:none (see its CSS) so it never gets in its
+  // own way here.
+  function findDropTargetAt(x, y){
+    const el = document.elementFromPoint(x, y);
+    if(!el) return null;
+    const col = el.closest('.tableau-col');
+    if(col) return { type:'tableau', col: parseInt(col.id.slice('tableau-'.length), 10), el: col };
+    const pile = el.closest('.pile');
+    if(pile && pile.id.startsWith('foundation-')) return { type:'foundation', suit: ID_TO_SUIT[pile.id.slice('foundation-'.length)], el: pile };
+    return null;
+  }
+
+  function isDropTargetValid(target){
+    const cards = dragState.cards;
+    if(target.type === 'tableau'){
+      if(dragState.source.type === 'tableau' && dragState.source.col === target.col) return false; // dropped back where it started
+      return canMoveToTableau(cards[0], target.col);
+    }
+    if(target.type === 'foundation'){
+      if(cards.length !== 1) return false; // a multi-card group can't go to a Foundation
+      return cards[0].suit === target.suit && canMoveToFoundation(cards[0]);
+    }
+    return false;
+  }
+
+  function updateHoverTarget(x, y){
+    const target = findDropTargetAt(x, y);
+    const validEl = (target && isDropTargetValid(target)) ? target.el : null;
+    if(dragState.hoverEl !== validEl){
+      if(dragState.hoverEl) dragState.hoverEl.classList.remove('dropTargetValid');
+      if(validEl) validEl.classList.add('dropTargetValid');
+      dragState.hoverEl = validEl;
+    }
+  }
+
+  function onDragPointerMove(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    if(!dragState.moved){
+      if(Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) < DRAG_MOVE_THRESHOLD) return;
+      dragState.moved = true;
+      beginVisualDrag();
+    }
+    updateGhostPosition(e.clientX, e.clientY);
+    updateHoverTarget(e.clientX, e.clientY);
+  }
+
+  function cleanupDragVisuals(){
+    if(dragState.ghostEl) dragState.ghostEl.remove();
+    document.querySelectorAll('.dragSourceHidden').forEach(el => el.classList.remove('dragSourceHidden'));
+    document.querySelectorAll('.dropTargetValid').forEach(el => el.classList.remove('dropTargetValid'));
+    if(dragState.source.type === 'waste') restoreWasteDisplay();
+  }
+
+  // Moves dragState.cards onto the SPECIFIC target the player dropped them
+  // on - unlike the click handlers above, which auto-pick the first legal
+  // spot, a drop always goes exactly where it was released.
+  function performDragMove(target){
+    const cards = dragState.cards;
+    const tentative = takeSnapshot();
+    if(dragState.source.type === 'tableau'){
+      const col = state.tableau[dragState.source.col];
+      if(target.type === 'tableau'){
+        state.tableau[target.col].push(...cards);
+        col.length = dragState.source.index;
+        state.moves++;
+        playSound('move');
+      } else {
+        col.pop();
+        moveCardToFoundation(cards[0]);
+      }
+      pushUndoSnapshot(tentative);
+      flipExposedTop(dragState.source.col);
+    } else {
+      if(target.type === 'tableau'){
+        state.tableau[target.col].push(state.waste.pop());
+        state.moves++;
+        playSound('move');
+      } else {
+        state.waste.pop();
+        moveCardToFoundation(cards[0]);
+      }
+      pushUndoSnapshot(tentative);
+    }
+    afterMove();
+  }
+
+  function onDragPointerUp(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.removeEventListener('pointercancel', onDragPointerUp);
+
+    const wasRealDrag = dragState.moved;
+    const target = wasRealDrag ? findDropTargetAt(e.clientX, e.clientY) : null;
+    const valid = target && isDropTargetValid(target);
+    if(wasRealDrag) cleanupDragVisuals();
+
+    if(wasRealDrag){
+      // A click event still fires right after this, on whatever the
+      // pointer lifted over - block it from also moving a card a second
+      // time (see the suppressNextClick check in each click handler above).
+      suppressNextClick = true;
+      setTimeout(()=>{ suppressNextClick = false; }, 0);
+    }
+
+    if(valid) performDragMove(target); // uses dragState, so this runs before it's cleared below
+    dragState = null;
   }
 
   // Finds ONE Foundation-eligible card (waste top takes priority, then the
@@ -1368,6 +1625,10 @@
       if(wasteRevealToken !== token) return;
       wasteEl.innerHTML = wasteFlipHtml(cards[i]);
       wasteEl.onclick = onWasteClick;
+      // Only the LAST card of the reveal is the one that actually rests on
+      // top and stays playable, so it's the only one wired for a drag too -
+      // the earlier cards in a multi-card draw are covered up 0.3s later.
+      wasteEl.onpointerdown = (i === cards.length - 1) ? (e)=> startDragCandidate(e, { type:'waste' }) : null;
       playWasteTick();
       if(i < cards.length - 1){
         setTimeout(()=>showCard(i+1), 300);
@@ -1401,11 +1662,13 @@
         wasteRevealToken++; // invalidate any still-pending reveal-sequence timer from an earlier draw
         wasteEl.innerHTML = cardHtml(topCard);
         wasteEl.onclick = onWasteClick;
+        wasteEl.onpointerdown = (e)=> startDragCandidate(e, { type:'waste' });
       }
     } else {
       wasteRevealToken++; // invalidate any still-pending reveal-sequence timer from an earlier draw
       wasteEl.innerHTML = '';
       wasteEl.onclick = null;
+      wasteEl.onpointerdown = null;
     }
 
     // Foundations
@@ -1451,9 +1714,10 @@
         }
         return `<div class="cardWrap faceUp">${cardHtml(card)}</div>`;
       }).join('');
-      // wire click handlers (only meaningful on face-up cards, harmless no-op on face-down)
+      // wire click and drag handlers (only meaningful on face-up cards, harmless no-op on face-down)
       Array.from(el.children).forEach((wrap, idx)=>{
         wrap.onclick = ()=> handleTableauCardClick(i, idx);
+        wrap.onpointerdown = (e)=> startDragCandidate(e, { type:'tableau', col:i, index:idx });
       });
     }
 
@@ -1739,7 +2003,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 26;
+  const PAGE_REVISION = 28;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
