@@ -1,5 +1,5 @@
 
-<!-- Revision 34 | Tuesday, September 22, 2026 | The troubleshooting log box now grows taller on its own as entries are added to it, the same way it did before it became a text box for Ctrl-A - up to a point, past which it holds still and shows a normal scroll bar instead of growing any further, so it can always hold all 200 entries without taking over the screen. No manual resizing needed. -->
+<!-- Revision 35 | Tuesday, September 22, 2026 | Reverted Revision 31 - a Tableau move that only frees up a card without flipping anything face-down or putting a card within reach of a Foundation no longer counts as "a move is available." That kind of shuffle is legal, but Perry's call is that it shouldn't be enough to keep the "There Are No More Moves." popup from appearing, since it could leave a board sitting there insisting a move existed for as long as the player kept drawing, when nothing was actually going anywhere. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 2029 -->
 
 <!DOCTYPE html>
@@ -1500,28 +1500,33 @@
   // moves.
   //
   // A Tableau-to-Tableau move only counts as a real move if it actually
-  // accomplishes something. Moving a card (or a run of cards) off a column
-  // always counts as real progress as long as something is left behind in
-  // that column - whatever card was sitting directly under the moved run
-  // becomes the column's new top card, and a moment ago it wasn't playable
-  // at all (something was covering it), so it's now available in a way it
-  // wasn't before. That's true whether the newly-exposed card can go
-  // straight to a Foundation or not - being freed up to move at all is
-  // itself the gain.
+  // accomplishes something concrete - either it flips a new face-down card
+  // face up, or it empties the column outright (opening a spot for a
+  // King), or it frees up a card that can go straight to a Foundation.
+  // Simply exposing a card that's now playable but doesn't do anything by
+  // itself - can't flip anything, can't reach a Foundation - does NOT
+  // count: Perry's call is that the game shouldn't keep insisting "a move
+  // is available" over a shuffle like that, even though it's technically
+  // legal, since it was leaving the "There Are No More Moves." popup
+  // silent through long stretches where nothing was actually going
+  // anywhere.
   //
-  // The one time moving cards truly changes nothing is when the ENTIRE
-  // column moves - a King (the only card an empty column can ever accept)
-  // leading a run off a column, landing on another column that was
-  // ALREADY empty. Before and after, one column holds that run and one
-  // column is empty, just swapped: nothing about what's playable is any
-  // different. That exact case - one lone King, one empty column, nothing
-  // else - is a real dead end, and without this check it could keep the
-  // Hint halos lit and the "no more moves" popup from ever appearing on a
-  // board that truly has nothing left to do.
+  // "Empties the column" only actually opens up anything NEW when the
+  // column it's emptying INTO wasn't already empty itself - a whole
+  // column's run (this always means a King leading it - it's the only
+  // card an empty column can ever accept) sliding from one empty-except-
+  // itself column onto another already-empty column doesn't change
+  // anything: before and after, one column holds that run and one column
+  // is empty, just swapped. That exact case - one lone King, one empty
+  // column, nothing else - is a real dead end, and without this check it
+  // could keep the Hint halos lit and the "no more moves" popup from ever
+  // appearing on a board that truly has nothing left to do.
   function tableauMoveIsProductive(col, removeFromIndex, targetCol){
     const remaining = removeFromIndex;
     if(remaining === 0) return targetCol.length > 0; // only a real gain if the target wasn't already empty too
-    return true; // something is always left behind, and its new column-top card is now playable that it wasn't a moment ago
+    const newTop = col[remaining - 1];
+    if(!newTop.faceUp) return true; // flips a new card face up
+    return canMoveToFoundation(newTop); // exposes a card that can go straight to a Foundation
   }
   function findAvailableMove(){
     for(let i=0;i<7;i++){
@@ -2171,7 +2176,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 34;
+  const PAGE_REVISION = 35;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
