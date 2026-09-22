@@ -1,6 +1,6 @@
 
-<!-- Revision 30 | Tuesday, September 22, 2026 | Fixed a case where the Hint halos and the "There Are No More Moves." popup could both stay silent on a board that truly had nothing left to do - a lone King sitting alone in one column, with only an empty column to "move" it to, was being counted as a real move even though it changes nothing (it just swaps which column is empty). That kind of pointless King shuffle no longer counts as an available move, while a King move that actually flips a face-down card, or lands on a column that wasn't already empty, still correctly does. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2032 -->
+<!-- Revision 32 | Tuesday, September 22, 2026 | Added a troubleshooting log for tracking down anything that happens quietly, with no popup or halo to point at. Double-click the invisible button in the very bottom-left corner of the screen to open a scrolling panel (same hidden-corner-button pattern as the game log in Acey-Deucey) listing every move made - by click, drag, or Autoplay - every Stock draw/recycle, and every "is the board stuck?" check and what it decided. Nothing about how the game plays or saves changed; this only adds a record to copy and send along with a bug report. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2029 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -372,6 +372,53 @@
     border-radius: 6px;
   }
 
+  /* ---- Troubleshooting log (see the script section of the same name) ----
+     Same invisible-corner-button pattern used for this in AceyDeucey:
+     #diagLogToggleBtn is a completely invisible 44x44 button tucked into
+     the very bottom-left corner of the screen, double-clicked to show/hide
+     the log panel. Colors match this page's own cream/board-border theme
+     instead of AceyDeucey's wood-and-gold one. */
+  #diagLogToggleBtn{
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 44px; height: 44px;
+    padding: 0; margin: 0; border: none;
+    background: transparent;
+    opacity: 0;
+    cursor: default;
+    z-index: 600;
+  }
+  #diagLogPanel{
+    display: none;
+    position: fixed;
+    bottom: 10px; left: 10px;
+    width: 320px;
+    max-height: 520px;
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    z-index: 550;
+    box-shadow: 0 4px 20px var(--shadow-strong);
+  }
+  #diagLogPanel.show{ display: flex; flex-direction: column; }
+  #diagLogPanelTitle{
+    font-weight: 800;
+    font-size: .9rem;
+    margin-bottom: 6px;
+    flex: 0 0 auto;
+  }
+  #diagLog{
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    line-height: 1.45;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  #diagLog div{ padding: 1px 0; border-bottom: 1px solid rgba(0,0,0,0.08); }
+
   /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
   .card{
     width: 71.4px; height: 100.3px;
@@ -550,6 +597,15 @@
     </div>
   </div>
 
+  <!-- Hidden double-click toggle for the troubleshooting log - invisible,
+       sits in the very bottom-left corner of the screen. Same pattern used
+       for the game log in AceyDeucey. -->
+  <button id="diagLogToggleBtn" aria-label="Toggle troubleshooting log"></button>
+  <div id="diagLogPanel">
+    <div id="diagLogPanelTitle">Troubleshooting Log</div>
+    <div id="diagLog"></div>
+  </div>
+
 <script type="module">
   // Firebase Realtime Database - same project as the rest of the Game Hub,
   // its own path (SolKlondikeScores) so Klondike's leaderboard is separate
@@ -603,6 +659,27 @@
   const OPTIONS_KEY = 'solKlondikeOptions_v1';
 
   function isRed(suit){ return RED_SUITS.includes(suit); }
+
+  // ---- Troubleshooting log - double-click the hidden button in the very
+  // bottom-left corner of the screen to open a scrolling panel listing the
+  // last DIAGNOSTIC_LOG_MAX events: every move made (by click, drag, or
+  // Autoplay), every Stock draw/recycle, and every "is the board stuck?"
+  // check and what it decided. Meant to be copied and sent along with a bug
+  // report for anything that happens quietly, with no popup or halo to
+  // point at - the panel only ever holds text, nothing here changes how
+  // the game plays or is saved.
+  const DIAGNOSTIC_LOG_MAX = 200;
+  function debugLog(msg){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    const t = new Date();
+    const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+    const div = document.createElement('div');
+    div.textContent = `[${stamp}] ${msg}`;
+    el.appendChild(div);
+    while(el.children.length > DIAGNOSTIC_LOG_MAX) el.removeChild(el.firstChild);
+    el.scrollTop = el.scrollHeight;
+  }
 
   function makeDeck(){
     const deck = [];
@@ -945,6 +1022,7 @@
       col.pop();
       moveCardToFoundation(card);
       moved = true;
+      debugLog(`Click: ${card.rank}${card.suit} tableau col${colIndex} -> Foundation`);
     }
     if(!moved){
       const target = firstLegalTableauTarget(run[0], colIndex);
@@ -954,6 +1032,7 @@
         state.moves++;
         playSound('move');
         moved = true;
+        debugLog(`Click: ${run.length}-card run (${run[0].rank}${run[0].suit} lead) tableau col${colIndex} -> tableau col${target}`);
       }
     }
     if(moved){
@@ -973,6 +1052,7 @@
       state.waste.pop();
       moveCardToFoundation(card);
       moved = true;
+      debugLog(`Click: ${card.rank}${card.suit} Waste -> Foundation`);
     } else {
       const target = firstLegalTableauTarget(card, -1);
       if(target !== -1){
@@ -980,6 +1060,7 @@
         state.moves++;
         playSound('move');
         moved = true;
+        debugLog(`Click: ${card.rank}${card.suit} Waste -> tableau col${target}`);
       }
     }
     if(moved){
@@ -1007,6 +1088,7 @@
       state.tableau[target].push(pile.pop());
       state.moves++;
       playSound('move');
+      debugLog(`Click: ${card.rank}${card.suit} Foundation -> tableau col${target}`);
       pushUndoSnapshot(tentative);
       afterMove();
     }
@@ -1021,6 +1103,7 @@
       state.stock = state.waste.slice().reverse();
       state.waste = [];
       playSound('move');
+      debugLog('Stock: recycled Waste back into Stock');
     } else {
       const n = Math.min(state.drawCount, state.stock.length);
       for(let i=0;i<n;i++){
@@ -1029,6 +1112,7 @@
         state.waste.push(card);
       }
       animFlags.flipWasteCount = n;
+      debugLog(`Stock: drew ${n} card(s), Waste top now ${state.waste[state.waste.length-1].rank}${state.waste[state.waste.length-1].suit}`);
     }
     pushUndoSnapshot(tentative);
     afterMove();
@@ -1250,9 +1334,11 @@
         col.length = dragState.source.index;
         state.moves++;
         playSound('move');
+        debugLog(`Drag: ${cards.length}-card run (${cards[0].rank}${cards[0].suit} lead) tableau col${dragState.source.col} -> tableau col${target.col}`);
       } else {
         col.pop();
         moveCardToFoundation(cards[0]);
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} tableau col${dragState.source.col} -> Foundation`);
       }
       pushUndoSnapshot(tentative);
       flipExposedTop(dragState.source.col);
@@ -1261,9 +1347,11 @@
         state.tableau[target.col].push(state.waste.pop());
         state.moves++;
         playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Waste -> tableau col${target.col}`);
       } else {
         state.waste.pop();
         moveCardToFoundation(cards[0]);
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Waste -> Foundation`);
       }
       pushUndoSnapshot(tentative);
     }
@@ -1305,6 +1393,7 @@
       if(canMoveToFoundation(c)){
         state.waste.pop();
         moveCardToFoundation(c);
+        debugLog(`Autoplay: ${c.rank}${c.suit} Waste -> Foundation`);
         return true;
       }
     }
@@ -1316,6 +1405,7 @@
           col.pop();
           moveCardToFoundation(c);
           flipExposedTop(i);
+          debugLog(`Autoplay: ${c.rank}${c.suit} tableau col${i} -> Foundation`);
           return true;
         }
       }
@@ -1378,31 +1468,28 @@
   // moves.
   //
   // A Tableau-to-Tableau move only counts as a real move if it actually
-  // accomplishes something - either it flips a new face-down card face up,
-  // or it empties the column outright (opening a spot for a King). A move
-  // that just relocates an already-exposed card onto an equally-exposed
-  // card elsewhere (e.g. a red 3 sitting on a black 4 could just as easily
-  // sit on a different black 4) changes nothing about what's playable, so
-  // it doesn't count - without this check, that kind of back-and-forth
-  // shuffle could mask a genuine dead end and the "There Are No More
-  // Moves." popup would never appear.
+  // accomplishes something. Moving a card (or a run of cards) off a column
+  // always counts as real progress as long as something is left behind in
+  // that column - whatever card was sitting directly under the moved run
+  // becomes the column's new top card, and a moment ago it wasn't playable
+  // at all (something was covering it), so it's now available in a way it
+  // wasn't before. That's true whether the newly-exposed card can go
+  // straight to a Foundation or not - being freed up to move at all is
+  // itself the gain.
   //
-  // "Empties the column" only actually opens up anything NEW when the
-  // column it's emptying INTO wasn't already empty itself - a whole
-  // column's run (this always means a King leading it - it's the only
-  // card an empty column can ever accept) sliding from one empty-except-
-  // itself column onto another already-empty column doesn't change
-  // anything: before and after, one column holds that run and one column
-  // is empty, just swapped. That exact case - one lone King, one empty
-  // column, nothing else - is a real dead end, and without this check it
-  // could keep the Hint halos lit and the "no more moves" popup from ever
-  // appearing on a board that truly has nothing left to do.
+  // The one time moving cards truly changes nothing is when the ENTIRE
+  // column moves - a King (the only card an empty column can ever accept)
+  // leading a run off a column, landing on another column that was
+  // ALREADY empty. Before and after, one column holds that run and one
+  // column is empty, just swapped: nothing about what's playable is any
+  // different. That exact case - one lone King, one empty column, nothing
+  // else - is a real dead end, and without this check it could keep the
+  // Hint halos lit and the "no more moves" popup from ever appearing on a
+  // board that truly has nothing left to do.
   function tableauMoveIsProductive(col, removeFromIndex, targetCol){
     const remaining = removeFromIndex;
     if(remaining === 0) return targetCol.length > 0; // only a real gain if the target wasn't already empty too
-    const newTop = col[remaining - 1];
-    if(!newTop.faceUp) return true; // flips a new card face up
-    return canMoveToFoundation(newTop); // exposes a card that can go straight to a Foundation
+    return true; // something is always left behind, and its new column-top card is now playable that it wasn't a moment ago
   }
   function findAvailableMove(){
     for(let i=0;i<7;i++){
@@ -1476,11 +1563,16 @@
     }
     const stuck = (findAvailableMove() === null);
     if(!stuck){
+      debugLog('Check: OK, a move is available');
       noMovesAlreadyShown = false;
       return;
     }
-    if(noMovesAlreadyShown) return;
+    if(noMovesAlreadyShown){
+      debugLog('Check: still stuck (popup already shown)');
+      return;
+    }
     noMovesAlreadyShown = true;
+    debugLog('Check: STUCK - no legal move found, showing popup');
     // Unlike a win, running out of moves doesn't end the game - gameActive
     // stays true so Undo and the other controls keep working, and the
     // score is only recorded once the player dismisses this popup (see
@@ -1864,6 +1956,10 @@
   }
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
 
+  document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
+    document.getElementById('diagLogPanel').classList.toggle('show');
+  });
+
   /* ---- Autoplay toggle ---- */
   document.getElementById('autoplayBtn').addEventListener('click', ()=>{
     state.autoplay = !state.autoplay;
@@ -2029,7 +2125,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 30;
+  const PAGE_REVISION = 32;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
