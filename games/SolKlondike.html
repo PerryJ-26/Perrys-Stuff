@@ -1,6 +1,6 @@
 
-<!-- Revision 24 | Monday, September 21, 2026 | Options popup: renamed "Listen to the game sounds?" to "Select the default for Sounds" and added a matching "Select the default for Autoplay" question with its own On/Off radio buttons - changing it immediately flips the live Autoplay setting too (the same as Sounds/Draw Count already do) and is remembered for future games the same permanent way. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1704 -->
+<!-- Revision 26 | Monday, September 21, 2026 | Fixed the missing "tick" sound when a card drawn from the Stock gets immediately played to a Foundation by Autoplay - Autoplay was sweeping the new card away in the same instant it was drawn, so its Foundation sound played on top of (or before) the draw's own flip-tick had a chance to be heard. Autoplay now waits for the drawn card(s) to finish their tick reveal first. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1742 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -997,12 +997,33 @@
   }
 
   function afterMove(){
-    render(); // shows the result of the player's own move right away
-    if(state.autoplay){
-      autoplaySweep(()=>{ checkGameEnd(); saveResumeState(); });
+    const newlyDrawn = render(); // shows the result of the player's own move right away
+    const proceedAfterMove = () => {
+      if(state.autoplay){
+        autoplaySweep(()=>{ checkGameEnd(); saveResumeState(); });
+      } else {
+        checkGameEnd();
+        saveResumeState();
+      }
+    };
+    if(newlyDrawn > 0){
+      // A Stock draw just kicked off its own flip-tick reveal, one card
+      // every 300ms (see playWasteRevealSequence). Without this wait,
+      // Autoplay (when on) would immediately sweep the freshly-drawn top
+      // card to a Foundation in this same instant, so its "ding" played on
+      // top of (or even before) the reveal had gotten through all its
+      // ticks - sounding like the card was played with no tick at all.
+      // Waiting lets every drawn card finish its own tick first.
+      const tokenAtSchedule = wasteRevealToken;
+      setTimeout(()=>{
+        // A newer draw superseded this one (its own afterMove() call has
+        // already scheduled its own correctly-timed proceedAfterMove) -
+        // bail out so the two don't both fire.
+        if(wasteRevealToken !== tokenAtSchedule) return;
+        proceedAfterMove();
+      }, newlyDrawn * AUTOPLAY_STEP_MS);
     } else {
-      checkGameEnd();
-      saveResumeState();
+      proceedAfterMove();
     }
   }
 
@@ -1093,8 +1114,8 @@
   // it doesn't count - without this check, that kind of back-and-forth
   // shuffle could mask a genuine dead end and the "There Are No More
   // Moves." popup would never appear.
-  function tableauMoveIsProductive(col){
-    const remaining = col.length - 1;
+  function tableauMoveIsProductive(col, removeFromIndex){
+    const remaining = removeFromIndex;
     if(remaining === 0) return true; // empties the column - opens a spot for a King
     const newTop = col[remaining - 1];
     if(!newTop.faceUp) return true; // flips a new card face up
@@ -1107,8 +1128,19 @@
       const top = col[col.length-1];
       if(!top.faceUp) continue;
       if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
-      const target = firstLegalTableauTarget(top, i);
-      if(target !== -1 && tableauMoveIsProductive(col)) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      // A move doesn't have to use just the single top card - any face-up
+      // card, together with every card above it, can move as one group
+      // (the game only ever builds valid descending/alternating sequences,
+      // so that group is always already a legal run on its own). Checking
+      // only the top card here missed moves that need dragging more than
+      // one card, which let "There Are No More Moves." appear even though
+      // a legal multi-card move was available.
+      let runStart = col.length - 1;
+      while(runStart > 0 && col[runStart-1].faceUp) runStart--;
+      for(let k=runStart; k<col.length; k++){
+        const target = firstLegalTableauTarget(col[k], i);
+        if(target !== -1 && tableauMoveIsProductive(col, k)) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      }
     }
     if(state.waste.length){
       const top = state.waste[state.waste.length-1];
@@ -1344,6 +1376,10 @@
     showCard(0);
   }
 
+  // Returns the number of cards just drawn from Stock to Waste this call (0
+  // if this render wasn't triggered by a draw) - afterMove() uses this to
+  // know how long to wait for their flip-tick reveal before letting
+  // Autoplay sweep the new top card away (see afterMove() above).
   function render(){
     // Stock
     const stockEl = document.getElementById('stockPile');
@@ -1355,9 +1391,10 @@
     // order it was drawn: flip, play its tick, wait 0.3s, flip the next,
     // until the final (top) card is showing and stays there.
     const wasteEl = document.getElementById('wastePile');
+    let newlyDrawn = 0;
     if(state.waste.length){
       const topCard = state.waste[state.waste.length - 1];
-      const newlyDrawn = animFlags.flipWasteCount;
+      newlyDrawn = animFlags.flipWasteCount;
       if(newlyDrawn > 0){
         playWasteRevealSequence(state.waste.slice(-newlyDrawn));
       } else {
@@ -1439,6 +1476,7 @@
     document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
     document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
     resetHintTimer();
+    return newlyDrawn;
   }
 
   /* ---- Options (draw 1 vs draw 3) ---- */
@@ -1701,7 +1739,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 24;
+  const PAGE_REVISION = 26;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
