@@ -1,6 +1,6 @@
 
-<!-- Revision 28 | Tuesday, September 22, 2026 | Dragging the Waste pile's top card now reveals the card underneath it (the one that will become playable next) as soon as you start pulling it away, instead of just dimming the same card in place - matching how lifting a Tableau card reveals what's beneath it. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2006 -->
+<!-- Revision 29 | Tuesday, September 22, 2026 | Fixed a rare bug where the game could quietly get confused about the board: if a drag was started on a card right as Autoplay was in the middle of sweeping other cards to the Foundations in the background, Autoplay could move a card out from under an in-progress drag, and dropping it could then leave that same card sitting in two places at once - which could throw off the Hint halos and the "There Are No More Moves." check without any visible error. A new drag is now simply not allowed to start while Autoplay is actively sweeping (it only takes a moment). Also closed a smaller, related gap: releasing a drag over the Stock pile could trigger an extra unintended draw right after - the Stock pile now ignores that follow-on click the same way the other piles already did. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2021 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1013,6 +1013,7 @@
   }
 
   function onStockClick(){
+    if(suppressNextClick){ suppressNextClick = false; return; }
     if(!state.gameActive) return;
     const tentative = takeSnapshot();
     if(state.stock.length === 0){
@@ -1089,6 +1090,14 @@
     if(!state.gameActive) return;
     if(e.pointerType === 'mouse' && e.button !== 0) return; // left/primary button (or touch/pen) only
     if(document.getElementById('universalModal').style.display === 'flex') return; // a popup is open - don't start a drag underneath it
+    // Autoplay is actively popping cards to the Foundations in the
+    // background (see autoplaySweep() below) - a drag armed now would hold
+    // onto a card/column index that Autoplay could then change out from
+    // under it before the drop happens, which could leave the same card
+    // sitting in two places at once. Simplest safe rule: no new drag while
+    // Autoplay is mid-sweep: it only lasts a beat, and click-to-move (which
+    // re-reads the board fresh at the instant it's used) is unaffected.
+    if(autoplaySweepActive) return;
 
     let cards;
     if(source.type === 'tableau'){
@@ -1324,10 +1333,16 @@
   // Undo, or for timing checkGameEnd/saveResumeState) use that instead of
   // a return value, since the sweep is no longer instant.
   const AUTOPLAY_STEP_MS = 300;
+  // Set for the whole time a sweep is stepping through cards - checked by
+  // startDragCandidate() above so a new drag can't get armed on a card/
+  // column Autoplay might change out from under it mid-drag.
+  let autoplaySweepActive = false;
   function autoplaySweep(onDone){
+    autoplaySweepActive = true;
     let madeAnyMove = false;
     function step(){
       if(!takeOneAutoplayCard()){
+        autoplaySweepActive = false;
         if(typeof onDone === 'function') onDone(madeAnyMove);
         return;
       }
@@ -2003,7 +2018,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 28;
+  const PAGE_REVISION = 29;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
