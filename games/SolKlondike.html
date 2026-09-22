@@ -1,5 +1,5 @@
 
-<!-- Revision 32 | Tuesday, September 22, 2026 | Added a troubleshooting log for tracking down anything that happens quietly, with no popup or halo to point at. Double-click the invisible button in the very bottom-left corner of the screen to open a scrolling panel (same hidden-corner-button pattern as the game log in Acey-Deucey) listing every move made - by click, drag, or Autoplay - every Stock draw/recycle, and every "is the board stuck?" check and what it decided. Nothing about how the game plays or saves changed; this only adds a record to copy and send along with a bug report. -->
+<!-- Revision 33 | Tuesday, September 22, 2026 | The troubleshooting log now sits in a real (readonly) text box instead of a plain panel of lines, and opening it moves the keyboard focus straight into it - so pressing Ctrl-A right after double-clicking the corner button to open it selects only the log's own text, ready to copy, instead of selecting the whole page. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 2029 -->
 
 <!DOCTYPE html>
@@ -409,6 +409,10 @@
     margin-bottom: 6px;
     flex: 0 0 auto;
   }
+  /* A real (readonly) textarea rather than a div of lines - so a Ctrl-A
+     while the log has focus selects only the log's own text, the normal
+     browser behavior for a form field, instead of selecting the whole
+     page. */
   #diagLog{
     overflow-y: auto;
     font-family: 'Courier New', monospace;
@@ -416,8 +420,14 @@
     line-height: 1.45;
     flex: 1 1 auto;
     min-height: 0;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--cream);
+    color: var(--ink);
+    padding: 0;
   }
-  #diagLog div{ padding: 1px 0; border-bottom: 1px solid rgba(0,0,0,0.08); }
 
   /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
   .card{
@@ -603,7 +613,7 @@
   <button id="diagLogToggleBtn" aria-label="Toggle troubleshooting log"></button>
   <div id="diagLogPanel">
     <div id="diagLogPanelTitle">Troubleshooting Log</div>
-    <div id="diagLog"></div>
+    <textarea id="diagLog" readonly></textarea>
   </div>
 
 <script type="module">
@@ -674,10 +684,10 @@
     if(!el) return;
     const t = new Date();
     const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
-    const div = document.createElement('div');
-    div.textContent = `[${stamp}] ${msg}`;
-    el.appendChild(div);
-    while(el.children.length > DIAGNOSTIC_LOG_MAX) el.removeChild(el.firstChild);
+    const lines = el.value ? el.value.split('\n') : [];
+    lines.push(`[${stamp}] ${msg}`);
+    while(lines.length > DIAGNOSTIC_LOG_MAX) lines.shift();
+    el.value = lines.join('\n');
     el.scrollTop = el.scrollHeight;
   }
 
@@ -1957,7 +1967,12 @@
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
 
   document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
-    document.getElementById('diagLogPanel').classList.toggle('show');
+    const panel = document.getElementById('diagLogPanel');
+    panel.classList.toggle('show');
+    // Focus lands in the log itself the instant it opens, so a Ctrl-A right
+    // after double-clicking selects only the log's own text - the normal
+    // browser behavior for a focused text field - instead of the whole page.
+    if(panel.classList.contains('show')) document.getElementById('diagLog').focus();
   });
 
   /* ---- Autoplay toggle ---- */
@@ -2125,7 +2140,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 32;
+  const PAGE_REVISION = 33;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
