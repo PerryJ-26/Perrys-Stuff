@@ -1,5 +1,5 @@
 
-<!-- Revision 33 | Tuesday, September 22, 2026 | The troubleshooting log now sits in a real (readonly) text box instead of a plain panel of lines, and opening it moves the keyboard focus straight into it - so pressing Ctrl-A right after double-clicking the corner button to open it selects only the log's own text, ready to copy, instead of selecting the whole page. -->
+<!-- Revision 34 | Tuesday, September 22, 2026 | The troubleshooting log box now grows taller on its own as entries are added to it, the same way it did before it became a text box for Ctrl-A - up to a point, past which it holds still and shows a normal scroll bar instead of growing any further, so it can always hold all 200 entries without taking over the screen. No manual resizing needed. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 2029 -->
 
 <!DOCTYPE html>
@@ -412,14 +412,19 @@
   /* A real (readonly) textarea rather than a div of lines - so a Ctrl-A
      while the log has focus selects only the log's own text, the normal
      browser behavior for a form field, instead of selecting the whole
-     page. */
+     page. Unlike a div, a textarea's own height doesn't grow on its own as
+     text is added to it - debugLog() (see the script section of the same
+     name) re-measures and re-sets its height after every new line, up to
+     the max-height below, so the box grows right along with the log the
+     same way the plain-div version in AceyDeucey does. Past max-height,
+     this overflow-y:auto is what takes over with a normal scroll bar
+     instead of growing the box any further. */
   #diagLog{
     overflow-y: auto;
     font-family: 'Courier New', monospace;
     font-size: .72rem;
     line-height: 1.45;
-    flex: 1 1 auto;
-    min-height: 0;
+    max-height: 460px;
     width: 100%;
     resize: none;
     border: none;
@@ -688,7 +693,24 @@
     lines.push(`[${stamp}] ${msg}`);
     while(lines.length > DIAGNOSTIC_LOG_MAX) lines.shift();
     el.value = lines.join('\n');
+    fitDiagLogHeight();
     el.scrollTop = el.scrollHeight;
+  }
+
+  // A textarea, unlike a plain div, doesn't grow taller on its own as text
+  // is added to it - this re-measures the log's actual content height and
+  // sets that as its explicit height every time a line is added (from
+  // debugLog above) or the panel is opened (from the dblclick toggle below,
+  // covering whatever piled up while it was closed). The box then grows
+  // right along with the log, entry by entry, exactly like the plain-div
+  // version in AceyDeucey - #diagLog's own max-height/overflow-y:auto CSS
+  // is what stops it growing past that point and hands off to a normal
+  // scroll bar instead.
+  function fitDiagLogHeight(){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
   }
 
   function makeDeck(){
@@ -1969,10 +1991,19 @@
   document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
     const panel = document.getElementById('diagLogPanel');
     panel.classList.toggle('show');
-    // Focus lands in the log itself the instant it opens, so a Ctrl-A right
-    // after double-clicking selects only the log's own text - the normal
-    // browser behavior for a focused text field - instead of the whole page.
-    if(panel.classList.contains('show')) document.getElementById('diagLog').focus();
+    if(panel.classList.contains('show')){
+      // While the panel is display:none, the log can't correctly measure
+      // its own content height - re-fit it now that it's actually visible,
+      // in case entries piled up (from Autoplay, say) while it was closed.
+      fitDiagLogHeight();
+      const el = document.getElementById('diagLog');
+      el.scrollTop = el.scrollHeight;
+      // Focus lands in the log itself the instant it opens, so a Ctrl-A
+      // right after double-clicking selects only the log's own text - the
+      // normal browser behavior for a focused text field - instead of the
+      // whole page.
+      el.focus();
+    }
   });
 
   /* ---- Autoplay toggle ---- */
@@ -2140,7 +2171,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 33;
+  const PAGE_REVISION = 34;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
