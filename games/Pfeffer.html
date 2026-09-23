@@ -1,5 +1,5 @@
 
-<!-- Revision 4 | Saturday, September 19, 2026 | Bid panel wording/sizing cleanup: (1) the status line above the bid buttons now always reads "The minimum no-trump bid is four." instead of showing the current high bid, (2) the small "min no trump bid" note under button "4" is removed, (3) all four bid buttons ("3","4","5","Pfeffer") are now a uniform width so they line up evenly. -->
+<!-- Revision 5 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 803 -->
 
 <!DOCTYPE html>
@@ -800,7 +800,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 4;
+  const PAGE_REVISION = 5;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2130,6 +2130,22 @@ function confirmExit(){
   `, false, 'exit-style');
 }
 document.getElementById('exitBtn').addEventListener('click', confirmExit);
+
+// The mouse's (or trackpad's) "Back" button replays the browser's own
+// back-navigation, which used to jump straight out of the game to
+// whatever page came before it (usually Home) with no warning at all.
+// This traps that action instead: on load it adds one extra step to the
+// browser's history for this same page, and if that step is ever "gone
+// back" past, it immediately re-adds itself (so the address bar never
+// actually leaves this page) and shows the exact same Exit confirmation
+// the Exit button already gives - so a stray Back press can't lose a game
+// in progress, but a deliberate "Yes" still leaves normally.
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  document.getElementById('exitBtn').click();
+});
+
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
     <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
