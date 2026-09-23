@@ -1,6 +1,6 @@
 
-<!-- Revision 7 | Thursday, September 17, 2026 | The gold ring around a clickable Pit now only appears with AI Opponent OFF - Pits stay just as clickable (and still show the pointer cursor) with AI Opponent ON, they simply aren't ringed. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1169 -->
+<!-- Revision 8 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1185 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -989,6 +989,22 @@
     if(ok) performExit();
   });
 
+  // The mouse's (or trackpad's) "Back" button replays the browser's own
+  // back-navigation, which used to jump straight out of the game to
+  // whatever page came before it (usually Home) with no warning at all.
+  // This traps that action instead: on load it adds one extra step to the
+  // browser's history for this same page, and if that step is ever "gone
+  // back" past, it immediately re-adds itself (so the address bar never
+  // actually leaves this page) and clicks the Exit button, giving the
+  // exact same confirmation as clicking Exit directly - so a stray Back
+  // press can't lose a game in progress, but a deliberate "Yes" still
+  // leaves normally.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
   function performExit(){
     try { sessionStorage.removeItem(RESUME_KEY); } catch (err) {}
     window.location.href = '../index.html';
@@ -1166,7 +1182,7 @@
     startGame();
   }
 
-  const PAGE_REVISION = 7;
+  const PAGE_REVISION = 8;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 })();
 </script>
