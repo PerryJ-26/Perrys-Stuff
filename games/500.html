@@ -1,5 +1,5 @@
 
-<!-- Revision 43 | Sunday, September 13, 2026 | South's hand now displays in true ranking order once trump is selected: sortHand() takes an optional trump argument and sorts by effectiveSuit/effectiveRank instead of raw suit/rank, so both bowers fold into the trump suit's block (ranked correctly within it) and the Joker lands as the single highest card, instead of sitting under its printed suit in raw deal order. Re-sorts South's hand the moment trump is decided (finishBiddingRound), and also threads trump through the kitty-merge sort in startKittyPhase() so a South-as-bidder hand stays correctly ordered after picking up the kitty. -->
+<!-- Revision 44 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 958 -->
 
 <!DOCTYPE html>
@@ -955,7 +955,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 43;
+  const PAGE_REVISION = 44;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2545,6 +2545,22 @@ function confirmExit(){
   `, false, 'exit-style');
 }
 document.getElementById('exitBtn').addEventListener('click', confirmExit);
+
+// The mouse's (or trackpad's) "Back" button replays the browser's own
+// back-navigation, which used to jump straight out of the game to
+// whatever page came before it (usually Home) with no warning at all.
+// This traps that action instead: on load it adds one extra step to the
+// browser's history for this same page, and if that step is ever "gone
+// back" past, it immediately re-adds itself (so the address bar never
+// actually leaves this page) and shows the exact same Exit confirmation
+// the Exit button already gives - so a stray Back press can't lose a game
+// in progress, but a deliberate "Yes" still leaves normally.
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  document.getElementById('exitBtn').click();
+});
+
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
     <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
