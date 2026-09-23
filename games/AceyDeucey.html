@@ -1,5 +1,5 @@
 
-<!-- Revision 69 | Tuesday, September 22, 2026 | While the game log panel is open, Ctrl-A (Cmd-A on a Mac) now selects only the log's own text instead of the whole page - handy for copying it out. The log stays exactly the plain growing box it always was; this only steps in when no other text field on the page is active, so a normal Ctrl-A still works everywhere else. -->
+<!-- Revision 70 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 69;
+  const PAGE_REVISION = 70;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2305,6 +2305,22 @@
   document.getElementById('exitBtn').addEventListener('click', async ()=>{
     const ok = await showConfirm('Are you sure you want to exit?', 'Exit Game');
     if(ok) performExit();
+  });
+
+  // The mouse's (or trackpad's) "Back" button replays the browser's own
+  // back-navigation, which used to jump straight out of the game to
+  // whatever page came before it (usually Home) with no warning at all.
+  // This traps that action instead: on load it adds one extra step to the
+  // browser's history for this same page, and if that step is ever "gone
+  // back" past, it immediately re-adds itself (so the address bar never
+  // actually leaves this page) and clicks the Exit button, giving the
+  // exact same confirmation as clicking Exit directly - so a stray Back
+  // press can't lose a game in progress, but a deliberate "Yes" still
+  // leaves normally.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
   });
 
   function performExit(){
