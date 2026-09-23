@@ -1,5 +1,5 @@
 
-<!-- Revision 40 | Sunday, September 13, 2026 | Round Complete and Win Game popups: highlighted and bolded the Total Score row (border-top + light background on the row, bold+larger text on the score values) - same treatment Hearts' Hand Complete popup already gives its own Total Score row. -->
+<!-- Revision 41 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1171 -->
 
 <!DOCTYPE html>
@@ -1168,7 +1168,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 40;
+  const PAGE_REVISION = 41;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -3277,6 +3277,22 @@ document.getElementById('exitBtn').addEventListener('click', ()=>{
     <button onclick="closeModal()">Cancel</button>
   `, false, 'exit-style');
 });
+
+// The mouse's (or trackpad's) "Back" button replays the browser's own
+// back-navigation, which used to jump straight out of the game to
+// whatever page came before it (usually Home) with no warning at all.
+// This traps that action instead: on load it adds one extra step to the
+// browser's history for this same page, and if that step is ever "gone
+// back" past, it immediately re-adds itself (so the address bar never
+// actually leaves this page) and shows the exact same Exit confirmation
+// the Exit button already gives - so a stray Back press can't lose a game
+// in progress, but a deliberate "Yes" still leaves normally.
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  document.getElementById('exitBtn').click();
+});
+
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
     <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
