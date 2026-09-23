@@ -1,6 +1,6 @@
 
-<!-- Revision 35 | Tuesday, September 22, 2026 | Reverted Revision 31 - a Tableau move that only frees up a card without flipping anything face-down or putting a card within reach of a Foundation no longer counts as "a move is available." That kind of shuffle is legal, but Perry's call is that it shouldn't be enough to keep the "There Are No More Moves." popup from appearing, since it could leave a board sitting there insisting a move existed for as long as the player kept drawing, when nothing was actually going anywhere. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2029 -->
+<!-- Revision 36 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2194 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -2067,6 +2067,21 @@
     `, false);
   });
 
+  // The mouse's (or trackpad's) "Back" button replays the browser's own
+  // back-navigation, which used to jump straight out of the game to
+  // whatever page came before it (usually Home) with no warning at all.
+  // This traps that action instead: on load it adds one extra step to the
+  // browser's history for this same page, and if that step is ever "gone
+  // back" past, it immediately re-adds itself (so the address bar never
+  // actually leaves this page) and shows the exact same Exit confirmation
+  // the Exit button already gives - so a stray Back press can't lose a
+  // game in progress, but a deliberate "Yes" still leaves normally.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
   /* ---- Options (draw count / sound / Autoplay default), persisted the
      same permanent way the player name is below - loaded here, before
      Startup further down decides whether to deal a new game or resume
@@ -2176,7 +2191,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 35;
+  const PAGE_REVISION = 36;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
