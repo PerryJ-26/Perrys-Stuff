@@ -1,5 +1,7 @@
 
-<!-- Revision 33 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the page, showing this game's current revision number. Used black text, since it gives more contrast than white against this page's cream background (#fbe8c8). -->
+<!-- Revision 37 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 844 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,7 +85,7 @@
        clearly (and distinctly from the orange felt) at a glance. */
     --cardback-1: #f0e2c8;
     --cardback-2: #4d4dff;
-    --cardback-border: #3b2a1c;
+    --cardback-border: #dddddd;
 
     --shadow-soft: rgba(255,255,255,.45);
     --shadow-medium: rgba(0,0,0,.4);
@@ -728,7 +730,7 @@
 </style>
 </head>
 <body>
-<div class="revBadge">Rev. 33</div>
+<div class="revBadge" id="revBadge"></div>
 
 <div id="buttonGroup">
   <h1 id="pageTitle">Spades</h1>
@@ -839,6 +841,9 @@
 </div>
 
 <script>
+  const PAGE_REVISION = 37;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+
 /* =====================================================================
    Spades — standalone game
    4 players (partnership): South = You, North = your partner (AI),
@@ -2182,6 +2187,22 @@ function confirmExit(){
   `, false, 'exit-style');
 }
 document.getElementById('exitBtn').addEventListener('click', confirmExit);
+
+// The mouse's (or trackpad's) "Back" button replays the browser's own
+// back-navigation, which used to jump straight out of the game to
+// whatever page came before it (usually Home) with no warning at all.
+// This traps that action instead: on load it adds one extra step to the
+// browser's history for this same page, and if that step is ever "gone
+// back" past, it immediately re-adds itself (so the address bar never
+// actually leaves this page) and shows the exact same Exit confirmation
+// the Exit button already gives - so a stray Back press can't lose a game
+// in progress, but a deliberate "Yes" still leaves normally.
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  document.getElementById('exitBtn').click();
+});
+
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
     <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
