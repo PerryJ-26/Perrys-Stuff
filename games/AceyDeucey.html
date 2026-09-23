@@ -1,5 +1,5 @@
 
-<!-- Revision 68 | Saturday, September 19, 2026 | Found the real cause of yesterday's "needed to enter more checkers than were actually hit" report: the AI's double-acceptance evaluation simulates hypothetical moves on a scratch copy of the board to score each possible double, and while that scratch copy correctly threw away its board/bar/off changes afterward, it was NOT throwing away changes to the two trackers Option 1 depends on (everFullyEntered and hitBarCount) - so a hit that only ever happened in one of those hypothetical "what if" simulations was permanently counted as a real hit against the human player, on top of any hit that actually happened for real. Now those two trackers are saved and restored around every simulation, exactly like board/bar/off already were, so a purely hypothetical hit can no longer leak into the real game. -->
+<!-- Revision 69 | Tuesday, September 22, 2026 | While the game log panel is open, Ctrl-A (Cmd-A on a Mac) now selects only the log's own text instead of the whole page - handy for copying it out. The log stays exactly the plain growing box it always was; this only steps in when no other text field on the page is active, so a normal Ctrl-A still works everywhere else. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
 
 <!doctype html>
@@ -1305,7 +1305,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 68;
+  const PAGE_REVISION = 69;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2825,6 +2825,31 @@
 
   document.getElementById('logToggleBtn').addEventListener('dblclick', ()=>{
     document.getElementById('logPanel').classList.toggle('show');
+  });
+
+  // While the log panel is open, Ctrl-A (Cmd-A on a Mac) selects only the
+  // log's own text instead of the whole page - handy for copying it into a
+  // bug report. The log is a plain div (kept that way so it keeps growing
+  // taller on its own as lines are added, the way it always has), not a
+  // form field, so there's no built-in "select just this box" behavior to
+  // lean on the way a real text box gets for free - this fills that in by
+  // hand with the Selection API. It only steps in when nothing else on the
+  // page is an active text field (the player Name box, say), so a normal
+  // Ctrl-A still works everywhere else exactly as it always has, even
+  // while the log happens to be left open in the background.
+  document.addEventListener('keydown', (e)=>{
+    if(!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'a') return;
+    if(!document.getElementById('logPanel').classList.contains('show')) return;
+    const active = document.activeElement;
+    const activeIsEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+    if(activeIsEditable) return;
+    e.preventDefault();
+    const logEl = document.getElementById('log');
+    const range = document.createRange();
+    range.selectNodeContents(logEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
   });
 
   // ---------------- point numbers toggle (hidden button, stacked just above the log toggle) ----------------
