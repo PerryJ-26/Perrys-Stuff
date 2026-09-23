@@ -1,5 +1,5 @@
 
-<!-- Revision 11 | Monday, September 14, 2026 | The AI's opening move (empty board) now picks randomly among all nine squares instead of only the center and four corners - you noticed it never opened on an edge. Every square is an equally sound opening since minimax handles every move afterward, so this is purely more variety, same as the corners-vs-always-center fix before it. -->
+<!-- Revision 12 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 357 -->
 
 <!DOCTYPE html>
@@ -354,7 +354,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 11;
+  const PAGE_REVISION = 12;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* Global safety: capture errors and show overlay */
@@ -651,6 +651,12 @@ async function confirmExitTicTacToe(){
 function performExit(){
   window.location.href = '../index.html';
 }
+
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  confirmExitTicTacToe();
+});
 
 function showExitScreen(){
   try {
