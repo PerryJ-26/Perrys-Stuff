@@ -1,5 +1,5 @@
 
-<!-- Revision 20 | Monday, September 21, 2026 | Fixed a layout bug where holding a die grew the Roll Dice box (top and bottom) and shifted everything below it - a held die's thicker border was actually making it larger, not just different-looking; box-sizing:border-box on the dice keeps the border change purely visual now. Also moved the dice row down .125in within its card. -->
+<!-- Revision 21 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 631 -->
 
 <!DOCTYPE html>
@@ -628,7 +628,7 @@
 
 
 <script>
-  const PAGE_REVISION = 20;
+  const PAGE_REVISION = 21;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* Global safety: capture errors and show overlay */
@@ -1640,6 +1640,12 @@ async function handleExitClick(){
     console.error('handleExitClick error', err);
   }
 }
+
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', function(){
+  history.pushState(null, '', location.href);
+  document.getElementById('exitBtn').click();
+});
 
 function performExit(){
   try {
