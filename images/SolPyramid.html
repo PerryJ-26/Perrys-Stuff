@@ -1,0 +1,1322 @@
+
+<!-- Revision 16 | Thursday, September 24, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1317 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pyramid - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - same card-game theme as Klondike/Pinochle ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --cardback-1: #d6394a;
+    --cardback-2: #ffffff;
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Centers the whole button-column + felt group as one unit within the
+     page, both horizontally and vertically - same technique as Klondike. */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #gameLayout {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px;
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack (same pattern as Klondike) ---- */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+
+  /* Name and Score fields, same placement/style as Klondike */
+  #nameScoreBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+  #nameScoreBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameScoreBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+    margin-bottom: 8px;
+  }
+  #scoreDisplay{
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+  .scoreLabel{ text-align: center; }
+
+  /* ---- Felt / board ----
+     Same fixed 872x460 footprint as Klondike's own #table-wrap, so the two
+     games' boards look identical apart from the card layout inside them.
+     Three side-by-side columns instead of a Stock/Waste/Discard row sitting
+     above the pyramid (Perry's suggestion) - Stock stacked over Waste on
+     the left, the Pyramid in the middle, Discard on the right - so the
+     Pyramid gets the felt's FULL height to work with, rather than sharing
+     it with a separate row above. justify-content:space-between pins the
+     left and right columns to the felt's edges and lets the middle column
+     (sized only by the pyramid's own width) fall wherever that leaves it,
+     with the leftover width split evenly into the two gaps on either side
+     of it - no hard-coded column width or gap needed. */
+  #table-wrap{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin: 0;
+    width: 872px;
+    height: 460px;
+    box-sizing: border-box;
+  }
+  .pyramid-col-left{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  /* No top/bottom padding here at all - Perry asked for the top card of
+     the pyramid to align exactly with the top of the Stock pile's card,
+     and Stock (in .pyramid-col-left, its own column with no top padding)
+     already sits flush with table-wrap's own content-box top the instant
+     table-wrap's align-items:flex-start places these columns. Zero padding
+     here puts the pyramid at that same flush position, and zero on the
+     bottom duplicates that same (lack of) margin there per Perry's
+     request. The column's own height is then just the pyramid's own
+     height - see .pyramid-row below for how that height is tuned to fill
+     table-wrap's full 412px inner height (460 minus the 20px padding and
+     4px border on each side), so both the pyramid's top and bottom edges
+     land flush with the felt's own top and bottom edges, matching Stock's
+     own natural ~.25in (24px) margin to the true outer felt edge (table-
+     wrap's own border+padding) top and bottom alike. */
+  .pyramid-col-center{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+  }
+
+  .pile{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.55);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.65);
+    font-size: 1.87rem;
+    font-weight: 800;
+    cursor: pointer;
+    position: relative;
+  }
+  #stockPile, #wastePile{ perspective: 700px; }
+  /* The Discard pile is purely a display of the last card removed - never a
+     click target (nothing can be selected from or played back out of it),
+     so it doesn't need the pointer cursor the other piles get. */
+  #discardPile{ cursor: default; }
+
+  /* ---- Pyramid layout ----
+     Each row is a plain flex row, its cards spaced 12px (~.125in) apart
+     left-to-right - the classic trick that makes a pyramid "just work" in
+     CSS: since every row's own width is (card count * card width + (card
+     count - 1) * that same 12px gap) and the column wrapper centers each
+     row (align-items:center) against the widest row (the 7-card bottom
+     row), every card in row N still ends up sitting exactly centered over
+     the seam between the two cards below it in row N+1, with zero manual
+     position math needed - the same 12px gap in every row is what keeps
+     that centering math working out.
+     Rows now overlap vertically instead of sitting apart with a flat gap,
+     the same negative-margin technique Klondike's tableau columns use (see
+     that file's .tableau-col .cardWrap.faceUp rule) - each row after the
+     first is pulled up so only a sliver of the row above it stays hidden
+     underneath. Rows are built top-to-bottom in the DOM (see
+     buildPyramidDom()), so - just like Klondike's later, higher cards in a
+     column - each later, wider row naturally paints on top of the
+     narrower row above it, exactly matching how a real stacked card
+     pyramid looks (the bottom, 7-card row fully visible in front; the
+     single apex card peeking out from behind at the top).
+     The -48.35px pull-up is chosen so the whole 7-row stack comes out to
+     exactly 412px tall (100.3px for the first row, plus 6 more rows each
+     contributing a 51.95px sliver: 100.3 + 6*51.95 = 412) - exactly the
+     full 412px .pyramid-col-center has to work with (table-wrap's fixed
+     460px height, minus its 20px padding and 4px border on each side),
+     since that column now reserves none of it for its own padding (see
+     .pyramid-col-center above) - so the pyramid's top card aligns exactly
+     with the Stock pile's top card, and the same holds at the bottom.
+     Now that the Pyramid has its own column running the felt's full
+     height (rather than sharing it with a Stock/Waste/Discard row above),
+     it can grow to fill that height edge-to-edge like this. */
+  .pyramid-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  /* pointer-events:none here is the fix for a real bug: since each row's
+     own box overlaps UP into the row above it (the negative margin below),
+     a removed card's slot (invisible via .pyramidEmpty, but still holding
+     its layout space) left the ROW'S OWN empty background there instead -
+     and that plain, backgroundless row div was still capturing clicks
+     across its whole box, silently swallowing clicks meant for an exposed
+     card in the row above wherever a removed neighbor's slot overlapped
+     it. pointer-events:none makes the row itself transparent to clicks;
+     each individual .cardWrap child inside keeps its own default
+     pointer-events (auto), so real, visible cards are completely
+     unaffected and still clickable exactly as before. */
+  .pyramid-row{ display: flex; gap: 12px; pointer-events: none; }
+  .pyramid-row:not(:first-child){ margin-top: -48.35px; }
+  /* pointer-events is inherited, so this restores normal click behavior
+     for every card slot - undoing the parent .pyramid-row's
+     pointer-events:none for anything actually inside it. A removed card's
+     slot stays non-interactive regardless, since visibility:hidden already
+     takes it out of hit-testing on its own. */
+  .pyramid-row .cardWrap{ width: 71.4px; height: 100.3px; pointer-events: auto; }
+  /* A removed card leaves its slot in place (so the pyramid's shape and the
+     covering-card geometry never shift mid-game) but is invisible. */
+  .cardWrap.pyramidEmpty{ visibility: hidden; }
+
+  /* ---- Selection highlight - Perry asked for "a significant change in
+     appearance" when a card is picked, so this is deliberately bolder than
+     the site's usual thin gold hint-outline elsewhere: a heavy gold glow
+     plus a small lift off the felt. Applied straight to the .card element
+     itself (see cardHtml()'s `selected` argument) rather than its wrapper,
+     so it works identically for a Pyramid card or the single Waste card. ---- */
+  .card.selected-glow{
+    box-shadow: 0 0 0 4px gold, 0 0 16px 5px rgba(255,215,0,.85), 1px 2px 3px var(--shadow-medium);
+    transform: translateY(-6px);
+    position: relative;
+    z-index: 5;
+  }
+
+  /* ---- A card mid-flight from its source pile to the Discard pile (see
+     flyCardsToDiscard() in the script) - a short-lived fixed-position clone,
+     never part of the real board state. ---- */
+  .flyingCardClone{
+    box-shadow: 2px 4px 10px var(--shadow-strong);
+    border-radius: 6px;
+  }
+
+  /* ---- Stock -> Waste draw ----
+     Per Perry's request, this is a plain slide, not a flip: the card is
+     shown face up the instant it leaves the Stock pile (Pyramid never
+     needs the "turn it over to reveal it" drama Klondike's flip3d gives
+     its tableau) and just travels in a straight line down into Waste's
+     box below it. The 112.3px start offset is Stock's own height (100.3px)
+     plus the 12px gap between the two piles, so the card visibly starts
+     right at Stock's position and slides straight down to rest in Waste's. */
+  .wasteSlide{
+    position: absolute;
+    top: 0; left: 0;
+    animation: wasteSlideDown 0.3s ease-out both;
+  }
+  @keyframes wasteSlideDown{
+    0%   { transform: translateY(-112.3px); }
+    100% { transform: translateY(0); }
+  }
+
+  /* ---- Playing cards (face-up / face-down) ----
+     Card FRONTS are now Perry's own real card-face artwork (an <img> per
+     card, see cardImageSrc()/cardHtml() below) instead of a hand-drawn
+     face - the image already supplies its own background, border, corner
+     indices and pip/court art, so .card here is just a sized, clickable
+     frame around it (shadow, hover ring, selected glow). Card BACKS
+     (.cardback below) are unchanged. */
+  .card{
+    width: 71.4px; height: 100.3px;
+    border-radius: 6px;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    user-select: none;
+    /* Kept from the pyramid's row-overlap stacking fix: gives every card
+       its own real stacking context so nothing inside it can ever paint
+       above a neighboring row out of turn. Harmless now that card
+       fronts are a single plain <img> with no positioned children of
+       their own, but left in place as a safety net. */
+    position: relative;
+    z-index: 0;
+  }
+  .card-face-img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
+  .cardback{
+    width: 71.4px; height: 100.3px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .card.clickable, .cardback.clickable{ cursor: pointer; }
+  /* :not(.selected-glow) here is deliberate - without it, hovering a card
+     you've just selected would win out over .selected-glow below (a hover
+     selector is more specific than a single extra class) and silently
+     replace its gold ring with this plain white hover ring for as long as
+     the cursor stayed put, making a real selection look like the click did
+     nothing. Excluding .selected-glow keeps the gold ring visible the
+     instant a card is selected, hover or not. */
+  .card.clickable:not(.selected-glow):hover{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: .85rem;
+  }
+  .scores-table th, .scores-table td{
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .scores-table th{ background: #e8e2c8; }
+  .scores-explain-btn{ margin-bottom: 12px; }
+  #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
+  .scores-scroll{ max-height: 225px; overflow-y: auto; }
+  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate().
+     24px bold per Perry's request. ---- */
+  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">Pyramid</h1>
+    <button id="newGameBtn" title="Start a new game with a fresh shuffle.">New Game</button>
+    <button id="restartBtn" title="Restart the current game.">Restart</button>
+    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
+    <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
+    <button id="soundBtn" title="Turn game sounds on or off.">Sound: ON</button>
+    <button id="exitBtn" title="Quit the game.">Exit</button>
+
+    <div id="nameScoreBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="scoreLabel">Score</label>
+      <div id="scoreDisplay" title="The current score.">0</div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div class="pyramid-col-left">
+      <div class="pile" id="stockPile" title="Click to turn a card face up onto the Waste pile."></div>
+      <div class="pile" id="wastePile" title="The top Waste card is available for pairing."></div>
+    </div>
+    <div class="pyramid-col-center">
+      <div class="pyramid-wrap" id="pyramidWrap"></div>
+    </div>
+    <div class="pile" id="discardPile" title="Cards removed from play."></div>
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (SolPyramidScores) so Pyramid's leaderboard is separate
+  // from every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'SolPyramidScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     PYRAMID SOLITAIRE - game engine
+     Move interaction: click only, one card at a time.
+       - Click an exposed Pyramid card or the top Waste card to select it
+         (a bold gold glow marks the selection). Click it again to deselect.
+       - A King is never selected - clicking one removes it immediately by
+         itself, straight to the Discard pile.
+       - With a card selected, click a second exposed Pyramid/Waste card
+         whose value totals 13 with it to send both to the Discard pile. If
+         the second card doesn't total 13, nothing happens (Perry's call) -
+         the original selection stays put so you can try again.
+       - With a card selected, clicking the Stock pile attempts to pair the
+         selection with the Stock's current top card (without drawing it)
+         - the only way the Stock's top card can ever be used. If it isn't
+         a match (or the Stock's top card is a King, which can only be
+         removed after it's been turned onto the Waste), nothing happens.
+       - With NOTHING selected, clicking the Stock pile just turns its top
+         card face up onto the Waste pile, same as always.
+     ============================================================ */
+
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RED_SUITS = ['♥','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
+
+  const PLAYER_NAME_KEY = 'solPyramidPlayerName_v1';
+  const RESUME_KEY = 'solPyramidResumeState_v1';
+  const SOUND_KEY = 'solPyramidSoundEnabled_v1';
+
+  function isRed(suit){ return RED_SUITS.includes(suit); }
+
+  function makeDeck(){
+    const deck = [];
+    SUIT_CHARS.forEach(suit => RANKS.forEach(rank => deck.push({ suit, rank })));
+    return deck;
+  }
+  function shuffle(deck){
+    const d = [...deck];
+    for(let i=d.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [d[i],d[j]] = [d[j],d[i]];
+    }
+    return d;
+  }
+
+  const state = {
+    pyramid: [],       // 28 cards, flat index 0..27 in standard triangular row order; each { suit, rank, removed }
+    stock: [],
+    waste: [],
+    discard: [],
+    redealsUsed: 0,     // 0, 1, or 2 - the Stock/Waste can be recycled twice more after the first pass (3 passes total)
+    soundEnabled: true,
+    moves: 0,
+    startTime: 0,
+    dealOrder: null,
+    gameActive: true,
+    undoStack: [],
+    selected: null      // null, or { type:'pyramid', index } / { type:'waste' }
+  };
+
+  /* ---- Pyramid geometry ----
+     Row r (0 = top) starts at flat index r*(r+1)/2 and holds r+1 cards.
+     A card in row r is covered by the two cards directly beneath it in row
+     r+1 (same column, and column+1) - the bottom row (r=6) is covered by
+     nothing, so it's exposed the instant it's dealt. */
+  function pyramidRowOf(index){
+    let r = 0;
+    while((r+1)*(r+2)/2 <= index) r++;
+    return r;
+  }
+  function pyramidColOf(index){ return index - pyramidRowOf(index)*(pyramidRowOf(index)+1)/2; }
+  function pyramidIndexOf(row, col){ return row*(row+1)/2 + col; }
+  function coveringIndices(index){
+    const r = pyramidRowOf(index), c = pyramidColOf(index);
+    if(r === 6) return [];
+    return [ pyramidIndexOf(r+1, c), pyramidIndexOf(r+1, c+1) ];
+  }
+  function isExposed(index){
+    const card = state.pyramid[index];
+    if(!card || card.removed) return false;
+    return coveringIndices(index).every(i => state.pyramid[i].removed);
+  }
+  function pyramidRemaining(){
+    return state.pyramid.filter(c => !c.removed).length;
+  }
+
+  /* ---- Sound effects (Web Audio API - synthesized, no external audio
+     files, same approach as every other Game Hub game). Respects the
+     Sound: On/Off button. ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'discard': // a pair or a solo King lands in the Discard pile
+        tone(659, now, 0.11, 'sine', 0.16);
+        tone(988, now + 0.08, 0.16, 'sine', 0.16);
+        break;
+      case 'move': // a redeal (Waste recycled back into Stock)
+        tone(320, now, 0.09, 'triangle', 0.14);
+        break;
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'stuck':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+    }
+  }
+  // A quick card flip/snap - a short filtered noise burst rather than a
+  // musical tone, reused verbatim from Klondike for the Stock-to-Waste flip
+  // and for the deal's own riffle of arriving cards.
+  // peakGain defaults to 0.4 (the original volume, still used by the
+  // Stock-to-Waste tick below) - scheduleFlipSounds() passes a reduced
+  // value for the deal only, per Perry's request.
+  function playFlipSnap(ctx, startTime, peakGain){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime);
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(peakGain != null ? peakGain : 0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+  function playWasteTick(){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    playFlipSnap(ctx, ctx.currentTime);
+  }
+  // The deal's own snap sound, 30% quieter than the normal flip-snap volume
+  // (0.4 * 0.7 = 0.28) per Perry's request - the Stock-to-Waste tick above
+  // is untouched, since he only asked about the deal.
+  const DEAL_SOUND_GAIN = 0.4 * 0.7;
+  function scheduleFlipSounds(count, baseDelay, staggerMs){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime + (baseDelay || 0);
+    const stagger = (staggerMs != null ? staggerMs : 30) / 1000;
+    for(let i=0;i<count;i++){
+      playFlipSnap(ctx, now + i * stagger, DEAL_SOUND_GAIN);
+    }
+  }
+
+  /* ---- Deal animation: cards fly in from the Stock pile to their final
+     Pyramid slot, staggered - same FLIP (First-Last-Invert-Play) technique
+     as Klondike's animateDealFlyIn(): render() has already built the exact
+     final board, so this never changes WHAT gets shown, only how it
+     arrives. Unlike Klondike, Pyramid cards are dealt already face up, so
+     there's no separate flip-reveal stage afterward - they just land. ---- */
+  const DEAL_FLIGHT_MS = 260, DEAL_STAGGER_MS = 56;
+  function animateDealFlyIn(){
+    const flat = [];
+    for(let i=0;i<28;i++){
+      const el = document.getElementById('pcard-' + i);
+      if(el) flat.push(el);
+    }
+    if(flat.length === 0) return;
+
+    const stockRect = document.getElementById('stockPile').getBoundingClientRect();
+    const deckCenter = { x: stockRect.left + stockRect.width/2, y: stockRect.top + stockRect.height/2 };
+
+    const tableWrap = document.getElementById('table-wrap');
+    const prevOverflow = tableWrap.style.overflow;
+    tableWrap.style.overflow = 'visible';
+
+    flat.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      const dx = deckCenter.x - (r.left + r.width/2);
+      const dy = deckCenter.y - (r.top + r.height/2);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
+    });
+
+    flat.forEach((el, i) => {
+      setTimeout(() => {
+        void el.offsetWidth;
+        el.style.transition = `transform ${DEAL_FLIGHT_MS}ms cubic-bezier(.22,.85,.4,1), opacity 180ms ease`;
+        requestAnimationFrame(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translate(0,0) scale(1)';
+        });
+      }, i * DEAL_STAGGER_MS);
+    });
+
+    scheduleFlipSounds(flat.length, 0, DEAL_STAGGER_MS);
+
+    setTimeout(() => {
+      tableWrap.style.overflow = prevOverflow;
+      flat.forEach(el => {
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }, (flat.length - 1) * DEAL_STAGGER_MS + DEAL_FLIGHT_MS + 60);
+  }
+
+  function buildPyramidDom(){
+    const wrap = document.getElementById('pyramidWrap');
+    wrap.innerHTML = '';
+    let idx = 0;
+    for(let row=0; row<7; row++){
+      const rowEl = document.createElement('div');
+      rowEl.className = 'pyramid-row';
+      rowEl.id = 'pyrow-' + row;
+      for(let col=0; col<=row; col++){
+        const cardEl = document.createElement('div');
+        cardEl.className = 'cardWrap pyramidCard';
+        cardEl.id = 'pcard-' + idx;
+        rowEl.appendChild(cardEl);
+        idx++;
+      }
+      wrap.appendChild(rowEl);
+    }
+  }
+
+  function dealNewGame(freshShuffle){
+    if(freshShuffle || !state.dealOrder){
+      state.dealOrder = shuffle(makeDeck());
+    }
+    const order = state.dealOrder;
+    state.pyramid = order.slice(0, 28).map(c => ({ ...c, removed: false }));
+    state.stock = order.slice(28).map(c => ({ ...c }));
+    state.waste = [];
+    state.discard = [];
+    state.redealsUsed = 0;
+    state.moves = 0;
+    state.startTime = Date.now();
+    state.gameActive = true;
+    state.undoStack = [];
+    state.selected = null;
+
+    closeModal();
+    render();
+    animateDealFlyIn();
+    saveResumeState();
+  }
+
+  /* ---- Snapshot / Undo (up to MAX_UNDO levels, oldest dropped once full) ---- */
+  const MAX_UNDO = 8;
+  function takeSnapshot(){
+    return JSON.parse(JSON.stringify({
+      pyramid: state.pyramid, stock: state.stock, waste: state.waste,
+      discard: state.discard, redealsUsed: state.redealsUsed, moves: state.moves
+    }));
+  }
+  function pushUndoSnapshot(snap){
+    state.undoStack.push(snap);
+    if(state.undoStack.length > MAX_UNDO) state.undoStack.shift();
+  }
+  function restoreSnapshot(snap){
+    state.pyramid = snap.pyramid;
+    state.stock = snap.stock;
+    state.waste = snap.waste;
+    state.discard = snap.discard;
+    state.redealsUsed = snap.redealsUsed;
+    state.moves = snap.moves;
+  }
+  function undoLastMove(){
+    if(state.undoStack.length === 0) return;
+    restoreSnapshot(state.undoStack.pop());
+    state.selected = null;
+    // Undoing the move that ended the game (a win or a loss) brings the
+    // game back to life, not leaving it frozen.
+    state.gameActive = true;
+    render();
+    saveResumeState();
+  }
+
+  /* ---- Selection / pairing helpers ---- */
+  function cardAt(loc){
+    if(!loc) return null;
+    if(loc.type === 'pyramid') return state.pyramid[loc.index];
+    if(loc.type === 'waste') return state.waste[state.waste.length - 1];
+    if(loc.type === 'stock') return state.stock[state.stock.length - 1];
+    return null;
+  }
+  function sameLoc(a, b){
+    if(!a || !b) return false;
+    if(a.type !== b.type) return false;
+    return a.type === 'pyramid' ? a.index === b.index : true;
+  }
+  function isSelectedLoc(loc){ return sameLoc(state.selected, loc); }
+  function removeCardAt(loc){
+    if(loc.type === 'pyramid'){
+      const card = state.pyramid[loc.index];
+      card.removed = true;
+      return card;
+    }
+    if(loc.type === 'waste') return state.waste.pop();
+    if(loc.type === 'stock') return state.stock.pop();
+    return null;
+  }
+  function elementForLoc(loc){
+    if(loc.type === 'pyramid') return document.getElementById('pcard-' + loc.index).firstElementChild;
+    if(loc.type === 'waste') return document.getElementById('wastePile').firstElementChild;
+    if(loc.type === 'stock') return document.getElementById('stockPile').firstElementChild;
+    return null;
+  }
+  function rectForLoc(loc){
+    const el = elementForLoc(loc);
+    return el ? el.getBoundingClientRect() : null;
+  }
+
+  const FLY_DURATION_MS = 340, FLY_STAGGER_MS = 260;
+  function flyCardsToDiscard(items){
+    // items: [{ rect, card }, ...], already captured BEFORE the real cards
+    // were removed from the board and render() redrew everything - each is
+    // a short-lived clone flown from its old on-screen spot to the Discard
+    // pile, one at a time (per Perry's request), purely decorative.
+    const discardEl = document.getElementById('discardPile');
+    const discardRect = discardEl.getBoundingClientRect();
+    items.forEach((item, i) => {
+      if(!item.rect) return;
+      setTimeout(() => {
+        const clone = document.createElement('div');
+        clone.className = 'flyingCardClone';
+        clone.innerHTML = cardHtml(item.card, false, false);
+        clone.style.position = 'fixed';
+        clone.style.left = item.rect.left + 'px';
+        clone.style.top = item.rect.top + 'px';
+        clone.style.width = item.rect.width + 'px';
+        clone.style.height = item.rect.height + 'px';
+        clone.style.margin = '0';
+        clone.style.zIndex = '900';
+        clone.style.pointerEvents = 'none';
+        clone.style.transition = 'none';
+        document.body.appendChild(clone);
+        void clone.offsetWidth;
+        const dx = discardRect.left - item.rect.left;
+        const dy = discardRect.top - item.rect.top;
+        clone.style.transition = `transform ${FLY_DURATION_MS}ms cubic-bezier(.3,.6,.4,1), opacity ${FLY_DURATION_MS}ms ease`;
+        requestAnimationFrame(() => {
+          clone.style.transform = `translate(${dx}px, ${dy}px) scale(0.92) rotate(8deg)`;
+        });
+        playSound('discard');
+        setTimeout(() => { clone.remove(); }, FLY_DURATION_MS + 30);
+      }, i * FLY_STAGGER_MS);
+    });
+  }
+
+  // Shared by a King's solo removal and a matched pair - captures where the
+  // card(s) are on screen right now, removes them from state, records the
+  // move for Undo, re-renders the (now-updated) board, then flies the
+  // decorative clone(s) from their captured start points to the Discard
+  // pile. checkGameEnd()/saveResumeState() wait for the flight to finish so
+  // a win/loss popup never appears out from under a still-moving card.
+  function doRemoveAndAnimate(locs){
+    const tentative = takeSnapshot();
+    const rects = locs.map(rectForLoc);
+    const cards = locs.map(removeCardAt);
+    cards.forEach(c => state.discard.push(c));
+    state.moves++;
+    pushUndoSnapshot(tentative);
+    render();
+    flyCardsToDiscard(locs.map((loc, i) => ({ rect: rects[i], card: cards[i] })));
+    const flightMs = (locs.length - 1) * FLY_STAGGER_MS + FLY_DURATION_MS + 40;
+    setTimeout(() => { checkGameEnd(); saveResumeState(); }, flightMs);
+  }
+
+  /* ---- Click handlers ---- */
+  function handleSelectableClick(loc){
+    if(!state.gameActive) return;
+    const card = cardAt(loc);
+    if(!card) return;
+
+    if(card.rank === 'K'){
+      state.selected = null;
+      doRemoveAndAnimate([loc]);
+      return;
+    }
+    if(isSelectedLoc(loc)){
+      state.selected = null; // clicking the already-selected card deselects it
+      render();
+      return;
+    }
+    if(!state.selected){
+      state.selected = loc;
+      render();
+      return;
+    }
+    const selCard = cardAt(state.selected);
+    if(RANK_VALUE[selCard.rank] + RANK_VALUE[card.rank] === 13){
+      const fromLoc = state.selected;
+      state.selected = null;
+      doRemoveAndAnimate([fromLoc, loc]);
+    }
+    // else: doesn't total 13 - nothing happens, the original selection stays put
+  }
+
+  function onPyramidCardClick(index){
+    if(!isExposed(index)) return;
+    handleSelectableClick({ type: 'pyramid', index });
+  }
+  function onWasteCardClick(){
+    if(!state.waste.length) return;
+    handleSelectableClick({ type: 'waste' });
+  }
+
+  function onStockClick(){
+    if(!state.gameActive) return;
+
+    if(state.selected){
+      // With a card already selected, the Stock's top card can only ever
+      // be used as the pairing partner - it never just draws while a
+      // selection is active.
+      if(state.stock.length === 0) return;
+      const stockTop = state.stock[state.stock.length - 1];
+      if(stockTop.rank === 'K') return; // a King must be turned onto the Waste before it can be removed
+      const selCard = cardAt(state.selected);
+      if(RANK_VALUE[selCard.rank] + RANK_VALUE[stockTop.rank] === 13){
+        const fromLoc = state.selected;
+        state.selected = null;
+        doRemoveAndAnimate([fromLoc, { type: 'stock' }]);
+      }
+      // else: doesn't total 13 - nothing happens, selection stays put
+      return;
+    }
+
+    // Nothing selected - normal draw, or a redeal once the Stock is empty.
+    const tentative = takeSnapshot();
+    if(state.stock.length === 0){
+      if(state.waste.length === 0 || state.redealsUsed >= 2) return; // nothing left to draw or redeal
+      state.stock = state.waste.slice().reverse();
+      state.waste = [];
+      state.redealsUsed++;
+      playSound('move');
+      pushUndoSnapshot(tentative);
+      render();
+      checkGameEnd();
+      saveResumeState();
+      return;
+    }
+    const card = state.stock.pop();
+    card.faceUp = true;
+    state.waste.push(card);
+    justDrewToWaste = true; // tells render() to play the slide-down animation/sound for this one card
+    pushUndoSnapshot(tentative);
+    render();
+    setTimeout(() => { checkGameEnd(); saveResumeState(); }, 300 + 40);
+  }
+
+  /* ---- Win / lose ----
+     Unlike Klondike (where running out of moves leaves the game open so
+     the player can keep drawing through the deck), Pyramid's own rules
+     define running out of moves as the actual loss - so this really does
+     end the game, the same way winning does. */
+  function hasAnyMoveAvailable(){
+    if(state.stock.length > 0) return true; // can always draw again
+    if(state.waste.length > 0 && state.redealsUsed < 2) return true; // a redeal is still available
+
+    // Stock is exhausted and no redeal remains - everything that could
+    // still be played has to already be visible: the currently-exposed
+    // Pyramid cards and the top of the Waste pile.
+    const exposedIdx = [];
+    for(let i=0;i<28;i++) if(isExposed(i)) exposedIdx.push(i);
+
+    for(const i of exposedIdx) if(state.pyramid[i].rank === 'K') return true;
+    if(state.waste.length && state.waste[state.waste.length-1].rank === 'K') return true;
+
+    for(let a=0; a<exposedIdx.length; a++){
+      for(let b=a+1; b<exposedIdx.length; b++){
+        if(RANK_VALUE[state.pyramid[exposedIdx[a]].rank] + RANK_VALUE[state.pyramid[exposedIdx[b]].rank] === 13) return true;
+      }
+    }
+    if(state.waste.length){
+      const w = state.waste[state.waste.length-1];
+      for(const i of exposedIdx) if(RANK_VALUE[w.rank] + RANK_VALUE[state.pyramid[i].rank] === 13) return true;
+    }
+    return false;
+  }
+
+  function discardCount(){ return state.discard.length; }
+  function currentScore(){ return -52 + 5 * discardCount(); }
+
+  function checkGameEnd(){
+    if(!state.gameActive) return;
+    if(pyramidRemaining() === 0 && state.stock.length === 0 && state.waste.length === 0){
+      state.gameActive = false;
+      playSound('win');
+      showEndModal(true);
+      return;
+    }
+    if(!hasAnyMoveAvailable()){
+      state.gameActive = false;
+      playSound('stuck');
+      showEndModal(false);
+    }
+  }
+
+  function recordScore(){
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, score: currentScore(), moves: state.moves, time: elapsedSeconds(),
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+
+  function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  function showEndModal(won){
+    const score = currentScore();
+    const time = elapsedSeconds();
+    recordScore();
+    const body = won
+      ? `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+         <p>The Pyramid, Stock, and Waste are all empty.</p>`
+      : `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+         <p>No valid pair, King, or redeal remains available.</p>`;
+    showModal(won ? 'You Win!' : 'No More Moves - Game Over', body, `<button onclick="closeModal()">OK</button>`, false);
+    render();
+  }
+
+  /* ---- Rendering ---- */
+  /* Real card-face artwork (Perry's own Cards/ folder, one SVG per card,
+     e.g. Cards/AS.svg for the Ace of Spades) replaces the earlier hand-
+     drawn pip/court-figure faces - each file is a complete card face
+     already (background, border, pips/court art, corner indices), so
+     cardHtml() just needs to point an <img> at the right one. Card backs
+     are untouched, per Perry's request. */
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `Cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
+  function cardHtml(card, clickable, selected){
+    const cls = (clickable === false ? '' : ' clickable') + (selected ? ' selected-glow' : '');
+    return `<div class="card${cls}"><img class="card-face-img" src="${cardImageSrc(card)}" alt="${card.rank} of ${card.suit}" draggable="false"></div>`;
+  }
+  function wasteSlideHtml(card){
+    return `<div class="wasteSlide">${cardHtml(card, true, false)}</div>`;
+  }
+
+  // Set by onStockClick() right before pushing a freshly-drawn card onto
+  // Waste, so the very next render() knows to play the slide-down
+  // animation/sound for that one card instead of just showing it plainly.
+  // A plain variable rather than part of `state` since it's a one-shot
+  // rendering cue, not game data that needs to survive a save/reload.
+  let justDrewToWaste = false;
+  function render(){
+    // Stock - shows its top card face up, per Perry's request (Pyramid
+    // never actually hides information here - the same card is simply
+    // shown while it's still on the Stock, then slides down to Waste when
+    // drawn). Falls back to a redeal icon only once the Stock is empty and
+    // a redeal is still possible, so the pile never implies an action that
+    // wouldn't do anything.
+    const stockEl = document.getElementById('stockPile');
+    if(state.stock.length){
+      stockEl.innerHTML = cardHtml(state.stock[state.stock.length - 1], true, false);
+    } else if(state.waste.length && state.redealsUsed < 2){
+      stockEl.innerHTML = '&#8635;';
+    } else {
+      stockEl.innerHTML = '';
+    }
+    stockEl.onclick = onStockClick;
+
+    // Waste
+    const wasteEl = document.getElementById('wastePile');
+    if(state.waste.length){
+      const topCard = state.waste[state.waste.length - 1];
+      if(justDrewToWaste){
+        wasteEl.innerHTML = wasteSlideHtml(topCard);
+        playWasteTick();
+      } else {
+        wasteEl.innerHTML = cardHtml(topCard, true, isSelectedLoc({ type:'waste' }));
+      }
+      wasteEl.onclick = onWasteCardClick;
+    } else {
+      wasteEl.innerHTML = '';
+      wasteEl.onclick = null;
+    }
+    justDrewToWaste = false;
+
+    // Discard - shows only the most recently removed card, same convention
+    // as a Foundation pile elsewhere on the site. Never a click target.
+    const discardEl = document.getElementById('discardPile');
+    discardEl.innerHTML = state.discard.length ? cardHtml(state.discard[state.discard.length-1], false, false) : '';
+
+    // Pyramid
+    for(let i=0;i<28;i++){
+      const el = document.getElementById('pcard-' + i);
+      const card = state.pyramid[i];
+      if(!card || card.removed){
+        el.innerHTML = '';
+        el.className = 'cardWrap pyramidEmpty';
+        el.onclick = null;
+        continue;
+      }
+      const exposed = isExposed(i);
+      el.innerHTML = cardHtml(card, exposed, exposed && isSelectedLoc({ type:'pyramid', index:i }));
+      el.className = 'cardWrap pyramidCard';
+      el.onclick = exposed ? (()=> onPyramidCardClick(i)) : null;
+    }
+
+    document.getElementById('scoreDisplay').textContent = currentScore();
+    document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+  }
+
+  /* ---- Sound toggle (replaces Klondike's Options button - default ON,
+     persisted the same permanent way the player name is below) ---- */
+  document.getElementById('soundBtn').addEventListener('click', ()=>{
+    state.soundEnabled = !state.soundEnabled;
+    document.getElementById('soundBtn').textContent = 'Sound: ' + (state.soundEnabled ? 'ON' : 'OFF');
+    try { localStorage.setItem(SOUND_KEY, JSON.stringify(state.soundEnabled)); } catch(e) {}
+    saveResumeState();
+  });
+  try {
+    const savedSound = JSON.parse(localStorage.getItem(SOUND_KEY));
+    if(typeof savedSound === 'boolean') state.soundEnabled = savedSound;
+  } catch(e) {}
+
+  /* ---- Recorded Scores (Firebase-backed) ---- */
+  const MAX_RECORDED_SCORES = 30;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  function formatScoreRow(entry, rank){
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let listHtml;
+    if(sharedScores === null){
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b)=>
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
+      ).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
+      } else {
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
+          <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
+          ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
+        </table></div>`;
+      }
+    }
+    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System Explanation</button>${listHtml}`;
+    showModal('Recorded Scores', body, `
+      <button onclick="closeModal()">OK</button>
+    `, true, 'scoresModal');
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    showModal('Restart This Game?', '<p>This replays the exact same deal from the very beginning. Your current progress will be lost.</p>', `
+      <button onclick="dealNewGame(false)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
+    clearResumeState();
+    window.location.href = '../SolMenu.html';
+  });
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolPyramidInstruc.html';
+  });
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    showModal('Exit Pyramid', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+
+  // The mouse's (or trackpad's) "Back" button replays the browser's own
+  // back-navigation, which would otherwise jump straight out of the game to
+  // whatever page came before it (usually Home) with no warning at all.
+  // This traps that action instead: on load it adds one extra step to the
+  // browser's history for this same page, and if that step is ever "gone
+  // back" past, it immediately re-adds itself (so the address bar never
+  // actually leaves this page) and shows the exact same Exit confirmation
+  // the Exit button already gives - so a stray Back press can't lose a
+  // game in progress, but a deliberate "Yes" still leaves normally.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
+  /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
+  const nameInput = document.getElementById('playerNameInput');
+  try {
+    const saved = localStorage.getItem(PLAYER_NAME_KEY);
+    if(saved) nameInput.value = saved;
+  } catch(e) {}
+  nameInput.addEventListener('change', ()=>{
+    const newName = nameInput.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+  }
+  document.getElementById('universalModal').addEventListener('click', (e)=>{
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
+     back, but NOT a trip through the Solitaire Menu, which should always
+     deal a fresh game. Same pattern as every other Game Hub solitaire game. ---- */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
+    } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      render();
+      return true;
+    } catch(e) {
+      console.error('tryRestoreResumeState error', e);
+      return false;
+    }
+  }
+
+  /* ---- "Are you ready to have fun?" startup gate ----
+     Browsers block a page's sound from actually starting until the very
+     first genuine user gesture (click/tap/key) - not just any on-screen
+     animation. Since the very first deal used to fire automatically on
+     page load with no gesture yet, its sound never played. This gate
+     forces that first real click before dealing, so the click itself
+     unlocks audio and the very first deal plays with sound like every
+     deal after it. Yes deals; Cancel leaves, same as the Exit button. */
+  function showReadyGate(){
+    showModal('Are you ready to have fun?', '', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="location.href='../index.html';">Cancel</button>
+    `, false, 'readyGateModal');
+  }
+
+  /* ---- Startup ----
+     Only resume if this load came from the Instructions page's tagged
+     "Back to Pyramid" link (?resume=1) - any other way of opening this page
+     always deals a brand-new game. */
+  document.getElementById('soundBtn').textContent = 'Sound: ' + (state.soundEnabled ? 'ON' : 'OFF');
+  buildPyramidDom();
+  const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
+  if(!(arrivedViaInstructionsBack && tryRestoreResumeState())){
+    clearResumeState();
+    showReadyGate();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 16;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
