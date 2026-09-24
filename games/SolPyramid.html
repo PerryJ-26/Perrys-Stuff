@@ -1,6 +1,6 @@
 
-<!-- Revision 17 | Thursday, September 24, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1317 -->
+<!-- Revision 18 | Thursday, September 24, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1322 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1196,8 +1196,10 @@
   });
   document.getElementById('undoBtn').addEventListener('click', undoLastMove);
   document.getElementById('selectGameBtn').addEventListener('click', ()=>{
-    clearResumeState();
-    window.location.href = '../SolMenu.html';
+    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
+      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
   });
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
     saveResumeState();
@@ -1317,7 +1319,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 17;
+  const PAGE_REVISION = 18;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
