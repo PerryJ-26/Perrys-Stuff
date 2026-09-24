@@ -1,6 +1,6 @@
 
-<!-- Revision 36 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2194 -->
+<!-- Revision 39 | Thursday, September 24, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2209 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -437,21 +437,17 @@
   /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
   .card{
     width: 71.4px; height: 100.3px;
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
     border-radius: 6px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 4px;
-    font-weight: 800;
     box-shadow: 1px 2px 3px var(--shadow-medium);
-    color: var(--ink);
     user-select: none;
   }
-  .card.red{ color: var(--red); }
-  .card .corner{ font-size: 0.935rem; line-height: 1; }
-  .card .center-suit{ font-size: 1.87rem; text-align: center; }
+  .card-face-img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
   .cardback{
     width: 71.4px; height: 100.3px;
     background-color: var(--cardback-1);
@@ -547,6 +543,9 @@
      popup. Sized a bit smaller than the felt itself so it visually sits
      inside the green area with a little breathing room. */
   #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
+  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate().
+     24px bold per Perry's request. ---- */
+  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
   /* The scores list scrolls on its own within that fixed-height popup, so
      the title and the Scoring System Explanation/OK buttons always stay
      visible - only the table grows a scroll bar once its rows run past
@@ -668,6 +667,15 @@
   const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
   const SUIT_ID = { '♠':'s', '♥':'h', '♣':'c', '♦':'d' };
+  // Real card-face artwork (Perry's own cards/ folder, one SVG per card,
+  // e.g. cards/AS.svg for the Ace of Spades), same deck used by Pyramid.
+  // This page lives in games/ while cards/ stays at the site root, so the
+  // path climbs up one level with ../ before going into cards/.
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `../cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
 
   const PLAYER_NAME_KEY = 'solKlondikePlayerName_v1';
   const RESUME_KEY = 'solKlondikeResumeState_v1';
@@ -1726,12 +1734,7 @@
 
   /* ---- Rendering ---- */
   function cardHtml(card){
-    const red = isRed(card.suit) ? 'red' : '';
-    return `<div class="card ${red} clickable">
-      <div class="corner">${card.rank}${card.suit}</div>
-      <div class="center-suit">${card.suit}</div>
-      <div class="corner" style="align-self:flex-end;">${card.rank}${card.suit}</div>
-    </div>`;
+    return `<div class="card clickable"><img class="card-face-img" src="${cardImageSrc(card)}" alt="${card.rank} of ${card.suit}" draggable="false"></div>`;
   }
   // A card that's actively turning face up this render - a two-sided
   // flip3d wrapper (see the CSS) showing the cardback first, then the
@@ -1832,13 +1835,8 @@
       const pile = state.foundations[suit];
       if(pile.length){
         const fCard = pile[pile.length-1];
-        const red = isRed(fCard.suit) ? 'red' : '';
         const anim = animFlags.foundationSuits.has(suit) ? ' foundation-anim' : '';
-        el.innerHTML = `<div class="card ${red} clickable${anim}">
-          <div class="corner">${fCard.rank}${fCard.suit}</div>
-          <div class="center-suit">${fCard.suit}</div>
-          <div class="corner" style="align-self:flex-end;">${fCard.rank}${fCard.suit}</div>
-        </div>`;
+        el.innerHTML = `<div class="card clickable${anim}"><img class="card-face-img" src="${cardImageSrc(fCard)}" alt="${fCard.rank} of ${fCard.suit}" draggable="false"></div>`;
       } else {
         el.innerHTML = 'A';
       }
@@ -2053,8 +2051,10 @@
     // Deliberately clears (rather than saves) the resume state - going out
     // through the Solitaire Menu should always deal a fresh game on the
     // way back in, unlike the Instructions round-trip below.
-    clearResumeState();
-    window.location.href = '../SolMenu.html';
+    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
+      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
   });
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
     saveResumeState();
@@ -2143,6 +2143,21 @@
     if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
   });
 
+  /* ---- "Are you ready to have fun?" startup gate ----
+     Browsers block a page's sound from actually starting until the very
+     first genuine user gesture (click/tap/key) - not just any on-screen
+     animation. Since the very first deal used to fire automatically on
+     page load with no gesture yet, its sound never played. This gate
+     forces that first real click before dealing, so the click itself
+     unlocks audio and the very first deal plays with sound like every
+     deal after it. Yes deals; Cancel leaves, same as the Exit button. */
+  function showReadyGate(){
+    showModal('Are you ready to have fun?', '', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="location.href='../index.html';">Cancel</button>
+    `, false, 'readyGateModal');
+  }
+
   /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
      back, but NOT a trip through the Solitaire Menu (see selectGameBtn
      below), which should always deal a fresh game. Resuming only actually
@@ -2186,12 +2201,12 @@
   const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
   if(!(arrivedViaInstructionsBack && tryRestoreResumeState())){
     clearResumeState();
-    dealNewGame(true);
+    showReadyGate();
   }
 </script>
 
 <script>
-  const PAGE_REVISION = 36;
+  const PAGE_REVISION = 39;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
