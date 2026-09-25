@@ -1,6 +1,6 @@
 
-<!-- Revision 71 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1320 -->
+<!-- Revision 72 | Friday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1321 -->
 
 <!doctype html>
 <html lang="en">
@@ -101,8 +101,9 @@
     --pip-shadow-light:rgba(255,255,255,0.15);
     --pip-shadow-dark:rgba(0,0,0,0.3);
 
-    /* Universal confirmation modal */
-    --modal-overlay-bg:rgba(0,0,0,0.65);
+    /* Universal confirmation modal - fully transparent per Perry's request, so the board
+       behind any popup (New Game, Exit, Recorded Scores, etc.) is never dimmed. */
+    --modal-overlay-bg:transparent;
     --modal-box-shadow:rgba(0,0,0,0.6);
 
     /* Game Over / "Play Another Game?" screen: kept as its OWN set of
@@ -1317,7 +1318,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 71;
+  const PAGE_REVISION = 72;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2074,6 +2075,12 @@
       // Same reasoning applies to Option 2's bonus roll - a partially-played double doesn't earn it.
       awaitingDoubleChoice = false;
       isDoubleBonusPending = false;
+      // Also covers the chosen double itself (e.g. "declares double 4s!" then only 3 of the 4
+      // fours are playable): isDoubleFromAceyDeucey is what afterDiceExhausted() checks to award
+      // the Acey-Deucey bonus roll, and it's still true at this point since it isn't cleared until
+      // that check runs. Left set, a partially-played chosen double wrongly earned the bonus roll
+      // anyway once forfeitTurnNoMoves()'s timeout called afterDiceExhausted() again.
+      isDoubleFromAceyDeucey = false;
       forfeitTurnNoMoves('No further legal moves — remaining dice forfeited.');
     } else {
       render();
@@ -2119,6 +2126,11 @@
     phase = 'moving';
     render();
     if(!anyLegalMove(current, dice)){
+      // The chosen double couldn't be played at all - same reasoning as the partial-play case
+      // in doMove(): isDoubleFromAceyDeucey is still true here (it's what earns the Acey-Deucey
+      // bonus roll), so it has to be cleared or forfeitTurnNoMoves()'s timeout would call
+      // afterDiceExhausted() and wrongly grant the bonus anyway for a double that was never played.
+      isDoubleFromAceyDeucey = false;
       forfeitTurnNoMoves('No legal moves for that double — forfeited.');
       return;
     }
@@ -2251,7 +2263,7 @@
       const box = modal ? modal.querySelector('.modal-box') : null;
       if(box){
         box.classList.remove('wide');
-        box.style.maxHeight = '';
+        box.style.height = '';
         // Reset back to this page's normal look by default - only the Game Options button
         // (see its click handler below) adds this back, so it never leaks into any other popup.
         box.classList.remove('pinochle-style');
@@ -2711,8 +2723,11 @@
       // double-1s itself had zero legal moves too, so the log would say the player "declares"
       // a double it was never actually able to play, immediately followed by a forfeit. Skip
       // declaring a double at all in this case - go straight to the forfeit, with an accurate
-      // message. (The bonus reroll is still preserved either way, since that's handled downstream
-      // in afterDiceExhausted() regardless of how the double phase ends.)
+      // message. Also clears isDoubleFromAceyDeucey (same fix as chooseDouble()'s own
+      // zero-legal-move branch and doMove()'s partial-play branch) so forfeitTurnNoMoves()'s
+      // timeout doesn't call afterDiceExhausted() and grant the bonus roll anyway - this log
+      // message says the bonus is forfeited, so it actually has to be.
+      isDoubleFromAceyDeucey = false;
       dice = [];
       phase = 'moving';
       forfeitTurnNoMoves('No legal double available for any value — bonus forfeited.');
@@ -2836,12 +2851,13 @@
     document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
     const scoresBox = document.querySelector('#universalModal .modal-box');
     scoresBox.classList.toggle('wide', hasRows);
-    // Let the popup grow as tall as the board frame itself (see the
-    // .modal-box.wide CSS above, which caps only the scores list to a
-    // scroll region so the OK button never gets pushed off-screen).
+    // Fill the full height of the board frame itself, not just cap at it - per Perry's
+    // request, the popup should always be this tall rather than shrinking to fit however
+    // many scores there are. The .modal-box.wide CSS above still gives the scores list its
+    // own scroll region within that fixed height, so the OK button never gets pushed off.
     if(hasRows){
       const boardRect = document.querySelector('.board-frame').getBoundingClientRect();
-      scoresBox.style.maxHeight = boardRect.height + 'px';
+      scoresBox.style.height = boardRect.height + 'px';
     }
   }
 
