@@ -1,5 +1,5 @@
 
-<!-- Revision 72 | Friday, September 25, 2026 -->
+<!-- Revision 73 | Friday, September 25, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1321 -->
 
 <!doctype html>
@@ -1318,7 +1318,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 72;
+  const PAGE_REVISION = 73;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2851,12 +2851,13 @@
     document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
     const scoresBox = document.querySelector('#universalModal .modal-box');
     scoresBox.classList.toggle('wide', hasRows);
-    // Fill the full height of the board frame itself, not just cap at it - per Perry's
-    // request, the popup should always be this tall rather than shrinking to fit however
-    // many scores there are. The .modal-box.wide CSS above still gives the scores list its
-    // own scroll region within that fixed height, so the OK button never gets pushed off.
+    // Fill the full height of the whole game area (.wrap - header through footer, the entire
+    // green board background), not just the wooden checkers frame itself, and not just cap at
+    // it - per Perry's request, the popup should always be this tall rather than shrinking to
+    // fit however many scores there are. The .modal-box.wide CSS above still gives the scores
+    // list its own scroll region within that fixed height, so the OK button never gets pushed off.
     if(hasRows){
-      const boardRect = document.querySelector('.board-frame').getBoundingClientRect();
+      const boardRect = document.querySelector('.wrap').getBoundingClientRect();
       scoresBox.style.height = boardRect.height + 'px';
     }
   }
