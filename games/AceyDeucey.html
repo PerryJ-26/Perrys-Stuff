@@ -1,6 +1,6 @@
 
-<!-- Revision 70 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1308 -->
+<!-- Revision 71 | Friday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1320 -->
 
 <!doctype html>
 <html lang="en">
@@ -996,7 +996,19 @@
     border:2px solid var(--gold);}
 
   #universalModal .modal-box.wide{
-    max-width:480px;}
+    max-width:480px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;}
+  /* Only the scores list itself scrolls - the title, subtitle and OK button
+     stay fixed in place and always visible, per Perry's request. The
+     modal's actual max-height is set inline in JS (see showScoresModal())
+     to match the board's own on-screen height, so it fills as much of the
+     board frame as it can before the list needs to scroll. */
+  #universalModal .modal-box.wide #universalModalText{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;}
     
   #universalModalTitle{
     margin:0 0 8px;
@@ -1305,7 +1317,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 70;
+  const PAGE_REVISION = 71;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -2239,6 +2251,7 @@
       const box = modal ? modal.querySelector('.modal-box') : null;
       if(box){
         box.classList.remove('wide');
+        box.style.maxHeight = '';
         // Reset back to this page's normal look by default - only the Game Options button
         // (see its click handler below) adds this back, so it never leaks into any other popup.
         box.classList.remove('pinochle-style');
@@ -2755,7 +2768,7 @@
   // Firebase is the sole source of truth for recorded scores now, per request. That means: no
   // local fallback list, and if Firebase hasn't responded yet or can't be reached, the Scores
   // button says so explicitly rather than silently showing stale/local data.
-  const MAX_RECORDED_SCORES = 15;
+  const MAX_RECORDED_SCORES = 30;
 
   /* Shared cross-device score data from Firebase (see the <script type="module"> block near
      the end of the file - same Firebase project Yahtzee already uses, just a separate database
@@ -2821,7 +2834,15 @@
     subtitleEl.textContent = '(pips needed by loser to finish)';
     subtitleEl.style.display = '';
     document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
-    document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
+    const scoresBox = document.querySelector('#universalModal .modal-box');
+    scoresBox.classList.toggle('wide', hasRows);
+    // Let the popup grow as tall as the board frame itself (see the
+    // .modal-box.wide CSS above, which caps only the scores list to a
+    // scroll region so the OK button never gets pushed off-screen).
+    if(hasRows){
+      const boardRect = document.querySelector('.board-frame').getBoundingClientRect();
+      scoresBox.style.maxHeight = boardRect.height + 'px';
+    }
   }
 
   // Total pips a player's checkers still need to travel to bear off everything - the standard
