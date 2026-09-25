@@ -1,6 +1,6 @@
 
-<!-- Revision 5 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 803 -->
+<!-- Revision 6 | Friday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 816 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -605,6 +605,19 @@
     max-height: 95vh;
     padding-top: 2.8px;
     padding-bottom: 2.8px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: hidden;
+  }
+  /* Only the scores list itself scrolls - the title and the OK button stay
+     fixed in place and always visible, per Perry's request. The modal's
+     actual max-height is set inline in JS (see showModal()) to match the
+     felt's own on-screen height, so it fills as much of the table as it
+     can before the list needs to scroll. */
+  #universalModal .modalBox.scores-style .modalBody{
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -800,7 +813,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 5;
+  const PAGE_REVISION = 6;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2008,7 +2021,7 @@ function tryRestoreResumeState(){
 // Firebase yet (or it's unreachable)", so the modal can say so explicitly
 // instead of showing stale/empty data.
 // ---------------------------------------------------------------------
-const MAX_RECORDED_SCORES = 14;
+const MAX_RECORDED_SCORES = 30;
 let sharedScores = null;
 window.onSharedScoresUpdate = function(list){
   sharedScores = list;
@@ -2084,6 +2097,10 @@ function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
     box.style.left = boardCenterX + 'px';
     box.style.top = '50%';
     box.style.transform = 'translate(-50%, -50%)';
+    // Recorded Scores: let the popup grow as tall as the felt itself (see
+    // .modalBox.scores-style above, which caps only the scores list to a
+    // scroll region so the OK button never gets pushed off-screen).
+    box.style.maxHeight = extraClass === 'scores-style' ? boardRect.height + 'px' : '';
   }
 }
 // Shifts the just-shown popup down from its default vertical center by a
