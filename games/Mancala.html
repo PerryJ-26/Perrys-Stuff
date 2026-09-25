@@ -1,6 +1,6 @@
 
-<!-- Revision 8 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1185 -->
+<!-- Revision 9 | Friday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1208 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -407,6 +407,19 @@
 
   #universalModal .modal-box.wide {
     max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  /* Only the scores list itself scrolls - the title, subtitle and OK button
+     stay fixed in place and always visible, per Perry's request. The
+     modal's actual max-height is set inline in JS (see showScoresModal())
+     to match the board's own on-screen height, so it fills as much of the
+     board frame as it can before the list needs to scroll. */
+  #universalModal .modal-box.wide #universalModalText {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   #universalModalTitle {
@@ -1089,7 +1102,9 @@
         buttonsEl.appendChild(btn);
       });
       modal.style.display = 'block';
-      modal.querySelector('.modal-box').classList.remove('wide');
+      const box = modal.querySelector('.modal-box');
+      box.classList.remove('wide');
+      box.style.maxHeight = '';
     });
   }
 
@@ -1101,7 +1116,7 @@
   }
 
   // ---------------- ranked score history (shared, via Firebase) ----------------
-  const MAX_RECORDED_SCORES = 15;
+  const MAX_RECORDED_SCORES = 30;
   let sharedScores = null;
   window.onSharedScoresUpdate = function(list){
     sharedScores = list;
@@ -1158,7 +1173,15 @@
     subtitleEl.textContent = 'The number of Seeds the winner was ahead.';
     subtitleEl.style.display = '';
     document.getElementById('universalModalText').classList.toggle('scores-list', hasRows);
-    document.querySelector('#universalModal .modal-box').classList.toggle('wide', hasRows);
+    const scoresBox = document.querySelector('#universalModal .modal-box');
+    scoresBox.classList.toggle('wide', hasRows);
+    // Let the popup grow as tall as the board itself (see the
+    // .modal-box.wide CSS above, which caps only the scores list to a
+    // scroll region so the OK button never gets pushed off-screen).
+    if(hasRows){
+      const boardRect = document.querySelector('.board-wrap').getBoundingClientRect();
+      scoresBox.style.maxHeight = boardRect.height + 'px';
+    }
   }
 
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
@@ -1182,7 +1205,7 @@
     startGame();
   }
 
-  const PAGE_REVISION = 8;
+  const PAGE_REVISION = 9;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 })();
 </script>
