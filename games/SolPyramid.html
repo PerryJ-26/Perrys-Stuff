@@ -1,6 +1,6 @@
 
-<!-- Revision 18 | Thursday, September 24, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1322 -->
+<!-- Revision 19 | Friday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1334 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -371,6 +371,10 @@
     overflow-y: auto;
   }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  /* Win title flash - see the "You Win!" call site below, which is the only
+     place this class gets added. */
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
   #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
   #universalModal button{
@@ -1040,6 +1044,10 @@
       : `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
          <p>No valid pair, King, or redeal remains available.</p>`;
     showModal(won ? 'You Win!' : 'No More Moves - Game Over', body, `<button onclick="closeModal()">OK</button>`, false);
+    if(won){
+      document.getElementById('modalTitle').style.color = 'red';
+      document.getElementById('modalTitle').classList.add('win-blink');
+    }
     render();
   }
 
@@ -1244,6 +1252,10 @@
   /* ---- Generic universalModal system ---- */
   function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
     document.getElementById('modalTitle').textContent = title;
+    // Reset every time so the win flash (added only at the "You Win!" call
+    // site) never leaks into the next, unrelated modal.
+    document.getElementById('modalTitle').style.color = '';
+    document.getElementById('modalTitle').classList.remove('win-blink');
     document.getElementById('modalBody').innerHTML = bodyHtml;
     document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
     const modal = document.getElementById('universalModal');
@@ -1319,7 +1331,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 18;
+  const PAGE_REVISION = 19;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
