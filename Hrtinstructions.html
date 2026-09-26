@@ -1,5 +1,7 @@
 
-<!-- Revision 3 | Saturday, September 12, 2026 | Added a "Rev. N" marker to the top-right corner of the header, showing this page's current revision number. Used black text, since it gives more contrast than white against this header's light-blue background (#4a90c2). -->
+<!-- Revision 7 | Saturday, September 26, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 302 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -248,11 +250,10 @@
   <div class="site-header-wrap">
     <header>
       <h1>Game Hub</h1>
-      <span class="revBadge">Rev. 3</span>
+      <span class="revBadge" id="revBadge"></span>
     </header>
 
     <nav>
-      <a href="index.html">Home</a>
       <a href="games/Hearts.html">Back to Hearts</a>
       <button id="printBtn" onclick="window.print()">🖨 Print</button>
     </nav>
@@ -296,6 +297,11 @@
 
     </div>
   </main>
+
+<script>
+  const PAGE_REVISION = 7;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
 
 </body>
 </html>
