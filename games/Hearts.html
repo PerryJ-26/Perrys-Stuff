@@ -1,6 +1,6 @@
 
-<!-- Revision 27 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 804 -->
+<!-- Revision 28 | Sunday, September 27, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 831 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -600,6 +600,33 @@
     max-height: 80vh;
     overflow-y:auto;
   }
+  /* Options modal - ON/OFF radio-button format (matches Klondike's/Spades'
+     Options popup), used for Sounds / View All Cards / Use Spacebar to
+     Pause. Each row is [question, On-pair, Off-pair] so the gap between a
+     label and its OWN radio button (set on .opt-pair) can be tighter than
+     the gap that separates the On choice from the Off choice (the grid's
+     own column-gap). */
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+  .options-grid .opt-pair{ display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .options-grid .opt-pair label{ font-weight: 600; cursor: pointer; }
+  .options-grid .opt-pair input{ cursor: pointer; margin: 0; }
+  /* Options modal only - widened from the shared modal's 520px max-width
+     since the 3-column grid of question/On/Off felt crowded at the
+     standard width. */
+  #universalModal .modalBox.optionsModal{ max-width: 620px; }
+
+  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate(). ---- */
+  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
+
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
   #universalModal .modalBtns{
@@ -801,7 +828,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 27;
+  const PAGE_REVISION = 28;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -892,6 +919,7 @@ function createInitialState(){
 
     viewAllCards: false,
     spacebarPauseEnabled: false,
+    soundEnabled: true,
     paused: false
   };
 }
@@ -905,12 +933,77 @@ try {
   if(savedOptions){
     if(typeof savedOptions.viewAllCards === 'boolean') state.viewAllCards = savedOptions.viewAllCards;
     if(typeof savedOptions.spacebarPauseEnabled === 'boolean') state.spacebarPauseEnabled = savedOptions.spacebarPauseEnabled;
+    if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
   }
 } catch(e) { /* ignore */ }
 
 let log = [];
 let _lastSouthHandHtml = '';
 let dealAnimId = 0;
+
+// ---------------------------------------------------------------------
+// SOUND EFFECTS - dealing and playing a card. Same approach as Spades:
+// a short synthesized "card flip" snap (Web Audio filtered noise burst,
+// no external audio file), reused verbatim from SolPyramid.html's
+// playFlipSnap - and the same dealing speed Pyramid uses for its own
+// deal (see DEAL_FLIGHT_MS/DEAL_STAGGER_MS-equivalent FLIGHT_MS/STAGGER_MS
+// in animateDealIn below).
+// ---------------------------------------------------------------------
+let audioCtx = null;
+function getAudioCtx(){
+  if(!audioCtx){
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ return null; }
+  }
+  if(audioCtx.state === 'suspended'){
+    audioCtx.resume().catch(()=>{});
+  }
+  return audioCtx;
+}
+// A quick card flip/snap - a short filtered noise burst rather than a
+// musical tone, identical to Klondike's/Pyramid's/Spades' playFlipSnap.
+function playFlipSnap(ctx, startTime, peakGain){
+  const duration = 0.05;
+  const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++){
+    const decay = Math.pow(1 - i / bufferSize, 2.2);
+    data[i] = (Math.random() * 2 - 1) * decay;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.setValueAtTime(2400, startTime);
+  bandpass.Q.setValueAtTime(0.8, startTime);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peakGain != null ? peakGain : 0.4, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  noise.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(ctx.destination);
+  noise.start(startTime);
+  noise.stop(startTime + duration + 0.01);
+}
+// Same 30%-quieter-for-the-deal convention Pyramid/Spades use (0.4 * 0.7 = 0.28).
+const DEAL_SOUND_GAIN = 0.4 * 0.7;
+function scheduleFlipSounds(count, baseDelay, staggerMs){
+  if(!state.soundEnabled || count <= 0) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  const now = ctx.currentTime + (baseDelay || 0);
+  const stagger = (staggerMs != null ? staggerMs : 30) / 1000;
+  for(let i=0;i<count;i++){
+    playFlipSnap(ctx, now + i * stagger, DEAL_SOUND_GAIN);
+  }
+}
+function playCardSound(){
+  if(!state.soundEnabled) return;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  playFlipSnap(ctx, ctx.currentTime);
+}
 
 // ---------------------------------------------------------------------
 // DECK / DEAL
@@ -1027,7 +1120,8 @@ function animateDealIn(){
   const feltRect = document.getElementById('felt').getBoundingClientRect();
   const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
   const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
-  const FLIGHT_MS = 380, STAGGER_MS = 34;
+  const FLIGHT_MS = 260, STAGGER_MS = 56; // same dealing speed as Pyramid's/Spades' DEAL_FLIGHT_MS/DEAL_STAGGER_MS
+  scheduleFlipSounds(flat.length, 0, STAGGER_MS);
 
   const overflowEls = [
     document.getElementById('table-wrap'),
@@ -1055,7 +1149,7 @@ function animateDealIn(){
     pausableTimeout(() => {
       if(dealAnimId !== myId) return;
       void el.offsetWidth;
-      el.style.transition = 'transform 0.38s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
+      el.style.transition = 'transform 0.26s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
       requestAnimationFrame(() => {
         if(dealAnimId !== myId) return;
         el.style.opacity = '1';
@@ -1246,7 +1340,7 @@ function advanceTrick(){
   if(seat === 'S'){
     render();
   } else {
-    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 650);
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 416); // 650 reduced 20% twice (650->520->416), same as Spades
   }
 }
 
@@ -1363,12 +1457,13 @@ function humanPlay(cardId){
 
 function playCard(seat, card){
   if(!card || state.trick[seat]) return;
+  playCardSound();
   state.hands[seat] = state.hands[seat].filter(c=>c.id !== card.id);
   state.trick[seat] = card;
   if(isPointCard(card)) state.heartsBroken = true;
   addLog(`${SEAT_NAME[seat]} plays ${cardShort(card)}.`);
   render();
-  pausableTimeout(advanceTrick, 500);
+  pausableTimeout(advanceTrick, 320); // 500 reduced 20% twice (500->400->320), same as Spades
 }
 
 function resolveTrick(){
@@ -1946,20 +2041,25 @@ window.addEventListener('popstate', function(){
 
 document.getElementById('optionsBtn').addEventListener('click', ()=>{
   showModal('Options', `
-    <p style="font-size:1.045rem; font-weight:600; text-align:center; margin: -10px 0 0.25in;">These Options are Provided for Learning Purposes</p>
-    <div style="display:grid; grid-template-columns: auto 130px; row-gap:18px; column-gap:16px; align-items:center;">
-      <label for="viewAllCardsCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">View All Cards:</label>
-      <input type="checkbox" id="viewAllCardsCheckbox" ${state.viewAllCards ? 'checked' : ''}
-        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+    <div class="options-grid">
+      <div class="options-question">Select the default for Sounds</div>
+      <span class="opt-pair"><label for="soundOnRadio">On</label><input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled ? 'checked' : ''}></span>
+      <span class="opt-pair"><label for="soundOffRadio">Off</label><input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled ? 'checked' : ''}></span>
 
-      <label for="spacebarPauseCheckbox" style="font-weight:600; text-align:left; cursor:pointer;">Use Spacebar to Pause:</label>
-      <input type="checkbox" id="spacebarPauseCheckbox" ${state.spacebarPauseEnabled ? 'checked' : ''}
-        style="width:22px;height:22px;cursor:pointer;justify-self:end;">
+      <p style="grid-column: 1 / -1; font-size:1.045rem; font-weight:600; text-align:center; text-decoration: underline; margin: 7px 0;">These Options are Provided for Learning Purposes</p>
+
+      <div class="options-question">View All Cards</div>
+      <span class="opt-pair"><label for="viewAllOnRadio">On</label><input type="radio" id="viewAllOnRadio" name="viewAllSetting" ${state.viewAllCards ? 'checked' : ''}></span>
+      <span class="opt-pair"><label for="viewAllOffRadio">Off</label><input type="radio" id="viewAllOffRadio" name="viewAllSetting" ${!state.viewAllCards ? 'checked' : ''}></span>
+
+      <div class="options-question">Use Spacebar to Pause</div>
+      <span class="opt-pair"><label for="spacebarOnRadio">On</label><input type="radio" id="spacebarOnRadio" name="spacebarSetting" ${state.spacebarPauseEnabled ? 'checked' : ''}></span>
+      <span class="opt-pair"><label for="spacebarOffRadio">Off</label><input type="radio" id="spacebarOffRadio" name="spacebarSetting" ${!state.spacebarPauseEnabled ? 'checked' : ''}></span>
     </div>
   `, `
     <button onclick="saveOptions()">Save</button>
     <button onclick="closeModal()">Cancel</button>
-  `, true);
+  `, true, 'optionsModal');
 });
 
 document.getElementById('yourNameInput').addEventListener('change', ()=>{
@@ -1976,10 +2076,12 @@ document.getElementById('yourNameInput').addEventListener('change', ()=>{
 });
 
 function saveOptions(){
-  state.viewAllCards = document.getElementById('viewAllCardsCheckbox').checked;
-  state.spacebarPauseEnabled = document.getElementById('spacebarPauseCheckbox').checked;
+  state.soundEnabled = document.getElementById('soundOnRadio').checked;
+  state.viewAllCards = document.getElementById('viewAllOnRadio').checked;
+  state.spacebarPauseEnabled = document.getElementById('spacebarOnRadio').checked;
   try {
     localStorage.setItem(GAME_OPTIONS_KEY, JSON.stringify({
+      soundEnabled: state.soundEnabled,
       viewAllCards: state.viewAllCards,
       spacebarPauseEnabled: state.spacebarPauseEnabled
     }));
@@ -2014,9 +2116,20 @@ document.getElementById('logToggle').addEventListener('dblclick', ()=>{
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 });
 
-if(!tryRestoreResumeState()){
+function beginFirstDeal(){
+  closeModal();
   state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
   dealNewHand();
+}
+function showReadyGate(){
+  showModal('Are you ready to have fun?', '', `
+    <button onclick="beginFirstDeal()">Yes</button>
+    <button onclick="location.href='../index.html';">Cancel</button>
+  `, false, 'readyGateModal');
+}
+
+if(!tryRestoreResumeState()){
+  showReadyGate();
 }
 </script>
 
