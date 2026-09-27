@@ -1,5 +1,5 @@
 
-<!-- Revision 6 | Saturday, September 26, 2026 -->
+<!-- Revision 7 | Saturday, September 26, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 312 -->
 
 <!DOCTYPE html>
@@ -267,14 +267,14 @@
       <p>Klondike Solitaire is the classic single-player card game most people think of when they hear &ldquo;solitaire.&rdquo; It originated during the California Klondike Gold Rush era in the 1890s. In some regions, particularly in the United Kingdom, it&rsquo;s also known as &ldquo;Patience.&rdquo; Klondike is the most widely recognized version of solitaire worldwide.</p>
 
       <h2>Overview</h2>
-      <p>The objective is to move all 52 cards to four Foundation piles, one for each suit, building each pile from Ace to King. To accomplish this, reveal and arrange cards in the Tableau and play available cards from the Stock and Waste. The game ends when all cards are on the Foundations or no legal moves remain.</p>
+      <p>The objective is to move all 52 cards to four Foundation piles, one for each suit, building each pile from Ace to King. To accomplish this, reveal and arrange cards in the Tableau and play available cards from the Stock and Waste piles. The game ends when all cards are on the Foundations or no legal moves remain.</p>
 
       <h2>Players</h2>
       <p>Klondike is a single-player game.</p>
 
       <h2>Cards</h2>
       <p>A standard 52-card deck. Cards can be moved by clicking on them or dragging and dropping them.</p>
-      <p>Autoplay is a feature that automatically moves eligible cards to the foundations. The Autoplay button toggles it On or Off. The default is On.</p>
+      <p>Autoplay is a feature that automatically moves eligible cards to the foundations. The Autoplay button toggles it ON or OFF. The default is ON.</p>
 
       <h2>Setup</h2>
       <p>Deal 28 cards into seven Tableau columns from left to right. Place one card in the first column, two in the second, three in the third, and continue until the seventh column contains seven cards.</p>
@@ -282,11 +282,6 @@
       <p>Set the remaining 24 cards face down to form the Stock pile. Next to it, the Waste pile will hold cards face up turned from the Stock during play.</p>
 
       <img class="layout-image" src="images/SolKlondikeLayout.jpg" alt="Klondike board layout: Stock and Waste Pile at top left, four Foundations at top right, seven Tableau Columns across the bottom">
-
-      <h2>Foundations</h2>
-      <p>As each ace becomes available, move it to one of the four Foundation piles above the Tableau. Build each Foundation with cards of the same suit in ascending order: Ace, 2 through 10, Jack, Queen, and King.</p>
-      <p>You may move a card from a Foundation back to the Tableau if the move follows the Tableau rule: descending rank and alternating color. You may also move eligible Tableau cards to the Foundations.</p>
-      <p class="note">Note: If Autoplay is on and you need to move one or more cards from a Foundation, turn Autoplay off first. Move the card or cards to the Tableau, make the intended Tableau play, and then turn Autoplay back on.</p>
 
       <h2>The Tableau</h2>
       <p>Build Tableau columns in descending rank while alternating card colors. You may move a single face-up card or a face-up sequence that already follows this pattern onto a card of the next higher rank and opposite color.</p>
@@ -298,18 +293,23 @@
       <p>Whenever a Tableau column has no face-up cards but still contains face-down cards, turn the top face-down card face up. That card is then available to move or to receive another legal Tableau card.</p>
       <p>When a Tableau column is empty, only a visible king may fill the space. You may move the king by itself or with any correctly ordered face-up sequence beneath it. A king may come from another Tableau column or from the top of the Waste pile.</p>
 
+      <h2>Foundations</h2>
+      <p>As each ace becomes available, move it to one of the four Foundation piles above the Tableau. Build each Foundation with cards of the same suit in ascending order: Ace, 2 through 10, Jack, Queen, and King.</p>
+      <p>You may move a card from a Foundation back to the Tableau if the move follows the Tableau rule: descending rank and alternating color. You may also move eligible Tableau cards to the Foundations.</p>
+      <p class="note">Note: If Autoplay is ON and you need to move one or more cards from a Foundation, turn Autoplay OFF first. Move the card or cards to the Tableau, make the intended Tableau play, and then turn Autoplay back ON.</p>
+
       <h2>Gameplay</h2>
       <p>Turn cards from the Stock three at a time onto the face-up Waste pile. Only the top card of the Waste is available to play on a Foundation or the Tableau. After you play that card, the next uncovered Waste card becomes available.</p>
       <p>When the Stock is empty, turn the Waste pile face down and return it to the Stock position without shuffling. Continue turning three cards at a time. You may recycle the Waste and go through the Stock multiple times.</p>
 
       <h2>Game Over</h2>
-      <p>The game ends in one of two ways: you win when all 52 cards reach the four Foundation piles, or play stops when no legal moves remain.</p>
+      <p>The game ends in one of two ways. You win when all 52 cards are in the four Foundation piles. You lose when no legal moves remain in the Tableau or between the Tableau and Foundations.</p>
 
     </div>
   </main>
 
 <script>
-  const PAGE_REVISION = 6;
+  const PAGE_REVISION = 7;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
