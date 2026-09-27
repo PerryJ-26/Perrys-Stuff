@@ -1,6 +1,6 @@
 
-<!-- Revision 40 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2219 -->
+<!-- Revision 42 | Saturday, September 26, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2241 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1158,6 +1158,7 @@
       animFlags.flipWasteCount = n;
       debugLog(`Stock: drew ${n} card(s), Waste top now ${state.waste[state.waste.length-1].rank}${state.waste[state.waste.length-1].suit}`);
     }
+    state.moves++; // Moves counter: a Stock click counts whether it draws or recycles the Waste back in.
     pushUndoSnapshot(tentative);
     afterMove();
   }
@@ -1623,18 +1624,29 @@
     noMovesAlreadyShown = true;
     debugLog('Check: STUCK - no legal move found, showing popup');
     // Unlike a win, running out of moves doesn't end the game - gameActive
-    // stays true so Undo and the other controls keep working, and the
-    // score is only recorded once the player dismisses this popup (see
-    // dismissNoMovesModal), not the instant it's detected.
+    // stays true so Undo keeps working if the player backs out of this
+    // popup's Exit option. The score is recorded the moment any of the
+    // popup's three buttons is clicked (see below), not the instant the
+    // stuck state is detected. This popup is not dismissable (no click-
+    // outside-to-close), so there's no way to get past it without recording
+    // the score first.
     playSound('stuck');
     // Body format matches the other popups (e.g. You Win!) - a stats line
-    // followed by a plain-language description - instead of the bare title
-    // and OK button this popup used to show on its own.
+    // followed by a plain-language description.
     const body = `
       <p>Score: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
-      <p>No legal moves remain. Click OK to record this score and continue playing.</p>
+      <p>No legal moves remain.</p>
     `;
-    showModal('There Are No More Moves.', body, `<button onclick="dismissNoMovesModal()">OK</button>`, true);
+    // New Game and Restart record this score, then deal immediately with no
+    // confirmation (the game is already stuck, so there's nothing further
+    // to lose). Exit records the score too, then shows the same Exit
+    // confirmation the header's own Exit button uses - it's the only one of
+    // the three that asks "are you sure" first.
+    showModal('There Are No More Moves.', body, `
+      <button onclick="recordScore(); dealNewGame(true);">New Game</button>
+      <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      <button onclick="recordScore(); confirmExitFromEndPopup();">Exit</button>
+    `, false);
   }
 
   // Shared by the win popup and the no-more-moves popup below, so a score
@@ -1649,9 +1661,15 @@
     }
   }
 
-  function dismissNoMovesModal(){
-    closeModal();
-    recordScore();
+  // Exit confirmation shared by the "You Win!" and "There Are No More
+  // Moves." end-of-game popups - same wording/behavior as the header's own
+  // Exit button. Cancel just closes this confirmation, the same as Cancel
+  // does everywhere else in the game.
+  function confirmExitFromEndPopup(){
+    showModal('Exit Klondike', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
   }
 
   function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
@@ -1661,17 +1679,21 @@
   }
 
   // The win case only now - running out of moves without winning has its
-  // own, simpler popup (see dismissNoMovesModal above) that doesn't end
-  // the game.
+  // own, simpler popup (see checkGameEnd's stuck-state branch above) that
+  // doesn't end the game.
   function showEndModal(){
     const score = currentScore();
     const time = elapsedSeconds();
-    recordScore();
+    recordScore(); // recorded immediately here, unlike the no-moves popup, so New Game/Restart/Exit below don't need to record it again.
     const body = `
       <p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
       <p>All 52 cards are on the Foundations.</p>
     `;
-    showModal('You Win!', body, `<button onclick="closeModal()">OK</button>`, true);
+    showModal('You Win!', body, `
+      <button onclick="dealNewGame(true)">New Game</button>
+      <button onclick="dealNewGame(false)">Restart</button>
+      <button onclick="confirmExitFromEndPopup()">Exit</button>
+    `, true);
     document.getElementById('modalTitle').style.color = 'red';
     document.getElementById('modalTitle').classList.add('win-blink');
     render();
@@ -2216,7 +2238,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 40;
+  const PAGE_REVISION = 42;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
