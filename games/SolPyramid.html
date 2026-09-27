@@ -1,6 +1,6 @@
 
-<!-- Revision 19 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1334 -->
+<!-- Revision 21 | Saturday, September 26, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1350 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -880,7 +880,7 @@
     const rects = locs.map(rectForLoc);
     const cards = locs.map(removeCardAt);
     cards.forEach(c => state.discard.push(c));
-    state.moves++;
+    state.moves++; // Moves counter: a King removed alone or a matched pair each count as 1.
     pushUndoSnapshot(tentative);
     render();
     flyCardsToDiscard(locs.map((loc, i) => ({ rect: rects[i], card: cards[i] })));
@@ -964,6 +964,7 @@
     const card = state.stock.pop();
     card.faceUp = true;
     state.waste.push(card);
+    state.moves++; // Moves counter: also counts each card drawn from Stock to Waste (a redeal does not).
     justDrewToWaste = true; // tells render() to play the slide-down animation/sound for this one card
     pushUndoSnapshot(tentative);
     render();
@@ -1043,12 +1044,27 @@
          <p>The Pyramid, Stock, and Waste are all empty.</p>`
       : `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
          <p>No valid pair, King, or redeal remains available.</p>`;
-    showModal(won ? 'You Win!' : 'No More Moves - Game Over', body, `<button onclick="closeModal()">OK</button>`, false);
+    showModal(won ? 'You Win!' : 'No More Moves - Game Over', body, `
+      <button onclick="dealNewGame(true)">New Game</button>
+      <button onclick="dealNewGame(false)">Restart</button>
+      <button onclick="confirmExitFromEndModal()">Exit</button>
+    `, false);
     if(won){
       document.getElementById('modalTitle').style.color = 'red';
       document.getElementById('modalTitle').classList.add('win-blink');
     }
     render();
+  }
+
+  // Exit button on the end-of-game (Win / No More Moves) popup - same
+  // confirmation text as the header's own Exit button, since the game has
+  // already ended either way. New Game and Restart on that same popup skip
+  // the confirmation entirely (nothing left to lose once the game is over).
+  function confirmExitFromEndModal(){
+    showModal('Exit Pyramid', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
   }
 
   /* ---- Rendering ---- */
@@ -1331,7 +1347,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 19;
+  const PAGE_REVISION = 21;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
