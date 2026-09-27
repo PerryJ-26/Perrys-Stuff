@@ -1,5 +1,5 @@
 
-<!-- Revision 43 | Sunday, September 27, 2026 -->
+<!-- Revision 51 | Sunday, September 27, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 886 -->
 
 <!DOCTYPE html>
@@ -883,7 +883,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 43;
+  const PAGE_REVISION = 51;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -999,25 +999,14 @@ let _lastSouthHandHtml = '';
 let dealAnimId = 0;
 
 // ---------------------------------------------------------------------
-// SOUND EFFECTS - dealing and playing a card. These are two short clips
-// Perry provided (trimmed to a single card sound each), embedded below as
-// data URIs so the game stays a single self-contained file like every
-// other Game Hub game - not synthesized tones. There's no on/off setting
-// yet (Perry wants to hear how the sounds themselves feel first before
-// deciding how the Options popup should expose that), so both always
-// play right now.
+// SOUND EFFECTS - dealing and playing a card. Perry gave up on the
+// recorded mp3 sound files and asked to reuse Pyramid's own approach
+// instead: a short synthesized "card flip" snap (Web Audio filtered
+// noise burst, no external audio file at all), reused verbatim from
+// SolPyramid.html's playFlipSnap - and the same dealing speed Pyramid
+// uses for its own deal (see DEAL_FLIGHT_MS/DEAL_STAGGER_MS below).
 // ---------------------------------------------------------------------
-const DEAL_SOUND_SRC = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//s4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAAHmABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWOjo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ojo6Ox8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx/////////////////////////////////8AAAAATGF2YzYwLjMxAAAAAAAAII8AAAAAJAKgAAAAAAAAB5gCOFstAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//t4ZAAAAxxvSEUEQAIAAA0goAABHAINS7mXgBAAADSDAAAAAAChQByAAAIBj/n9Tvqc56NTOc//1IT+d/5Cf/qc/9TnACTgYGBnQ53kISpCABGU55z//QhGOACCf/n1Oc5z+pznfIc7yEIykI3/0I0noRjgBFAwM/4CMw8f4f/xAAAEZgDg+23uaSySROJJIkkEAAERANQCcWlIWqpSxSgFCG2jXhl3JYrbBbA3YhHepi6wCDnmTM4jEgFQLODzHoioSdaPccXRJo7N9x21oeoW5kQZhMkHVYT2O7xb4iZv4EXVlCwM24za4wp4bA5a1uzyI8cI+PmJpiVcu4We1V34FaZv8RIdJ6UveHEzHh4vBz3lY089YGIGt6hxZIMRwste/3q+d/FNapqmr+8fUP0xLePvWr19YOsZ3XwcbxnW66rf3YNa//vq/zjX/3nFlubW3DVt4zrEPW9b3H3Sz6lN6xmQKWl1/7f/7BHWribRSxrl8zNcq3Cga1bOJhWbCzYhBInKMolSUoFyhGK15JprBiyRGBxMRPbZZStioLIWG0lcaTKBsBkvFE5MeTYl//t4ZCQABiSETi49IAIAAA0gwAAAGX3PSdmHgAgAADSDAAAAjL2heMGi6pUVTbH3HKRInOVFFJvlNCtNRbd6SW6nDESyTz0yRjb8u1KljaTCsnU+VprOyk4N9+adSQhZYqzCEtjrqlq8US5S4ZOFaxFKurDZzaK+PqpEag2G4ET+c7+2zvjeRSkhWykcLbm7FZQvKqdNvILQrvNnqZowOUhSgxhkhAYAUQwwgwkaB0oHBzGCtLTBfSWvm2jBErZdOs7a+zBpKsMwDIXlWj5S7YzM5LIgpAtp+zQI0XKcORUHimFWaPlrNnNk4qN/aKLEbqulU2b2vefOH6vc/eP6KVwTz16wUnrrH1iXedUiZve+fDuyyuEbGm5W6pX6/3HzT7x4lP/37++s3pXUG2G6D4TC9+/v7xjX3b7vvWPTUfe/jVMYvu0TXx8Yt9VxjefjVa43X/3/rS2fj11/6RKB/fn2u/9BUYaxpFFkU6oPCVAErKZa7IUwvk9A2/LbGbMZQErfArgUlWnVO4oU+haQ00XM9koZzmnnOBFnWEEjmdPPrQctbyuYXz7bbGBlfKqd//t4ZCGABgF8TwY94AIAAA0gwAAAGOnvYfmHgAAAADSDAAAAPRcNVoUeXWM2z6/LbbfmdR7+08bbJrUuMyY/xrGd7rJvcfEKeBCbobZA1fFaz3iyZzSTeN5v853PaauYE0fds/MseSeLF07tX6tLv++q/6tnWden1r3zvOfnUd8/n8OD/WSkHfvat8T/S/Stcb+rWzrxrwoOFoQJIm4//9DTq5jTi4DACynEvJEIkyGgNnLdvatFRaUv3hGmpRHbNLiFqwc1bMhDDdJttSoQdCsDQJuXxlYXF4zsCoHiBcIIK+koTEzRJY7eo91X0QcqIQv+3zhmZVWoIl0MVB1FxYJmGLnL2v+L2zqlNM+IjPCpW3u+V12KNj////+O/2/f799vMx6fEKDqFWtKwXlf8f/////V8Uj4iP96j3/vu2bPrwn17W38Yrrf////////19xKeJT0173977vffrXwYua1x/7WziFVVcBgL7wAQADVksovBIqVWnUbooGzarKUfHkSFTps+ZRLxJXdoJek6O87GUsT2FtHmaJuhatUzmnf/5VXg00L36sO2FW///0u//t4ZCOABkZ7z8Zh4AIAAA0gwAAADe3C6jk2gAAAADSDAAAA/a38ZD2eFGlhPq/P/zWv7A7TiENNIjyzO3KVlVrc+hZ22/////LWc6jVEr8uCEPPrdUUorwmbMJmZsQZq///P/9f29ncIdtUtjLO4PMxMXzWla/XtCfWfTwnzF////////8Uor4/V8eyvZ8K9nvSbUSJ3r2tXrLKpTlxl7u/xCfcKgAAAxbBGHwBSALg8RcdHjGEq8HSJKJz+E2JI+3+SSZOMiWf/9S1XE9E9KH//l4vLH4yNi8SRua///5dMh9MTIYo7R4juMjZaX///+iTiSN20lF4fR2njpiom/////+5dGMO43OLmKi8TSRKJkSR9SpMQU1FMy4xMDCqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq';
-const PLAY_SOUND_SRC = 'data:audio/mpeg;base64,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';
-
-// Web Audio context + a pre-decoded buffer for the deal sound, so all 52
-// per-card hits can be scheduled sample-accurately in one go instead of
-// firing 52 separate new Audio() calls 28ms apart (each with its own
-// unpredictable startup/decode delay - the cause of the deal sound
-// starting late and trailing off after the cards finished landing).
 let audioCtx = null;
-let dealBuffer = null;
-let dealBufferLoading = false;
 function getAudioCtx(){
   if(!audioCtx){
     try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -1028,39 +1017,50 @@ function getAudioCtx(){
   }
   return audioCtx;
 }
-function ensureDealBufferLoaded(){
-  const ctx = getAudioCtx();
-  if(!ctx || dealBuffer || dealBufferLoading) return;
-  dealBufferLoading = true;
-  fetch(DEAL_SOUND_SRC)
-    .then(r => r.arrayBuffer())
-    .then(data => ctx.decodeAudioData(data))
-    .then(buf => { dealBuffer = buf; })
-    .catch(()=>{})
-    .finally(()=>{ dealBufferLoading = false; });
+// A quick card flip/snap - a short filtered noise burst rather than a
+// musical tone, identical to Klondike's and Pyramid's playFlipSnap.
+function playFlipSnap(ctx, startTime, peakGain){
+  const duration = 0.05;
+  const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++){
+    const decay = Math.pow(1 - i / bufferSize, 2.2);
+    data[i] = (Math.random() * 2 - 1) * decay;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const bandpass = ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.setValueAtTime(2400, startTime);
+  bandpass.Q.setValueAtTime(0.8, startTime);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peakGain != null ? peakGain : 0.4, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  noise.connect(bandpass);
+  bandpass.connect(gain);
+  gain.connect(ctx.destination);
+  noise.start(startTime);
+  noise.stop(startTime + duration + 0.01);
 }
-ensureDealBufferLoaded(); // kick off decoding immediately - it's a tiny (~0.14s) clip, ready long before the first deal
-
-// Schedules `count` copies of the deal snap `stepSeconds` apart, starting
-// `baseDelay` seconds from now - all scheduled up front against the audio
-// clock itself, so none of them can drift the way 52 separate
-// setTimeout-driven Audio() calls did.
-function scheduleDealSounds(count, stepSeconds, baseDelay){
+// Same 30%-quieter-for-the-deal convention Pyramid uses (0.4 * 0.7 = 0.28),
+// so the deal's rapid-fire snaps don't pile up as loud as a single play.
+const DEAL_SOUND_GAIN = 0.4 * 0.7;
+function scheduleFlipSounds(count, baseDelay, staggerMs){
   if(!state.soundEnabled || count <= 0) return;
   const ctx = getAudioCtx();
-  if(!ctx){ return; }
-  if(!dealBuffer){ ensureDealBufferLoaded(); return; } // rare: first-ever deal before the tiny clip finished decoding
-  const startAt = ctx.currentTime + (baseDelay || 0);
+  if(!ctx) return;
+  const now = ctx.currentTime + (baseDelay || 0);
+  const stagger = (staggerMs != null ? staggerMs : 30) / 1000;
   for(let i=0;i<count;i++){
-    const src = ctx.createBufferSource();
-    src.buffer = dealBuffer;
-    src.connect(ctx.destination);
-    src.start(startAt + i * stepSeconds);
+    playFlipSnap(ctx, now + i * stagger, DEAL_SOUND_GAIN);
   }
 }
 function playCardSound(){
   if(!state.soundEnabled) return;
-  new Audio(PLAY_SOUND_SRC).play().catch(()=>{});
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  playFlipSnap(ctx, ctx.currentTime);
 }
 
 // ---------------------------------------------------------------------
@@ -1186,8 +1186,8 @@ function animateDealIn(){
   const feltRect = document.getElementById('felt').getBoundingClientRect();
   const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
   const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
-  const FLIGHT_MS = 380, STAGGER_MS = 28;
-  scheduleDealSounds(flat.length, STAGGER_MS / 1000, 0);
+  const FLIGHT_MS = 260, STAGGER_MS = 56; // same dealing speed as Pyramid's DEAL_FLIGHT_MS/DEAL_STAGGER_MS
+  scheduleFlipSounds(flat.length, 0, STAGGER_MS);
 
   const overflowEls = [
     document.getElementById('table-wrap'),
@@ -1215,7 +1215,7 @@ function animateDealIn(){
     pausableTimeout(() => {
       if(dealAnimId !== myId) return;
       void el.offsetWidth;
-      el.style.transition = 'transform 0.38s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
+      el.style.transition = 'transform 0.26s cubic-bezier(.22,.85,.4,1), opacity 0.18s ease';
       requestAnimationFrame(() => {
         if(dealAnimId !== myId) return;
         el.style.opacity = '1';
@@ -1517,7 +1517,7 @@ function advanceTrick(){
   if(seat === 'S'){
     render();
   } else {
-    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 650);
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 416); // 520 reduced a further 20%
   }
 }
 
@@ -1636,7 +1636,7 @@ function playCard(seat, card){
   }
   addLog(`${SEAT_NAME[seat]} plays ${cardShort(card)}.`);
   render();
-  pausableTimeout(advanceTrick, 500);
+  pausableTimeout(advanceTrick, 320); // 400 reduced a further 20%
 }
 
 function resolveTrick(){
