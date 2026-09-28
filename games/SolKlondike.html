@@ -1,6 +1,6 @@
 
-<!-- Revision 42 | Saturday, September 26, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2241 -->
+<!-- Revision 43 | Monday, September 28, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2229 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -547,9 +547,6 @@
      popup. Sized a bit smaller than the felt itself so it visually sits
      inside the green area with a little breathing room. */
   #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
-  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate().
-     24px bold per Perry's request. ---- */
-  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
   /* The scores list scrolls on its own within that fixed-height popup, so
      the title and the Scoring System Explanation/OK buttons always stay
      visible - only the table grows a scroll bar once its rows run past
@@ -937,6 +934,7 @@
   }
 
   function dealNewGame(freshShuffle){
+    gameEverStarted = true;
     if(freshShuffle || !state.dealOrder){
       state.dealOrder = shuffle(makeDeck());
     }
@@ -2063,6 +2061,7 @@
 
   /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
   document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    if(!gameEverStarted){ dealNewGame(true); return; }
     showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
       <button onclick="dealNewGame(true)">Yes</button>
       <button onclick="closeModal()">Cancel</button>
@@ -2175,21 +2174,6 @@
     if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
   });
 
-  /* ---- "Are you ready to have fun?" startup gate ----
-     Browsers block a page's sound from actually starting until the very
-     first genuine user gesture (click/tap/key) - not just any on-screen
-     animation. Since the very first deal used to fire automatically on
-     page load with no gesture yet, its sound never played. This gate
-     forces that first real click before dealing, so the click itself
-     unlocks audio and the very first deal plays with sound like every
-     deal after it. Yes deals; Cancel leaves, same as the Exit button. */
-  function showReadyGate(){
-    showModal('Are you ready to have fun?', '', `
-      <button onclick="dealNewGame(true)">Yes</button>
-      <button onclick="location.href='../index.html';">Cancel</button>
-    `, false, 'readyGateModal');
-  }
-
   /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
      back, but NOT a trip through the Solitaire Menu (see selectGameBtn
      below), which should always deal a fresh game. Resuming only actually
@@ -2227,18 +2211,22 @@
      Only resume if this load came from the Instructions page's tagged
      "Back to Klondike" link (?resume=1) - any other way of opening this
      page (the Solitaire Menu, a bookmark, a fresh tab, typing the
-     address) always deals a brand-new game, even if a stale snapshot is
-     still sitting in sessionStorage from an earlier Instructions trip
-     that never came back through that exact link. */
+     address) shows an empty table with nothing dealt, even if a stale
+     snapshot is still sitting in sessionStorage from an earlier
+     Instructions trip that never came back through that exact link.
+     Nothing is dealt until "New Game" is actually clicked - that click
+     is also the user gesture that unlocks the browser's audio, so the
+     very first deal plays its sound just like every deal after it. */
   const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
-  if(!(arrivedViaInstructionsBack && tryRestoreResumeState())){
+  let gameEverStarted = arrivedViaInstructionsBack && tryRestoreResumeState();
+  if(!gameEverStarted){
     clearResumeState();
-    showReadyGate();
+    render();
   }
 </script>
 
 <script>
-  const PAGE_REVISION = 42;
+  const PAGE_REVISION = 43;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
