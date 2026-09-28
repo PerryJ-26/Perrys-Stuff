@@ -1,5 +1,5 @@
 
-<!-- Revision 43 | Sunday, September 27, 2026 -->
+<!-- Revision 44 | Sunday, September 27, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1209 -->
 
 <!DOCTYPE html>
@@ -1206,7 +1206,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 43;
+  const PAGE_REVISION = 44;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2476,7 +2476,7 @@ function advanceTrick(){
     // reported after the first full hand: a second call landing on an
     // already-empty hand crashed deep inside the AI's card-choice logic,
     // which silently killed the setTimeout chain that drives trick play.
-    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 416); // 650 reduced 20% twice (650->520->416), same as 500/Spades/Hearts
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 332.8); // 650 reduced 20% three times (650->520->416->332.8)
   }
 }
 
@@ -2619,7 +2619,7 @@ function playCard(seat, card){
   state.cardsPlayedCount++;
   addLog(`${SEAT_NAME[seat]} plays ${card.rank}${card.suit}.`);
   render();
-  pausableTimeout(advanceTrick, 320); // 500 reduced 20% twice (500->400->320), same as 500/Spades/Hearts
+  pausableTimeout(advanceTrick, 256); // 500 reduced 20% three times (500->400->320->256)
 }
 
 function resolveTrick(){
