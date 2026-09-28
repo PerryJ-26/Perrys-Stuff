@@ -1,5 +1,5 @@
 
-<!-- Revision 44 | Sunday, September 27, 2026 -->
+<!-- Revision 45 | Sunday, September 27, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1209 -->
 
 <!DOCTYPE html>
@@ -1206,7 +1206,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 44;
+  const PAGE_REVISION = 45;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -2710,7 +2710,7 @@ function finishHand(){
   const gameOver = state.scores.NS >= GAME_TARGET || state.scores.EW >= GAME_TARGET;
   const winnerTeam = state.scores.NS > state.scores.EW ? 'NS' : 'EW';
   const heading = gameOver
-    ? `*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***`
+    ? `${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME!`
     : 'Round Complete';
   const btnLabel = gameOver ? 'Start a new game' : 'Deal The Next Round';
 
