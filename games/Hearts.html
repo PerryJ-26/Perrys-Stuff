@@ -1,6 +1,6 @@
 
-<!-- Revision 28 | Sunday, September 27, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 831 -->
+<!-- Revision 29 | Sunday, September 27, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 829 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -624,8 +624,6 @@
      standard width. */
   #universalModal .modalBox.optionsModal{ max-width: 620px; }
 
-  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate(). ---- */
-  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
 
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -828,7 +826,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 28;
+  const PAGE_REVISION = 29;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1623,6 +1621,7 @@ function showGameOverPanel(){
 }
 
 function newGame(){
+  gameEverStarted = true;
   state.scores = { S:0, W:0, N:0, E:0 };
   state.handNumber = 0;
   state.dealerIdx = Math.floor(Math.random()*4); // first dealer of a new game is random
@@ -2106,6 +2105,12 @@ document.addEventListener('keydown', (e)=>{
 });
 
 document.getElementById('newHandBtn').addEventListener('click', ()=>{
+  if(!gameEverStarted){
+    // Fresh app open, nothing dealt yet and nothing to lose - deal right
+    // away instead of confirming a "reset" that has nothing to reset.
+    newGame();
+    return;
+  }
   showModal('Start New Game?', 'This resets every score to 0.', `
     <button onclick="closeModal(); newGame();">Start New Game</button>
     <button onclick="closeModal()">Cancel</button>
@@ -2116,20 +2121,12 @@ document.getElementById('logToggle').addEventListener('dblclick', ()=>{
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 });
 
-function beginFirstDeal(){
-  closeModal();
-  state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
-  dealNewHand();
-}
-function showReadyGate(){
-  showModal('Are you ready to have fun?', '', `
-    <button onclick="beginFirstDeal()">Yes</button>
-    <button onclick="location.href='../index.html';">Cancel</button>
-  `, false, 'readyGateModal');
-}
-
-if(!tryRestoreResumeState()){
-  showReadyGate();
+let gameEverStarted = tryRestoreResumeState();
+if(!gameEverStarted){
+  // No cards dealt yet - the table opens empty. The player must click "New
+  // Game" to deal, and that click (a real user gesture) is what's allowed
+  // to start the AudioContext, so the deal/play sounds work from hand one.
+  render();
 }
 </script>
 
