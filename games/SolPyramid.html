@@ -1,6 +1,6 @@
 
-<!-- Revision 21 | Saturday, September 26, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1350 -->
+<!-- Revision 22 | Monday, September 28, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 1338 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -400,9 +400,6 @@
   .scores-explain-btn{ margin-bottom: 12px; }
   #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
   .scores-scroll{ max-height: 225px; overflow-y: auto; }
-  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate().
-     24px bold per Perry's request. ---- */
-  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -745,6 +742,7 @@
   }
 
   function dealNewGame(freshShuffle){
+    gameEverStarted = true;
     if(freshShuffle || !state.dealOrder){
       state.dealOrder = shuffle(makeDeck());
     }
@@ -1207,6 +1205,7 @@
 
   /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
   document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    if(!gameEverStarted){ dealNewGame(true); return; }
     showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
       <button onclick="dealNewGame(true)">Yes</button>
       <button onclick="closeModal()">Cancel</button>
@@ -1318,36 +1317,25 @@
     }
   }
 
-  /* ---- "Are you ready to have fun?" startup gate ----
-     Browsers block a page's sound from actually starting until the very
-     first genuine user gesture (click/tap/key) - not just any on-screen
-     animation. Since the very first deal used to fire automatically on
-     page load with no gesture yet, its sound never played. This gate
-     forces that first real click before dealing, so the click itself
-     unlocks audio and the very first deal plays with sound like every
-     deal after it. Yes deals; Cancel leaves, same as the Exit button. */
-  function showReadyGate(){
-    showModal('Are you ready to have fun?', '', `
-      <button onclick="dealNewGame(true)">Yes</button>
-      <button onclick="location.href='../index.html';">Cancel</button>
-    `, false, 'readyGateModal');
-  }
-
   /* ---- Startup ----
      Only resume if this load came from the Instructions page's tagged
      "Back to Pyramid" link (?resume=1) - any other way of opening this page
-     always deals a brand-new game. */
+     shows an empty pyramid with nothing dealt. Nothing is dealt until
+     "New Game" is actually clicked - that click is also the user gesture
+     that unlocks the browser's audio, so the very first deal plays its
+     sound just like every deal after it. */
   document.getElementById('soundBtn').textContent = 'Sound: ' + (state.soundEnabled ? 'ON' : 'OFF');
   buildPyramidDom();
   const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
-  if(!(arrivedViaInstructionsBack && tryRestoreResumeState())){
+  let gameEverStarted = arrivedViaInstructionsBack && tryRestoreResumeState();
+  if(!gameEverStarted){
     clearResumeState();
-    showReadyGate();
+    render();
   }
 </script>
 
 <script>
-  const PAGE_REVISION = 21;
+  const PAGE_REVISION = 22;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
