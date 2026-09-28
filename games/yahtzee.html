@@ -1,6 +1,6 @@
 
-<!-- Revision 21 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 631 -->
+<!-- Revision 22 | Thursday, September 25, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 644 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -315,9 +315,22 @@
     font-size:0.9rem;
     color:var(--muted) }
     
-  /* High scores list */
+  /* High scores list - now showing up to 30 entries (MAX_HIGH_SCORES_DISPLAY) instead of 12, so
+     the list needs its own scrollbar rather than the card just clipping anything past its fixed
+     height (see matchColumnHeightsToLeftColumn(), which pins #highScoresCard's height to match
+     the left column and sets overflow-y:hidden on the card itself). #highScoresCard is made a
+     flex column below so its <h2> stays put and this container claims the rest of the card's
+     height and scrolls within it. */
   .highScores{
-    margin-top:12px;text-align:left }
+    margin-top:12px;text-align:left;
+    flex:1;
+    min-height:0;
+    overflow-y:auto }
+
+  #highScoresCard{
+    display:flex;
+    flex-direction:column;
+    min-height:0 }
     
   .highScores ul{
     list-style:none;
@@ -628,7 +641,7 @@
 
 
 <script>
-  const PAGE_REVISION = 21;
+  const PAGE_REVISION = 22;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* Global safety: capture errors and show overlay */
@@ -793,7 +806,7 @@ const HIGH_SCORES_KEY = 'yahtzeeHighScores_v1';
    a fresh page load and silently started a brand new game over the one in progress. */
 const RESUME_KEY = 'yahtzeeResumeState_v1';
 const MAX_HIGH_SCORES = 30;
-const MAX_HIGH_SCORES_DISPLAY = 12;
+const MAX_HIGH_SCORES_DISPLAY = 30;
 
 /* Feature toggle for the local per-PC scores file/backup (File System Access API). Now that
    Firebase is the real shared leaderboard, this local file is only a backup - and every one of its
