@@ -1,6 +1,6 @@
 
-<!-- Revision 51 | Sunday, September 27, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 886 -->
+<!-- Revision 52 | Sunday, September 27, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 883 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -648,9 +648,6 @@
      standard width. */
   #universalModal .modalBox.optionsModal{ max-width: 620px; }
 
-  /* ---- "Are you ready to have fun?" startup gate - see showReadyGate().
-     24px bold per Perry's request (same treatment as Klondike's). ---- */
-  #universalModal .modalBox.readyGateModal h2{ font-size: 24px; font-weight: 700; }
 
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -883,7 +880,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 51;
+  const PAGE_REVISION = 52;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1845,6 +1842,7 @@ function showGameOverPanel(){
 }
 
 function newGame(){
+  gameEverStarted = true;
   state.scores = { NS:0, EW:0 };
   state.bags = { NS:0, EW:0 };
   state.dealerIdx = Math.floor(Math.random()*4); // first dealer of a new game is random, per the rules
@@ -2391,6 +2389,12 @@ document.addEventListener('keydown', (e)=>{
 });
 
 document.getElementById('newHandBtn').addEventListener('click', ()=>{
+  if(!gameEverStarted){
+    // Fresh app open, nothing dealt yet and nothing to lose - deal right
+    // away instead of confirming a "reset" that has nothing to reset.
+    newGame();
+    return;
+  }
   showModal('Start New Game?', 'This resets both scores to 0.', `
     <button onclick="closeModal(); newGame();">Start New Game</button>
     <button onclick="closeModal()">Cancel</button>
@@ -2401,29 +2405,12 @@ document.getElementById('logToggle').addEventListener('dblclick', ()=>{
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 });
 
-/* ---- "Are you ready to have fun?" startup gate ----
-   Browsers block a page's sound from actually starting until the very
-   first genuine user gesture (click/tap/key) - not just any on-screen
-   animation. Since the very first deal used to fire automatically on page
-   load with no gesture yet, its deal sound never played. This gate forces
-   that first real click before dealing, so the click itself unlocks audio
-   and the very first deal plays with sound like every deal after it. Yes
-   deals (same as the old unconditional startup deal below); Cancel leaves,
-   same as the Exit button. Same mechanism as Klondike's showReadyGate(). */
-function beginFirstDeal(){
-  closeModal();
-  state.dealerIdx = Math.floor(Math.random()*4); // first-ever dealer is random
-  dealNewHand();
-}
-function showReadyGate(){
-  showModal('Are you ready to have fun?', '', `
-    <button onclick="beginFirstDeal()">Yes</button>
-    <button onclick="location.href='../index.html';">Cancel</button>
-  `, false, 'readyGateModal');
-}
-
-if(!tryRestoreResumeState()){
-  showReadyGate();
+let gameEverStarted = tryRestoreResumeState();
+if(!gameEverStarted){
+  // No cards dealt yet - the table opens empty. The player must click "New
+  // Game" to deal, and that click (a real user gesture) is what's allowed
+  // to start the AudioContext, so the deal/play sounds work from hand one.
+  render();
 }
 </script>
 
