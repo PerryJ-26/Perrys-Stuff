@@ -1,5 +1,7 @@
 
-<!-- Revision 3 | Saturday, September 12, 2026 | Made the "Rev. N" corner marker read its number from a single JS constant (PAGE_REVISION) instead of being typed as static text, so the badge and the revision comment can't drift out of sync with each other. -->
+<!-- Revision 5 | Sunday, September 13, 2026 | Corrected the reminder comment below: PAGE_REVISION isn't always at the bottom of the file, so it now says "AT LINE 324" instead of "AT BOTTOM". -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 324 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -319,7 +321,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 3;
+  const PAGE_REVISION = 5;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
