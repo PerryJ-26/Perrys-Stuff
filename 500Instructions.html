@@ -1,6 +1,6 @@
 
-<!-- Revision 16 | Sunday, September 27, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 327 -->
+<!-- Revision 17 | Sunday, September 27, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 337 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -134,6 +134,12 @@
 
   .instructions-card h2:first-child {
     margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
   }
 
   .instructions-card p {
@@ -301,7 +307,7 @@
       </table>
       <p class="note">Note: Nullo scores a flat 250 points and does not have a trick count.</p>
 
-      <p>Nullo is an optional bid to lose every trick at no-trump. It is worth 250 points. When a player contracts for nullo, the contractor's partner places their cards face down and does not play. If the contractor loses every trick, the contractor's team scores 250 points. If the contractor takes one or more tricks, the contractor's team loses 250 points, and the opposing team scores 10 points for each trick the contractor's team takes.</p>
+      <p>Nullo is an optional bid to lose every trick at no-trump. It is worth 250 points. When a player contracts for nullo, the contractor's partner places their cards face down and does not play.</p>
 
       <p>If all players pass, no score is recorded, the cards are gathered without play, and the next dealer deals. Otherwise, the highest bid becomes the contract.</p>
 
@@ -315,7 +321,11 @@
       </div>
 
       <h2>Scoring</h2>
-      <p>If the contractor's team wins at least as many tricks as it bid, it scores the value of the bid shown in the bid table. If it wins all ten tricks, it scores either the bid value or 250 points, whichever is greater. If the contractor's team is set—that is, if it fails to make the contract—the bid value is deducted from its score, so a team may have a negative score. Whether or not the contract is made, the opposing team scores 10 points for each trick the opposing team takes.</p>
+      <h3>Bidding 6-10 Tricks</h3>
+      <p>If the contractor's team wins at least as many tricks as it bid, it scores the value of the bid shown in the bid table. If it wins all ten tricks, it scores either the bid value or 250 points, whichever is greater. If the contractor's team is set—that is, if it fails to make the contract—the bid value is deducted from its score, so a team may have a negative score. Whether or not the contract is made, the opposing team scores 10 points for each trick they take.</p>
+
+      <h3>Bidding Nullo</h3>
+      <p>Nullo is an optional bid worth 250 points. If the contractor loses every trick, the contractor's team scores 250 points. If the contractor takes one or more tricks, the contractor's team loses 250 points, and the opposing team scores 10 points for each trick the contractor takes.</p>
 
       <h2>Game</h2>
       <p>The first team to reach 500 points wins the game. If both teams reach 500 on the same deal, the contractor's team wins. A team loses immediately if its score reaches &minus;500 points.</p>
@@ -324,7 +334,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 16;
+  const PAGE_REVISION = 17;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
