@@ -1,5 +1,5 @@
 
-<!-- Revision 45 | Sunday, September 27, 2026 -->
+<!-- Revision 46 | Monday, September 28, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1209 -->
 
 <!DOCTYPE html>
@@ -1206,7 +1206,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 45;
+  const PAGE_REVISION = 46;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1313,6 +1313,14 @@ const MAX_BID = Math.round(MIN_BID * 2.4);
 // cards to their partner before melding. Not part of every pinochle
 // ruleset — easy to set to 0 to turn the feature off entirely.
 const PASS_COUNT = 4;
+
+// Opponent-play pacing - shared timing for every trick-taking game (500,
+// Hearts, Pfeffer, Pinochle, Spades). THINKING_MS is how long an AI
+// opponent pauses before playing its card once it's their turn; PAUSE_MS
+// is how long the game pauses after ANY card is played, before advancing
+// to whoever plays next.
+const THINKING_MS = 332.8;
+const PAUSE_MS = 256;
 
 // ---------------------------------------------------------------------
 // STATE
@@ -2476,7 +2484,7 @@ function advanceTrick(){
     // reported after the first full hand: a second call landing on an
     // already-empty hand crashed deep inside the AI's card-choice logic,
     // which silently killed the setTimeout chain that drives trick play.
-    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 332.8); // 650 reduced 20% three times (650->520->416->332.8)
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, THINKING_MS);
   }
 }
 
@@ -2619,7 +2627,7 @@ function playCard(seat, card){
   state.cardsPlayedCount++;
   addLog(`${SEAT_NAME[seat]} plays ${card.rank}${card.suit}.`);
   render();
-  pausableTimeout(advanceTrick, 256); // 500 reduced 20% three times (500->400->320->256)
+  pausableTimeout(advanceTrick, PAUSE_MS);
 }
 
 function resolveTrick(){
