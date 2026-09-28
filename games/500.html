@@ -1,5 +1,5 @@
 
-<!-- Revision 48 | Sunday, September 27, 2026 -->
+<!-- Revision 49 | Monday, September 28, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 996 -->
 
 <!DOCTYPE html>
@@ -993,7 +993,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 48;
+  const PAGE_REVISION = 49;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1077,6 +1077,14 @@ const TRICK_COUNTS = [6,7,8,9,10];
 
 const GAME_TARGET = 500;
 const LOSE_TARGET = -500;
+
+// Opponent-play pacing - shared timing for every trick-taking game (500,
+// Hearts, Pfeffer, Pinochle, Spades). THINKING_MS is how long an AI
+// opponent pauses before playing its card once it's their turn; PAUSE_MS
+// is how long the game pauses after ANY card is played, before advancing
+// to whoever plays next.
+const THINKING_MS = 332.8;
+const PAUSE_MS = 256;
 
 // ---------------------------------------------------------------------
 // STATE
@@ -1823,7 +1831,7 @@ function advanceTrick(){
   if(seat === 'S'){
     render();
   } else {
-    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, 416); // 650 reduced 20% twice (650->520->416), same as Spades/Hearts
+    pausableTimeout(()=>{ if(!state.trick[seat]) aiPlay(seat); }, THINKING_MS);
   }
 }
 
@@ -2014,7 +2022,7 @@ function playCard(seat, card){
   state.trick[seat] = card;
   addLog(`${SEAT_NAME[seat]} plays ${cardShort(card)}.`);
   render();
-  pausableTimeout(advanceTrick, 320); // 500 reduced 20% twice (500->400->320), same as Spades/Hearts
+  pausableTimeout(advanceTrick, PAUSE_MS);
 }
 
 function resolveTrick(){
