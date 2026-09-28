@@ -1,5 +1,5 @@
 
-<!-- Revision 74 | Friday, September 25, 2026 -->
+<!-- Revision 76 | Monday, September 28, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 1321 -->
 
 <!doctype html>
@@ -1318,7 +1318,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 74;
+  const PAGE_REVISION = 76;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 (function(){
@@ -1688,6 +1688,11 @@
       document.getElementById('pipsBlackLabel').textContent = p2;
       document.getElementById('gsP2Label').childNodes[0].textContent = 'Black (' + p2 + ') ';
     }
+    // The turn banner ("Player 1's turn - roll the dice.") reads names[current]
+    // but only gets redrawn by render() - none of the direct textContent
+    // updates above touch it, so without this it kept showing the old
+    // default name until the next dice roll forced a render() anyway.
+    render();
     persistSettings();
   }
   document.getElementById('gsP1Name').addEventListener('change', applyNameChangeLive);
@@ -1697,6 +1702,28 @@
   });
   document.getElementById('gsP2Name').addEventListener('keydown', (e)=>{
     if(e.key === 'Enter') e.target.blur();
+  });
+
+  // Once a name has been entered, the field always shows that saved text (not just a
+  // gray placeholder) the next time the game loads. Clicking into it then drops the
+  // cursor wherever you clicked, so typing inserts into the middle of the old name
+  // instead of replacing it. This makes a fresh click-and-type always select all of
+  // the existing text first, so anything typed next simply replaces it - a normal
+  // mousedown/focus/mouseup dance is needed because the browser would otherwise
+  // collapse the selection back down to the click point on mouseup.
+  [document.getElementById('gsP1Name'), document.getElementById('gsP2Name')].forEach((el)=>{
+    el.addEventListener('mousedown', ()=>{
+      if(document.activeElement !== el) el._selectPending = true;
+    });
+    el.addEventListener('focus', ()=>{
+      el.select();
+    });
+    el.addEventListener('mouseup', (e)=>{
+      if(el._selectPending){
+        e.preventDefault();
+        el._selectPending = false;
+      }
+    });
   });
 
   // "Yes" immediately starts a fresh game with the current panel settings - there's no
