@@ -1,5 +1,5 @@
 
-<!-- Revision 43 | Monday, September 28, 2026 -->
+<!-- Revision 44 | Monday, September 28, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 2229 -->
 
 <!DOCTYPE html>
@@ -518,7 +518,7 @@
   }
   .scores-table th{ background: #e8e2c8; }
 
-  /* Recorded Scores modal only - the Scoring System Explanation button sits
+  /* Recorded Scores modal only - the Scoring Explanation button sits
      at the top of the popup body, under the title, so it needs its own
      bottom margin to separate it from the score list below. */
   .scores-explain-btn{ margin-bottom: 12px; }
@@ -548,10 +548,10 @@
      inside the green area with a little breathing room. */
   #universalModal .modalBox.scoresModal{ max-width: 800px; max-height: 430px; }
   /* The scores list scrolls on its own within that fixed-height popup, so
-     the title and the Scoring System Explanation/OK buttons always stay
+     the title and the Scoring Explanation/OK buttons always stay
      visible - only the table grows a scroll bar once its rows run past
      this height. Shrunk from 280px to 225px to leave room for the
-     Scoring System Explanation button now living above the list (added
+     Scoring Explanation button now living above the list (added
      since this was first sized) - without that shrink, the popup's own
      outer scrollbar kicked in too, which overlapped the OK button. */
   .scores-scroll{ max-height: 225px; overflow-y: auto; }
@@ -2007,10 +2007,10 @@
         </table></div>`;
       }
     }
-    // The Scoring System Explanation button lives at the top of the popup
+    // The Scoring Explanation button lives at the top of the popup
     // body, under the title, rather than alongside OK - that leaves OK by
     // itself in the button row below, where it's centered automatically.
-    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System Explanation</button>${listHtml}`;
+    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring Explanation</button>${listHtml}`;
     showModal('Recorded Scores', body, `
       <button onclick="closeModal()">OK</button>
     `, true, 'scoresModal');
@@ -2226,7 +2226,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 43;
+  const PAGE_REVISION = 44;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
