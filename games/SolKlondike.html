@@ -1,6 +1,6 @@
 
-<!-- Revision 44 | Monday, September 28, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2229 -->
+<!-- Revision 46 | Monday, September 28, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2249 -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -873,7 +873,25 @@
 
   // Shared by animateDealFlyIn() and dealNewGame()'s dealFlipBaseDelay
   // calculation below, so the two stay in sync if either timing changes.
-  const DEAL_FLIGHT_MS = 260, DEAL_STAGGER_MS = 28;
+  const DEAL_FLIGHT_MS = 472.2, DEAL_STAGGER_MS = 50.4;
+
+  // Landing snap for every one of the 28 cards dealt from the Stock,
+  // face-down included (per Perry's request) - one snap per card, timed to
+  // that card's own launch position in the stagger sequence so it lines up
+  // with its own flight animation in animateDealFlyIn() below. This is
+  // separate from scheduleFlipSounds()'s own flip-reveal sound, played
+  // afterward (via dealFlipBaseDelay) only for the 7 cards that turn face
+  // up - a card that ends up exposed gets both: a landing snap as it's
+  // dealt, then its own separate flip snap once it turns over.
+  function scheduleDealLandingSounds(count){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    for(let i=0;i<count;i++){
+      playFlipSnap(ctx, now + i * (DEAL_STAGGER_MS/1000));
+    }
+  }
 
   /* ---- Deal animation: cards fly in from the Stock, then the 7 starting
      cards flip face up in sequence ----
@@ -922,6 +940,8 @@
         });
       }, i * STAGGER_MS);
     });
+
+    scheduleDealLandingSounds(flat.length);
 
     setTimeout(() => {
       tableWrap.style.overflow = prevOverflow;
@@ -1709,7 +1729,7 @@
      already showing every time it runs, and render() runs after every
      real move (see the render() call sites), so the countdown is always
      measured from the player's last action. ---- */
-  const HINT_IDLE_MS = 6000;
+  const HINT_IDLE_MS = 8000;
   let hintTimer = null;
   let hintShowing = false;
 
@@ -2226,7 +2246,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 44;
+  const PAGE_REVISION = 46;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
