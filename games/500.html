@@ -1,5 +1,5 @@
 
-<!-- Revision 49 | Monday, September 28, 2026 -->
+<!-- Revision 51 | Tuesday, September 29, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 996 -->
 
 <!DOCTYPE html>
@@ -993,7 +993,7 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 49;
+  const PAGE_REVISION = 51;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 
 /* =====================================================================
@@ -1284,6 +1284,14 @@ function dealNewHandInner(){
   state.discardSelection = [];
   state.teamBidInfo = { NS: { label:'—' }, EW: { label:'—' } };
   hideAllBubbles();
+  // A hand can be abandoned mid-bidding (the "New Game" button works even
+  // while South's own bid panel is up), and render()'s own phase-change
+  // guard below (search state.phase !== 'bidding') never catches that case
+  // since the OLD hand's bidding phase and the NEW hand's bidding phase are
+  // both just 'bidding' - no phase transition for it to notice. Explicitly
+  // closing the leftover panel here, before the new hand's own bidding
+  // sequence decides whether to reopen it, is what actually clears it.
+  document.getElementById('bidPanel').style.display = 'none';
 
   const startIdx = (state.dealerIdx + 1) % 4;
   state.biddingOrder = [0,1,2,3].map(i => SEATS[(startIdx+i)%4]);
@@ -1328,7 +1336,7 @@ function animateDealIn(){
   const feltRect = document.getElementById('felt').getBoundingClientRect();
   const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
   const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
-  const FLIGHT_MS = 260, STAGGER_MS = 56; // same dealing speed as Pyramid's/Spades'/Hearts' DEAL_FLIGHT_MS/DEAL_STAGGER_MS
+  const FLIGHT_MS = 472.2, STAGGER_MS = 50.4; // same dealing speed as Pyramid's/Spades'/Hearts' DEAL_FLIGHT_MS/DEAL_STAGGER_MS
   scheduleFlipSounds(flat.length, 0, STAGGER_MS);
 
   const overflowEls = [
@@ -2102,7 +2110,7 @@ function finishHand(){
   render();
 
   const winnerTeam = checkGameEnd();
-  const heading = winnerTeam ? `*** ${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME! ***` : 'Hand Complete';
+  const heading = winnerTeam ? `${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME!` : 'Hand Complete';
   const btnLabel = winnerTeam ? 'Start a new game' : 'Deal The Next Hand';
   const row = (label, ns, ew) => `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
 
