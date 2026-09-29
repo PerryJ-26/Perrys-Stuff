@@ -1,0 +1,2265 @@
+
+<!-- Revision 16 | Monday, September 28, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION AT LINE 2260 -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yukon - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - matches the rest of the site's card-game theme (from Pinochle) ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --cardback-1: #d6394a;
+    --cardback-2: #ffffff;
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+
+    --drop-target-color: #57e389;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  /* The ~0.25in top AND bottom margins both live on <html> (as padding,
+     outside <body>'s own box) rather than as padding/margin on the
+     bottom-anchored flex items below. A margin/padding on the flex side
+     gets swallowed by the felt's own bottom-anchored overflow-clipping
+     the moment content is taller than the window (exactly Perry's case)
+     - putting the reserved strips on the outer element instead means
+     they're never competed for by that clipping and always show, on
+     every side, including the border that had been getting clipped
+     off at the bottom. */
+  html {
+    height: 100vh;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+  body {
+    height: 100%;
+  }
+
+  /* Anchors the whole button-column + felt group to the BOTTOM of the
+     page (not centered - see below), so the felt's own bottom edge is
+     never the part that runs short of room on a shorter window; any
+     leftover space collects above the group instead. */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  /* align-items: flex-end (not center) so the button column's own
+     bottom - the bottom of the Name/Score box - lines up with the
+     felt's bottom edge. The felt (721.2x497) is taller than the
+     button column, so it's the felt that sets #gameLayout's own
+     height; flex-end here moves the (shorter) button column down
+     within that height until the two bottoms match. */
+  #gameLayout {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    padding: 0 10px; /* left/right unchanged - top/bottom padding removed so the felt's own top/bottom edges reach all the way to <html>'s reserved margins instead of adding 10px more on the bottom only (that mismatch was why the top and bottom margins weren't equal) */
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack ----
+     No longer position:fixed - it's now a normal flex child inside
+     #gameLayout so it can be centered as a group with the felt (see
+     body/#gameLayout above). Only the Rev. badge stays pinned to the
+     viewport corner. */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+
+  /* Name and Score fields, placed below the Exit button per Perry's instruction */
+  #nameScoreBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+  #nameScoreBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameScoreBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+    margin-bottom: 8px;
+  }
+  #scoreDisplay{
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+  .scoreLabel{ text-align: center; }
+
+  /* ---- Felt / board ----
+     Unlike Klondike/Pyramid, Yukon has no Stock and no Waste pile at all
+     - every card is dealt straight into the Tableau up front - and its
+     four Foundations are stacked VERTICALLY in a narrow column on the
+     right instead of sitting in a horizontal row across the top. So
+     #table-wrap is a ROW flex container with two children: a wide left
+     area (#tableauArea, the familiar 7-column Tableau grid) and a
+     narrower right area (#foundationArea, the 4 Foundations stacked top
+     to bottom). Fixed width/height (box-sizing: border-box, so these
+     totals already include the padding and border below).
+     Padding-top/bottom started at 48px/48px (about 0.5in each) per
+     Perry's original request, giving the Tableau room to grow into
+     above the felt's inner bottom edge. It's since been trimmed twice
+     to fit Perry's actual browser window (measured directly via
+     window.innerHeight + table-wrap's own getBoundingClientRect(): a
+     549px-tall window, ~40px short of the original 541.2px-tall felt)
+     without losing the border on any side - most recently split evenly
+     per Perry's own choice, so top padding is 13.9px and bottom padding
+     is 37.9px (down from 24px/48px), still leaving a bit of headroom
+     above/below the true minimum needed, with the reduction weighted
+     toward keeping most of the Tableau's own growing room intact.
+     Width = 20px padding + the Tableau grid (7 x 71.4px cards + 6 x 12px
+     gaps = 571.8px) + a 30px gap + the Foundation column's own width
+     (one card, 71.4px) + 20px padding + the 4px border on each side =
+     721.2px. Height = 13.9px padding (top) + the Foundation column's
+     own total height (4 piles x 100.3px + 3 x 12px gaps between them =
+     437.2px - see #foundationArea below) + 37.9px padding (bottom) +
+     the 4px border on each side = 497px. See the .cardWrap.faceDown/
+     faceUp comment below for why sizing the felt to the Foundation
+     column's height, rather than to the Tableau's own starting height,
+     is what actually gives the Tableau its headroom to grow. */
+  #table-wrap{
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 30px;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 13.9px 20px 37.9px 20px;
+    margin: 0;
+    width: 721.2px;
+    height: 497px;
+    box-sizing: border-box;
+  }
+  .tableau-row{
+    display: grid;
+    grid-template-columns: repeat(7, 71.4px);
+    gap: 12px;
+  }
+  /* The 4 Foundations, stacked top to bottom instead of Klondike's
+     horizontal row - same 12px gap Klondike used between its own
+     horizontally-arranged piles, just applied vertically here. */
+  .foundation-col{
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .pile{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.55);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.65);
+    font-size: 1.87rem;
+    font-weight: 800;
+    cursor: pointer;
+    position: relative;
+  }
+  .pile.empty-hint{ font-size: 2.04rem; }
+  .tableau-col{
+    position: relative;
+    min-height: 100.3px;
+  }
+  .tableau-col .empty-slot{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.35);
+    border-radius: 6px;
+  }
+  /* touch-action:none keeps a touch-drag of a card from also scrolling the
+     page - see the Drag and drop section of the script, which reads move
+     events for both mouse and touch through the same Pointer Events code
+     path. */
+  .cardWrap{ position: relative; perspective: 700px; touch-action: none; }
+  /* Face-up and face-down cards stagger by different amounts, same
+     convention as Klondike: a face-up card's rank/suit corner needs to
+     show more clearly, while a face-down card (nothing to read on it
+     anyway) can stay tighter. The felt's own height (721.2 x 497 - see
+     #table-wrap) is actually set by the four Foundations stacked
+     vertically on the right (4 piles x 100.3px + 3 x 12px gaps =
+     437.2px of content height) rather than by the Tableau itself, since
+     that stack is taller than even Yukon's own deepest starting column
+     (column 7: 6 face-down cards + 5 face-up cards = 11 cards, only
+     235.3px tall with this same overlap: 100.3px for the first card,
+     then 5 more face-down cards x 10px each, then 5 face-up cards x
+     17px each). That leaves the Tableau a great deal of extra headroom
+     to grow into over the course of play - comfortably past 20 cards
+     deep in a single column - without the felt itself ever needing to
+     grow. (Yukon's face-down count in any column is fixed the instant
+     it's dealt and can only ever go DOWN as cards flip face up over the
+     course of play, so 6 is always the worst case there; it's the
+     face-up portion - built up by moving groups of cards onto a column
+     during play - that has no fixed cap, so the sizing above just needs
+     to comfortably outlast the Foundation stack's own fixed height,
+     which it does with plenty of room to spare.) */
+  .tableau-col .cardWrap.faceDown:not(:first-child){ margin-top: -90.3px; }
+  .tableau-col .cardWrap.faceUp:not(:first-child){ margin-top: -83.3px; }
+
+  /* ---- Dramatic reveal animation ----
+     .flip3d: a GENUINE two-sided flip for a Tableau card turning face up
+     once the card that was covering it is moved away - shows the
+     cardback first, rotates through edge-on (where neither face is
+     visible, same as a real card mid-flip), and only then reveals the
+     front, so you can watch what was underneath actually turn over.
+     Built from two stacked faces inside a rotating wrapper; each face
+     has backface-visibility:hidden so only whichever one is currently
+     facing the viewer shows. This is ordinary Klondike-style mid-game
+     reveal behavior, reused as-is - Yukon's own INITIAL deal does NOT
+     use this animation at all (every card already shows its correct
+     face, up or down, from the instant it starts flying in - see
+     animateYukonDealFlyIn() in the script). */
+  .flip3d{
+    width: 71.4px; height: 100.3px;
+    position: relative;
+    transform-style: preserve-3d;
+    /* Pivoting around the left edge instead of the center, below, is what
+       makes the card look like it's hinging down flat starting from its
+       left side, instead of spinning in place around its own middle. */
+    transform-origin: left center;
+    /* 0.3s per card, per Perry's request. animation-fill-mode: both is
+       essential here, not just "backwards" - backwards alone only holds
+       the 0% pose (showing the back) during the animation-delay before it
+       starts; the instant the animation finishes, the element snaps back
+       to its un-animated state, which for a rotation means it would
+       immediately flip right back to showing the cardback again. "both"
+       keeps it locked at the 100% pose (front facing the viewer) once
+       the flip completes, the same way it holds the 0% pose beforehand. */
+    animation: flip3dRotate 0.3s ease-out both;
+  }
+  @keyframes flip3dRotate{
+    /* Rotating around the left edge (transform-origin above) swings the
+       card 180 degrees around that edge, which - on its own - would leave
+       it sitting a full card-width to the left of where it started (the
+       same way a hinged door ends up on the far side of its hinge). The
+       translateX(100%) at 100% cancels that drift out so the card still
+       lands exactly back in its own spot, having visibly pivoted from its
+       left edge along the way rather than spun around its center. */
+    0%   { transform: translateX(0) rotateY(0deg); }
+    100% { transform: translateX(100%) rotateY(180deg); }
+  }
+  .flip3d-face{
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip3d-face.flip3d-back{
+    /* identical look to .cardback */
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .flip3d-face.flip3d-front{
+    transform: rotateY(180deg);
+  }
+  .flip3d-face.flip3d-front .card{
+    width: 100%;
+    height: 100%;
+  }
+
+  @keyframes foundationLand{
+    0%   { transform: scale(1.9) rotate(-12deg); box-shadow: 0 0 0 6px #fff, 0 0 30px 12px rgba(255,215,0,.9); }
+    55%  { transform: scale(0.9) rotate(4deg); box-shadow: 0 0 0 3px #fff, 0 0 16px 6px rgba(255,215,0,.55); }
+    100% { transform: scale(1) rotate(0deg); box-shadow: 1px 2px 3px var(--shadow-medium); }
+  }
+  .foundation-anim{ animation: foundationLand 0.55s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Hint: the gold dotted halo shown after 6s of no move (see the Hint
+     section of the script) around the card that could be played and the
+     card/pile it could go to. outline (not border) so it never disturbs
+     layout or the overlapping-card stack spacing. */
+  .hint-highlight{
+    outline: 3px dotted gold;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Drag and drop (see the script section of the same name) ----
+     .dragGhost: the floating card-or-group that follows the cursor while
+     dragging - fixed positioning plus pointer-events:none keeps it from
+     ever being what a drop-target lookup or a click actually lands on.
+     .dragSourceHidden: dims the real card(s) in place while they're being
+     dragged, so it reads as "picked up" without a gap opening in the felt.
+     .dropTargetValid: the live highlight on whichever Tableau column or
+     Foundation pile the drag is currently over AND could legally drop on -
+     a solid outline (rather than .hint-highlight's dotted gold) keeps the
+     two visually distinct at a glance. */
+  .dragGhost{
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0.92;
+    filter: drop-shadow(2px 4px 6px var(--shadow-strong));
+  }
+  .dragSourceHidden{ opacity: 0.35; }
+  .dropTargetValid{
+    outline: 3px solid var(--drop-target-color);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Troubleshooting log (see the script section of the same name) ----
+     Same invisible-corner-button pattern used for this in AceyDeucey:
+     #diagLogToggleBtn is a completely invisible 44x44 button tucked into
+     the very bottom-left corner of the screen, double-clicked to show/hide
+     the log panel. Colors match this page's own cream/board-border theme
+     instead of AceyDeucey's wood-and-gold one. */
+  #diagLogToggleBtn{
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 44px; height: 44px;
+    padding: 0; margin: 0; border: none;
+    background: transparent;
+    opacity: 0;
+    cursor: default;
+    z-index: 600;
+  }
+  #diagLogPanel{
+    display: none;
+    position: fixed;
+    bottom: 10px; left: 10px;
+    width: 320px;
+    max-height: 520px;
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    z-index: 550;
+    box-shadow: 0 4px 20px var(--shadow-strong);
+  }
+  #diagLogPanel.show{ display: flex; flex-direction: column; }
+  #diagLogPanelTitle{
+    font-weight: 800;
+    font-size: .9rem;
+    margin-bottom: 6px;
+    flex: 0 0 auto;
+  }
+  /* A real (readonly) textarea rather than a div of lines - so a Ctrl-A
+     while the log has focus selects only the log's own text, the normal
+     browser behavior for a form field, instead of selecting the whole
+     page. Unlike a div, a textarea's own height doesn't grow on its own as
+     text is added to it - debugLog() (see the script section of the same
+     name) re-measures and re-sets its height after every new line, up to
+     the max-height below, so the box grows right along with the log the
+     same way the plain-div version in AceyDeucey does. Past max-height,
+     this overflow-y:auto is what takes over with a normal scroll bar
+     instead of growing the box any further. */
+  #diagLog{
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    line-height: 1.45;
+    max-height: 460px;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--cream);
+    color: var(--ink);
+    padding: 0;
+  }
+
+  /* ---- Playing cards (face-up / face-down), same visual family as Pinochle ---- */
+  .card{
+    width: 71.4px; height: 100.3px;
+    border-radius: 6px;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    user-select: none;
+  }
+  .card-face-img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
+  .cardback{
+    width: 71.4px; height: 100.3px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .card.clickable, .cardback.clickable, .flip3d.clickable{ cursor: pointer; }
+  .card.clickable:hover{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+  /* Same hover ring as .card.clickable:hover, applied to the front face
+     while a card is still sitting in its post-flip .flip3d wrapper (it
+     stays that way until the next render() rebuilds it as a plain card). */
+  .flip3d.clickable:hover .flip3d-front .card{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  /* Win title flash - see the "You Win!" call site below, which is the only
+     place this class gets added. */
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: .85rem;
+  }
+  .scores-table th, .scores-table td{
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .scores-table th{ background: #e8e2c8; }
+
+  /* Recorded Scores modal only - the Scoring System Explanation button sits
+     at the top of the popup body, under the title, so it needs its own
+     bottom margin to separate it from the score list below. */
+  .scores-explain-btn{ margin-bottom: 12px; }
+
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+
+  /* Options modal only - widened ~1.5in (144px) from the shared modal's
+     560px max-width, since the two-column grid of questions/choices felt
+     crowded at the standard width. Yukon's own Options popup only has the
+     Sound and Autoplay rows (no draw-count row - Yukon has no Stock pile
+     to draw from), but keeps the same widened modal Klondike/Pyramid use
+     for visual consistency across the site. */
+  #universalModal .modalBox.optionsModal{ max-width: 704px; }
+
+  /* Recorded Scores modal only - allowed to grow up to (but not past) the
+     felt's own footprint (#table-wrap is a fixed 721.2 x 497 - see that
+     rule), instead of the shared modal's normal viewport-relative sizing,
+     since showing up to 30 rows needs more room than the standard 560px/
+     85vh popup. Sized a bit smaller than the felt itself so it visually
+     sits inside the green area with a little breathing room. */
+  #universalModal .modalBox.scoresModal{ max-width: 680px; max-height: 500px; }
+  /* The scores list scrolls on its own within that fixed-height popup, so
+     the title and the Scoring System Explanation/OK buttons always stay
+     visible - only the table grows a scroll bar once its rows run past
+     this height. */
+  .scores-scroll{ max-height: 300px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">Yukon</h1>
+    <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
+    <button id="restartBtn" title="Restart the current game.">Restart</button>
+    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
+    <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="autoplayBtn" title="Automatically move eligible cards to the foundation">Autoplay: ON</button>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
+    <button id="optionsBtn" title="Customize the game.">Options</button>
+    <button id="exitBtn" title="Quit the game.">Exit</button>
+
+    <div id="nameScoreBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="scoreLabel">Score</label>
+      <div id="scoreDisplay" title="The current score.">0</div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div class="tableau-row" id="tableauArea">
+      <div class="tableau-col" id="tableau-0"></div>
+      <div class="tableau-col" id="tableau-1"></div>
+      <div class="tableau-col" id="tableau-2"></div>
+      <div class="tableau-col" id="tableau-3"></div>
+      <div class="tableau-col" id="tableau-4"></div>
+      <div class="tableau-col" id="tableau-5"></div>
+      <div class="tableau-col" id="tableau-6"></div>
+    </div>
+    <div class="foundation-col" id="foundationArea">
+      <div class="pile empty-hint" id="foundation-s" onclick="onFoundationClick('&spades;')"></div>
+      <div class="pile empty-hint" id="foundation-h" onclick="onFoundationClick('&hearts;')"></div>
+      <div class="pile empty-hint" id="foundation-c" onclick="onFoundationClick('&clubs;')"></div>
+      <div class="pile empty-hint" id="foundation-d" onclick="onFoundationClick('&diams;')"></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+  <!-- Hidden double-click toggle for the troubleshooting log - invisible,
+       sits in the very bottom-left corner of the screen. Same pattern used
+       for the game log in AceyDeucey. -->
+  <button id="diagLogToggleBtn" aria-label="Toggle troubleshooting log"></button>
+  <div id="diagLogPanel">
+    <div id="diagLogPanelTitle">Troubleshooting Log</div>
+    <textarea id="diagLog" readonly></textarea>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (SolYukonScores) so Yukon's leaderboard is separate from
+  // every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'SolYukonScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     YUKON SOLITAIRE - game engine
+     There is no Stock and no Waste pile in Yukon - every card is dealt
+     straight into the Tableau at the start of the game (see
+     dealNewGame()/buildColumnPlans()/buildDealOrder() below).
+     Move interaction: one click. Clicking an eligible face-up Tableau
+     card sends it - together with every card stacked after it toward
+     the exposed end of its column - to its correct destination:
+     Foundation is tried first (only ever legal for a single card, the
+     column's own exposed bottom card), then the Tableau (scanning
+     columns left to right for the first column whose exposed card the
+     GRABBED card can legally land on). Unlike Klondike, the cards
+     within a multi-card group do NOT need to already be in sequence
+     with each other - only the grabbed (leading) card has to fit the
+     destination by descending rank and alternating color. See
+     handleTableauCardClick()/performDragMove().
+     ============================================================ */
+
+  // The onclick="" attributes in the HTML use entities like &spades; (the
+  // browser decodes these to real characters before this script ever sees
+  // them), so the JS side only ever deals in the actual unicode glyphs below.
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RED_SUITS = ['♥','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
+  const SUIT_ID = { '♠':'s', '♥':'h', '♣':'c', '♦':'d' };
+  // Real card-face artwork (Perry's own cards/ folder, one SVG per card,
+  // e.g. cards/AS.svg for the Ace of Spades), same deck used by every other
+  // card game on the site. This page lives in games/ while cards/ stays at
+  // the site root, so the path climbs up one level with ../ before going
+  // into cards/.
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `../cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
+
+  const PLAYER_NAME_KEY = 'solYukonPlayerName_v1';
+  const RESUME_KEY = 'solYukonResumeState_v1';
+  const OPTIONS_KEY = 'solYukonOptions_v1';
+
+  function isRed(suit){ return RED_SUITS.includes(suit); }
+
+  // ---- Troubleshooting log - double-click the hidden button in the very
+  // bottom-left corner of the screen to open a scrolling panel listing the
+  // last DIAGNOSTIC_LOG_MAX events: every move made (by click, drag, or
+  // Autoplay) and every "is the board stuck?" check and what it decided.
+  // Meant to be copied and sent along with a bug report for anything that
+  // happens quietly, with no popup or halo to point at - the panel only
+  // ever holds text, nothing here changes how the game plays or is saved.
+  const DIAGNOSTIC_LOG_MAX = 200;
+  function debugLog(msg){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    const t = new Date();
+    const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+    const lines = el.value ? el.value.split('\n') : [];
+    lines.push(`[${stamp}] ${msg}`);
+    while(lines.length > DIAGNOSTIC_LOG_MAX) lines.shift();
+    el.value = lines.join('\n');
+    fitDiagLogHeight();
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // A textarea, unlike a plain div, doesn't grow taller on its own as text
+  // is added to it - this re-measures the log's actual content height and
+  // sets that as its explicit height every time a line is added (from
+  // debugLog above) or the panel is opened (from the dblclick toggle below,
+  // covering whatever piled up while it was closed). The box then grows
+  // right along with the log, entry by entry, exactly like the plain-div
+  // version in AceyDeucey - #diagLog's own max-height/overflow-y:auto CSS
+  // is what stops it growing past that point and hands off to a normal
+  // scroll bar instead.
+  function fitDiagLogHeight(){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function makeDeck(){
+    const deck = [];
+    SUIT_CHARS.forEach(suit => RANKS.forEach(rank => deck.push({ suit, rank })));
+    return deck;
+  }
+  function shuffle(deck){
+    const d = [...deck];
+    for(let i=d.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [d[i],d[j]] = [d[j],d[i]];
+    }
+    return d;
+  }
+
+  const state = {
+    tableau: [[],[],[],[],[],[],[]],
+    foundations: { '♠':[], '♥':[], '♣':[], '♦':[] },
+    autoplay: true,
+    soundEnabled: true,
+    moves: 0,
+    startTime: 0,
+    dealOrder: null,
+    gameActive: true,
+    undoStack: []
+  };
+
+  // One-shot animation flags - which specific cards should play their
+  // "just changed" animation on the very next render() call. Kept
+  // separate from `state` on purpose: `state` gets JSON-serialized whole
+  // for Undo snapshots and the resume-state save, and a Set doesn't
+  // survive that round-trip cleanly.
+  const animFlags = {
+    flipCols: [],             // ordered list of tableau column indexes that just turned face up mid-game - order sets the 0.3s stagger
+    foundationSuits: new Set() // suits whose Foundation just received a new top card
+  };
+
+  /* ---- Sound effects (Web Audio API - synthesized, no external audio
+     files, keeping this a single self-contained file like every other
+     Game Hub game). Respects the Options "Sound: On/Off" setting. ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    // The very first deal happens on page load, before any click - browsers
+    // create that AudioContext in a "suspended" state and won't make sound
+    // until a real user gesture resumes it. Calling resume() here, every
+    // time, means the first actual click (which always runs through this
+    // function) reliably unlocks sound from then on.
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'move':
+        tone(320, now, 0.09, 'triangle', 0.14);
+        break;
+      case 'foundation':
+        tone(659, now, 0.11, 'sine', 0.16);
+        tone(988, now + 0.08, 0.16, 'sine', 0.16);
+        break;
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'stuck':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+    }
+  }
+  /* A quick card flip doesn't ring like a musical tone (a pure oscillator
+     "tick" reads as an electronic chirp/blip, which is what Perry heard) -
+     physically it's a very brief burst of paper noise: a snap/flick as the
+     card leaves your fingers. This synthesizes that as a short, filtered
+     noise burst (an AudioBuffer of random values through a bandpass
+     filter) instead of an oscillator tone - no external audio file
+     needed, still fits the single-file convention. Reused verbatim from
+     Klondike, unmodified. */
+  function playFlipSnap(ctx, startTime){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2); // fast decay - a snap, not a ring
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime); // papery high-mid snap, not a low thud
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+  // Schedules `count` flip-snaps 0.3s apart, matching the 0.3s-per-card
+  // visual stagger of .flip3d above - used only for the ordinary MID-GAME
+  // reveal case (a face-down card flipping up once exposed), same as
+  // Klondike. The initial deal uses its own scheduleYukonDealSounds()
+  // below instead, since it needs to skip face-down cards entirely.
+  function scheduleFlipSounds(count, baseDelay){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime + (baseDelay || 0);
+    for(let i=0;i<count;i++){
+      playFlipSnap(ctx, now + i * 0.3);
+    }
+  }
+
+  // Started from Klondike's own deal timing (260/28), then slowed down
+  // 20% per Perry's request: decreasing speed by 20% means the deal takes
+  // proportionally longer to cover the same animation, so each value is
+  // divided by 0.8 (not multiplied by 0.8, which would instead speed it
+  // up) - 260/0.8 = 325, 28/0.8 = 35. These two constants are the ones to
+  // change for any further deal-speed adjustment: DEAL_FLIGHT_MS is how
+  // long each card takes to fly to its slot, DEAL_STAGGER_MS is the gap
+  // between successive card launches.
+  const DEAL_FLIGHT_MS = 472.2, DEAL_STAGGER_MS = 50.4;
+
+  /* ---- Initial deal: zig-zag round-robin, every card already showing its
+     correct face ----
+     Perry-approved algorithm (adapted from his own research demo):
+     buildColumnPlans() lays out, for each of the 7 columns, the ordered
+     sequence of 'down'/'up' slots it needs (column 0 is just ['up'];
+     column c>=1 is c 'down' slots followed by 5 'up' slots).
+     buildDealOrder() then visits the columns in zig-zag round-robin order -
+     round 1 deals one card to every column left-to-right, round 2 deals
+     right-to-left, round 3 left-to-right again, and so on - skipping any
+     column whose own plan is already fully dealt, until all 7 plans (52
+     slots total) are complete. Because a column is only ever visited in
+     increasing round order, simply pushing cards onto state.tableau[col]
+     in this exact visiting order (see dealNewGame() below) produces the
+     correct final bottom-to-top stack for free, with no extra placement
+     step needed.
+     Unlike Klondike (which deals all cards face-down, then runs a SEPARATE
+     flip-reveal stage afterward for the exposed top cards), a Yukon card
+     already shows its correct face - up or down - from the very first
+     instant it appears, the same simpler single-phase style Pyramid uses
+     for its own deal. See animateYukonDealFlyIn() and
+     scheduleYukonDealSounds() below. */
+  function buildColumnPlans(){
+    const plans = [];
+    for(let col=0; col<7; col++){
+      if(col === 0){ plans.push(['up']); continue; }
+      const plan = [];
+      for(let i=0;i<col;i++) plan.push('down'); // column index `col` (0-based) gets `col` face-down cards
+      for(let i=0;i<5;i++) plan.push('up');
+      plans.push(plan);
+    }
+    return plans;
+  }
+  function buildDealOrder(plans){
+    const order = []; // { col, faceUp } entries, in the exact zig-zag deal sequence
+    const pointers = new Array(7).fill(0);
+    let active = plans.map((p,i)=>i);
+    let dir = 1; // 1 = left-to-right, -1 = right-to-left
+    while(active.length){
+      const seq = dir === 1 ? active.slice() : active.slice().reverse();
+      for(const c of seq){
+        if(pointers[c] < plans[c].length){
+          order.push({ col: c, faceUp: plans[c][pointers[c]] === 'up' });
+          pointers[c]++;
+        }
+      }
+      active = active.filter(c => pointers[c] < plans[c].length);
+      dir *= -1;
+    }
+    return order;
+  }
+
+  // The initial deal's own sound scheduling - NOT scheduleFlipSounds()
+  // above. Every card dealt gets its own landing snap, face-down ones
+  // included (per Perry's request) - `flat` is the same list
+  // animateYukonDealFlyIn() below builds, and each entry's origIndex is
+  // that card's own position in the full 52-card deal order, so its sound
+  // fires at exactly origIndex * DEAL_STAGGER_MS after the deal starts, in
+  // step with its own flight.
+  function scheduleYukonDealSounds(flat){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    flat.forEach(({ origIndex }) => {
+      playFlipSnap(ctx, now + origIndex * (DEAL_STAGGER_MS/1000));
+    });
+  }
+
+  /* Flies every dealt card in from a fixed point below the felt's own
+     bottom edge (Yukon has no Stock pile to serve as a visual origin the
+     way Klondike/Pyramid use) to its already-rendered final Tableau slot,
+     staggered by the card's own position in the round-robin deal order -
+     same FLIP (First-Last-Invert-Play) technique as Klondike's own
+     animateDealFlyIn(): render() has already built the exact final board
+     (with every card already showing its correct face), so this never
+     changes WHAT gets shown, only how it arrives.
+     `dealSeq` is the full 52-entry { col, faceUp } order from
+     buildDealOrder(), in original deal order - but if Autoplay's silent
+     pre-deal sweep (see dealNewGame()) already collected one or more
+     columns' own exposed starting card(s) to a Foundation before this
+     ever ran, those cards are simply gone from state.tableau and never
+     fly in or make a sound at all (same as Klondike's own pre-deal
+     sweep). Since a sweep only ever pops a column's own LAST (most
+     recently dealt) card, the cards that remain in any one column are
+     always exactly the FIRST occurrences of that column in `dealSeq` - so
+     walking `dealSeq` while counting each column's own occurrences (occ)
+     and keeping only the ones where occ is still within that column's
+     current (post-sweep) length correctly reconstructs which cards
+     actually survived to be shown. */
+  function animateYukonDealFlyIn(dealSeq){
+    const pointers = new Array(7).fill(0);
+    const flat = []; // { el, origIndex, faceUp }
+    dealSeq.forEach((entry, i) => {
+      const occ = pointers[entry.col]++;
+      if(occ < state.tableau[entry.col].length){
+        const colEl = document.getElementById('tableau-' + entry.col);
+        flat.push({ el: colEl.children[occ], origIndex: i, faceUp: entry.faceUp });
+      }
+    });
+    if(flat.length === 0) return;
+
+    const tableWrap = document.getElementById('table-wrap');
+    const wrapRect = tableWrap.getBoundingClientRect();
+    // Fixed origin point: bottom-center of the felt, just below its own
+    // bottom edge - matching the "cards fly upward into the tableau from
+    // off the bottom edge" idea from Perry's own research demo.
+    const originX = wrapRect.left + wrapRect.width / 2;
+    const originY = wrapRect.bottom + 40;
+
+    // #table-wrap clips its own content (overflow isn't set to hidden
+    // explicitly, but its fixed size means a mid-flight card outside its
+    // own column's box could otherwise be clipped by an ancestor) - relax
+    // it for the duration of the animation only, then restore it exactly,
+    // same as Klondike's own animateDealFlyIn().
+    const prevOverflow = tableWrap.style.overflow;
+    tableWrap.style.overflow = 'visible';
+
+    // (The page itself is permanently overflow:hidden now - see the
+    // html/body rule in <style> - so the fly-in start point below the
+    // felt's bottom edge, off the visible page, never has a chance to
+    // produce a scroll bar in the first place, no matter when it happens.)
+
+    flat.forEach(({el}) => {
+      const r = el.getBoundingClientRect();
+      const dx = originX - (r.left + r.width/2);
+      const dy = originY - (r.top + r.height/2);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
+    });
+
+    flat.forEach(({el, origIndex}) => {
+      setTimeout(() => {
+        void el.offsetWidth; // force the offset state above to commit before animating away from it
+        el.style.transition = `transform ${DEAL_FLIGHT_MS}ms cubic-bezier(.22,.85,.4,1), opacity 180ms ease`;
+        requestAnimationFrame(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translate(0,0) scale(1)';
+        });
+      }, origIndex * DEAL_STAGGER_MS);
+    });
+
+    scheduleYukonDealSounds(flat);
+
+    const lastOrigIndex = flat[flat.length - 1].origIndex;
+    setTimeout(() => {
+      tableWrap.style.overflow = prevOverflow;
+      flat.forEach(({el}) => {
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }, lastOrigIndex * DEAL_STAGGER_MS + DEAL_FLIGHT_MS + 60);
+  }
+
+  function dealNewGame(freshShuffle){
+    gameEverStarted = true;
+    if(freshShuffle || !state.dealOrder){
+      state.dealOrder = shuffle(makeDeck());
+    }
+    const deck = state.dealOrder;
+    const dealSeq = buildDealOrder(buildColumnPlans()); // 52 entries, 1:1 with `deck`
+    state.tableau = [[],[],[],[],[],[],[]];
+    state.foundations = { '♠':[], '♥':[], '♣':[], '♦':[] };
+    state.moves = 0;
+    state.startTime = Date.now();
+    state.gameActive = true;
+    state.undoStack = [];
+    noMovesAlreadyShown = false;
+
+    dealSeq.forEach((entry, i) => {
+      state.tableau[entry.col].push({ ...deck[i], faceUp: entry.faceUp });
+    });
+
+    closeModal();
+    // Silent, instant pre-deal sweep only - nothing has been shown to the
+    // player yet, so an Ace already exposed at deal time (Autoplay on from
+    // a previous game) doesn't need the animated one-at-a-time treatment.
+    if(state.autoplay){ while(takeOneAutoplayCard()){} }
+    render(); // builds the final DOM - every card already shows its correct face
+    animateYukonDealFlyIn(dealSeq);
+    saveResumeState();
+  }
+
+  /* ---- Legality checks ---- */
+  function canMoveToFoundation(card){
+    const pile = state.foundations[card.suit];
+    if(pile.length === 0) return card.rank === 'A';
+    return RANK_VALUE[card.rank] === RANK_VALUE[pile[pile.length-1].rank] + 1;
+  }
+  function canMoveToTableau(card, colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length === 0) return card.rank === 'K';
+    const top = col[col.length-1];
+    if(!top.faceUp) return false;
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1 && isRed(top.suit) !== isRed(card.suit);
+  }
+  function firstLegalTableauTarget(card, skipCol){
+    for(let i=0;i<7;i++){
+      if(i === skipCol) continue;
+      if(canMoveToTableau(card, i)) return i;
+    }
+    return -1;
+  }
+
+  // Centralizes every "a card just landed on a Foundation" move so the
+  // landing animation and sound always fire together, from every call site.
+  function moveCardToFoundation(card){
+    state.foundations[card.suit].push(card);
+    state.moves++;
+    animFlags.foundationSuits.add(card.suit);
+    playSound('foundation');
+  }
+
+  /* ---- Snapshot / Undo (up to MAX_UNDO levels, oldest dropped once full) ---- */
+  const MAX_UNDO = 8;
+  function takeSnapshot(){
+    return JSON.parse(JSON.stringify({
+      tableau: state.tableau, foundations: state.foundations, moves: state.moves
+    }));
+  }
+  // Called right before a move is applied, with the snapshot taken just
+  // before that move. Pushes onto the undo stack and trims the oldest
+  // entry off the front once there are more than MAX_UNDO.
+  function pushUndoSnapshot(snap){
+    state.undoStack.push(snap);
+    if(state.undoStack.length > MAX_UNDO) state.undoStack.shift();
+  }
+  function restoreSnapshot(snap){
+    state.tableau = snap.tableau;
+    state.foundations = snap.foundations;
+    state.moves = snap.moves;
+  }
+  function undoLastMove(){
+    if(state.undoStack.length === 0) return;
+    restoreSnapshot(state.undoStack.pop());
+    // Undoing the move that ended the game (a win or a stuck/no-moves state)
+    // should bring the game back to life, not leave it frozen.
+    state.gameActive = true;
+    render();
+    saveResumeState();
+  }
+
+  function flipExposedTop(colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length > 0 && !col[col.length-1].faceUp){
+      col[col.length-1].faceUp = true;
+      animFlags.flipCols.push(colIndex);
+    }
+  }
+
+  /* ---- Click handlers - one click, automatic destination ---- */
+  function handleTableauCardClick(colIndex, cardIndex){
+    // A completed drag-and-drop (see the Drag and drop section below) still
+    // gets a click event right behind it once the mouse/finger lifts -
+    // this stops that same card from also being moved a second time here.
+    if(suppressNextClick){ suppressNextClick = false; return; }
+    if(!state.gameActive) return;
+    const col = state.tableau[colIndex];
+    const card = col[cardIndex];
+    if(!card.faceUp) return;
+    const isLastCard = (cardIndex === col.length - 1);
+    // Everything from the clicked card through the end of the column moves
+    // as one group - unlike Klondike, this group does NOT need to already
+    // be in descending/alternating sequence internally. Only the grabbed
+    // (leading) card, group[0], has to fit the destination.
+    const group = col.slice(cardIndex);
+    const tentative = takeSnapshot();
+    let moved = false;
+
+    if(group.length === 1 && isLastCard && canMoveToFoundation(card)){
+      col.pop();
+      moveCardToFoundation(card);
+      moved = true;
+      debugLog(`Click: ${card.rank}${card.suit} tableau col${colIndex} -> Foundation`);
+    }
+    if(!moved){
+      const target = firstLegalTableauTarget(group[0], colIndex);
+      if(target !== -1){
+        state.tableau[target].push(...group);
+        col.length = cardIndex;
+        state.moves++;
+        playSound('move');
+        moved = true;
+        debugLog(`Click: ${group.length}-card group (${group[0].rank}${group[0].suit} lead) tableau col${colIndex} -> tableau col${target}`);
+      }
+    }
+    if(moved){
+      pushUndoSnapshot(tentative);
+      flipExposedTop(colIndex);
+      afterMove();
+    }
+  }
+
+  function onFoundationClick(suit){
+    if(suppressNextClick){ suppressNextClick = false; return; }
+    // Note: the onclick="" attributes pass HTML entities like '&spades;', but
+    // the browser decodes entities in attribute text before this function
+    // ever sees it, so `suit` here already arrives as the real character.
+    if(!state.gameActive) return;
+    const pile = state.foundations[suit];
+    if(pile.length === 0) return;
+    if(state.autoplay){
+      flashMessage('Turn Autoplay off first to move a card back from a Foundation.');
+      return;
+    }
+    const card = pile[pile.length-1];
+    const tentative = takeSnapshot();
+    const target = firstLegalTableauTarget(card, -1);
+    if(target !== -1){
+      state.tableau[target].push(pile.pop());
+      state.moves++;
+      playSound('move');
+      debugLog(`Click: ${card.rank}${card.suit} Foundation -> tableau col${target}`);
+      pushUndoSnapshot(tentative);
+      afterMove();
+    }
+  }
+
+  function afterMove(){
+    render(); // shows the result of the player's own move right away
+    if(state.autoplay){
+      autoplaySweep(()=>{ checkGameEnd(); saveResumeState(); });
+    } else {
+      checkGameEnd();
+      saveResumeState();
+    }
+  }
+
+  /* ---- Drag and drop - an alternative to click-to-move, added alongside
+     it (clicking a card still moves it exactly as it always has). Built on
+     Pointer Events (one code path covers mouse, touch, and pen) instead of
+     the native HTML5 drag-and-drop API, since the dragged card(s) need to
+     be drawn as a real floating group that follows the cursor and the
+     current drop target needs to be highlighted live - both awkward to
+     control with the native API's own drag image and events.
+     A pointerdown on a face-up Tableau card only ARMS a possible drag; it
+     only becomes a real drag once the pointer moves past
+     DRAG_MOVE_THRESHOLD, so an ordinary click still reaches
+     handleTableauCardClick() above completely untouched. Right after a
+     real drag ends, the browser still fires an ordinary click on whatever
+     the pointer lifted over - suppressNextClick (checked at the top of
+     each click handler above) is what stops that same card from being
+     moved a second time. There is only ever one possible drag SOURCE in
+     Yukon - a Tableau column - since there is no Waste pile to drag from. ---- */
+  const ID_TO_SUIT = { s:'♠', h:'♥', c:'♣', d:'♦' };
+  const DRAG_MOVE_THRESHOLD = 5; // px of pointer movement before a press counts as a real drag
+  let dragState = null;
+  let suppressNextClick = false;
+
+  function startDragCandidate(e, source){
+    if(dragState) return; // a drag is already armed/in progress (e.g. a second touch) - ignore
+    if(!state.gameActive) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return; // left/primary button (or touch/pen) only
+    if(document.getElementById('universalModal').style.display === 'flex') return; // a popup is open - don't start a drag underneath it
+    // Autoplay is actively popping cards to the Foundations in the
+    // background (see autoplaySweep() below) - a drag armed now could hold
+    // onto a card/column index that Autoplay could then change out from
+    // under it before the drop happens, which could leave the same card
+    // sitting in two places at once. Simplest safe rule: no new drag while
+    // Autoplay is mid-sweep: it only lasts a beat, and click-to-move (which
+    // re-reads the board fresh at the instant it's used) is unaffected.
+    if(autoplaySweepActive) return;
+
+    const col = state.tableau[source.col];
+    const card = col[source.index];
+    if(!card || !card.faceUp) return;
+    const cards = col.slice(source.index); // this card plus everything stacked after it toward the exposed end
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      source, cards,
+      startX: e.clientX, startY: e.clientY,
+      grabOffsetX: e.clientX - rect.left, grabOffsetY: e.clientY - rect.top,
+      moved: false,
+      ghostEl: null,
+      hoverEl: null,
+    };
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+    document.addEventListener('pointercancel', onDragPointerUp);
+  }
+
+  // Builds the floating group that follows the cursor - giving it the same
+  // "tableau-col" class the real columns use lets it pick up the exact
+  // same ".cardWrap.faceUp:not(:first-child)" overlap rule for free, so a
+  // multi-card drag staggers identically to the real tableau instead of
+  // needing its own separate copy of that spacing.
+  function beginVisualDrag(){
+    const ghost = document.createElement('div');
+    ghost.className = 'tableau-col dragGhost';
+    ghost.innerHTML = dragState.cards.map(card =>
+      `<div class="cardWrap faceUp">${cardHtml(card)}</div>`
+    ).join('');
+    document.body.appendChild(ghost);
+    dragState.ghostEl = ghost;
+
+    // Dim the real card(s) being dragged in place - makes it clear they've
+    // been picked up without hiding the column they came from.
+    const colEl = document.getElementById('tableau-' + dragState.source.col);
+    Array.from(colEl.children).slice(dragState.source.index).forEach(el => el.classList.add('dragSourceHidden'));
+  }
+
+  function updateGhostPosition(x, y){
+    dragState.ghostEl.style.transform = `translate(${x - dragState.grabOffsetX}px, ${y - dragState.grabOffsetY}px)`;
+  }
+
+  // Identifies whatever Tableau column or Foundation pile is under (x,y) -
+  // the ghost is pointer-events:none (see its CSS) so it never gets in its
+  // own way here.
+  function findDropTargetAt(x, y){
+    const el = document.elementFromPoint(x, y);
+    if(!el) return null;
+    const col = el.closest('.tableau-col');
+    if(col) return { type:'tableau', col: parseInt(col.id.slice('tableau-'.length), 10), el: col };
+    const pile = el.closest('.pile');
+    if(pile && pile.id.startsWith('foundation-')) return { type:'foundation', suit: ID_TO_SUIT[pile.id.slice('foundation-'.length)], el: pile };
+    return null;
+  }
+
+  function isDropTargetValid(target){
+    const cards = dragState.cards;
+    if(target.type === 'tableau'){
+      if(target.col === dragState.source.col) return false; // dropped back where it started
+      return canMoveToTableau(cards[0], target.col);
+    }
+    if(target.type === 'foundation'){
+      if(cards.length !== 1) return false; // a multi-card group can't go to a Foundation
+      return cards[0].suit === target.suit && canMoveToFoundation(cards[0]);
+    }
+    return false;
+  }
+
+  function updateHoverTarget(x, y){
+    const target = findDropTargetAt(x, y);
+    const validEl = (target && isDropTargetValid(target)) ? target.el : null;
+    if(dragState.hoverEl !== validEl){
+      if(dragState.hoverEl) dragState.hoverEl.classList.remove('dropTargetValid');
+      if(validEl) validEl.classList.add('dropTargetValid');
+      dragState.hoverEl = validEl;
+    }
+  }
+
+  function onDragPointerMove(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    if(!dragState.moved){
+      if(Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) < DRAG_MOVE_THRESHOLD) return;
+      dragState.moved = true;
+      beginVisualDrag();
+    }
+    updateGhostPosition(e.clientX, e.clientY);
+    updateHoverTarget(e.clientX, e.clientY);
+  }
+
+  function cleanupDragVisuals(){
+    if(dragState.ghostEl) dragState.ghostEl.remove();
+    document.querySelectorAll('.dragSourceHidden').forEach(el => el.classList.remove('dragSourceHidden'));
+    document.querySelectorAll('.dropTargetValid').forEach(el => el.classList.remove('dropTargetValid'));
+  }
+
+  // Moves dragState.cards onto the SPECIFIC target the player dropped them
+  // on - unlike the click handler above, which auto-picks the first legal
+  // spot, a drop always goes exactly where it was released.
+  function performDragMove(target){
+    const cards = dragState.cards;
+    const tentative = takeSnapshot();
+    const col = state.tableau[dragState.source.col];
+    if(target.type === 'tableau'){
+      state.tableau[target.col].push(...cards);
+      col.length = dragState.source.index;
+      state.moves++;
+      playSound('move');
+      debugLog(`Drag: ${cards.length}-card group (${cards[0].rank}${cards[0].suit} lead) tableau col${dragState.source.col} -> tableau col${target.col}`);
+    } else {
+      col.pop();
+      moveCardToFoundation(cards[0]);
+      debugLog(`Drag: ${cards[0].rank}${cards[0].suit} tableau col${dragState.source.col} -> Foundation`);
+    }
+    pushUndoSnapshot(tentative);
+    flipExposedTop(dragState.source.col);
+    afterMove();
+  }
+
+  function onDragPointerUp(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.removeEventListener('pointercancel', onDragPointerUp);
+
+    const wasRealDrag = dragState.moved;
+    const target = wasRealDrag ? findDropTargetAt(e.clientX, e.clientY) : null;
+    const valid = target && isDropTargetValid(target);
+    if(wasRealDrag) cleanupDragVisuals();
+
+    if(wasRealDrag){
+      // A click event still fires right after this, on whatever the
+      // pointer lifted over - block it from also moving a card a second
+      // time (see the suppressNextClick check in each click handler above).
+      suppressNextClick = true;
+      setTimeout(()=>{ suppressNextClick = false; }, 0);
+    }
+
+    if(valid) performDragMove(target); // uses dragState, so this runs before it's cleared below
+    dragState = null;
+  }
+
+  // Finds ONE Foundation-eligible card (the lowest-numbered tableau column
+  // with an eligible exposed top card), moves it, and returns true - or
+  // returns false if nothing is eligible. Shared by the animated Autoplay
+  // sweep below and the silent pre-deal sweep in dealNewGame() (which runs
+  // before the board is ever shown, so it doesn't need to be animated one
+  // card at a time).
+  function takeOneAutoplayCard(){
+    for(let i=0;i<7;i++){
+      const col = state.tableau[i];
+      if(col.length){
+        const c = col[col.length-1];
+        if(c.faceUp && canMoveToFoundation(c)){
+          col.pop();
+          moveCardToFoundation(c);
+          flipExposedTop(i);
+          debugLog(`Autoplay: ${c.rank}${c.suit} tableau col${i} -> Foundation`);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // Auto-collects every Foundation-eligible card it can find, one at a
+  // time: move a card, render it landing, wait, then look for the next -
+  // instead of sweeping the whole batch onto the Foundations in a single
+  // instant re-render. onDone(madeAnyMove), if given, fires once nothing
+  // more is eligible - callers that need to know whether anything was
+  // actually swept (for Undo, or for timing checkGameEnd/saveResumeState)
+  // use that instead of a return value, since the sweep is no longer
+  // instant.
+  const AUTOPLAY_STEP_MS = 300;
+  // Set for the whole time a sweep is stepping through cards - checked by
+  // startDragCandidate() above so a new drag can't get armed on a card/
+  // column Autoplay might change out from under it mid-drag.
+  let autoplaySweepActive = false;
+  function autoplaySweep(onDone){
+    autoplaySweepActive = true;
+    let madeAnyMove = false;
+    function step(){
+      if(!takeOneAutoplayCard()){
+        autoplaySweepActive = false;
+        if(typeof onDone === 'function') onDone(madeAnyMove);
+        return;
+      }
+      madeAnyMove = true;
+      render();
+      setTimeout(step, AUTOPLAY_STEP_MS);
+    }
+    step();
+  }
+
+  function foundationCount(){
+    return Object.values(state.foundations).reduce((sum,pile)=> sum + pile.length, 0);
+  }
+  function currentScore(){
+    return -52 + 5 * foundationCount();
+  }
+
+  // Finds ANY currently-available move - a Tableau card (or group) that can
+  // move to a Foundation or onto another Tableau column. Deliberately does
+  // not consider moving a card back off a Foundation onto the Tableau -
+  // Autoplay blocks that move anyway while it's on (the default), and it
+  // doesn't represent the board being out of forward moves. Returns null
+  // only when truly nothing is available anywhere.
+  //
+  // This is deliberately a single move deep and doesn't ask whether that
+  // move actually leads anywhere - used by findHintMove() below as its
+  // last-resort suggestion (see there for why), and NOT by checkGameEnd()
+  // for the "No More Moves" popup - that needs the deeper
+  // isProgressPossible() search below, since a single-move check like this
+  // one can't tell a real (if roundabout) path forward apart from a card
+  // that can only ever bounce back and forth between two equally-valid
+  // spots forever.
+  function findAvailableMove(){
+    for(let i=0;i<7;i++){
+      const col = state.tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(!top.faceUp) continue;
+      if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
+      // Any face-up card in the column, together with every card stacked
+      // after it, can be picked up as a group - Yukon doesn't require that
+      // group to already be in sequence (unlike Klondike), so every
+      // face-up card position needs to be checked here, not just the start
+      // of an already-sequenced run.
+      let runStart = col.length - 1;
+      while(runStart > 0 && col[runStart-1].faceUp) runStart--;
+      for(let k=runStart; k<col.length; k++){
+        const target = firstLegalTableauTarget(col[k], i);
+        if(target !== -1) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      }
+    }
+    return null;
+  }
+
+  // A Tableau-to-Tableau move only counts as "productive" here if it
+  // actually accomplishes something concrete - either it flips a new
+  // face-down card face up, or it empties the column outright into one
+  // that wasn't already empty itself (opening a genuinely new spot for a
+  // King), or it frees up a card that can go straight to a Foundation.
+  // Used only by findProductiveMove() below, for choosing what the Hint
+  // should point at - NOT by findAvailableMove() above, which the "no
+  // more moves" popup relies on and which deliberately counts any legal
+  // move at all (see its own comment).
+  function tableauMoveIsProductive(col, removeFromIndex, targetCol){
+    const remaining = removeFromIndex;
+    if(remaining === 0) return targetCol.length > 0; // only a real gain if the target wasn't already empty too
+    const newTop = col[remaining - 1];
+    if(!newTop.faceUp) return true; // flips a new card face up
+    return canMoveToFoundation(newTop); // exposes a card that can go straight to a Foundation
+  }
+
+  // Same search as findAvailableMove() above, but only returns a move that
+  // is actually productive - this is what keeps the Hint (see the Hint
+  // section below) from endlessly pointing at a card that's already
+  // legally placed and suggesting it slide sideways onto an equally valid
+  // spot and back again, forever, whenever nothing better is on the board.
+  function findProductiveMove(){
+    for(let i=0;i<7;i++){
+      const col = state.tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(!top.faceUp) continue;
+      if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
+      let runStart = col.length - 1;
+      while(runStart > 0 && col[runStart-1].faceUp) runStart--;
+      for(let k=runStart; k<col.length; k++){
+        const target = firstLegalTableauTarget(col[k], i);
+        if(target !== -1 && tableauMoveIsProductive(col, k, state.tableau[target])) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      }
+    }
+    return null;
+  }
+
+  // What the Hint actually shows: findMoveTowardProgress() (see below,
+  // defined further down alongside the search it shares with
+  // isProgressPossible()) when it finds a real path forward, falling back
+  // to findProductiveMove() and finally to ANY legal move (even a
+  // pointless sideways shuffle) only when nothing better can be found -
+  // that last resort should in practice only ever be reached if the deep
+  // search hits its own safety cap (see PROGRESS_SEARCH_MAX_STATES below),
+  // since a genuinely stuck board never gets this far - checkGameEnd()
+  // will already have shown the "No More Moves" popup, and showHint()
+  // won't fire underneath it.
+  function findHintMove(){
+    return findMoveTowardProgress() || findProductiveMove() || findAvailableMove();
+  }
+
+  /* ---- "Is any real progress still possible" search, used ONLY by
+     checkGameEnd() below to decide the "No More Moves" popup.
+     findAvailableMove() above (any single legal move, full stop) is right
+     for the Hint's fallback, but it's too permissive for the popup: a
+     board where the only "legal move" is a card sliding back and forth
+     between two equally-valid spots forever (e.g. a Red 9 that fits either
+     of two exposed Black 10s, with nothing else on the board able to move
+     at all) still has a "legal move" by that definition, yet the player
+     can never make an ounce of real progress from it - that IS a stuck
+     board, popup and all.
+     This walks every board arrangement reachable by any sequence of legal
+     moves (tableau-to-tableau included), and only calls it "progress
+     possible" once some reachable arrangement has a card that can go to a
+     Foundation. Arrangements already seen are never revisited - that's
+     exactly what catches the back-and-forth case, since its second move
+     just returns to the one arrangement already ruled out, closing the
+     loop with nothing new ever found. It's also exactly why Perry's
+     earlier "Red J onto Black Q, then Red 2 onto Black 3, then Black 5
+     onto Red 6" report is still handled correctly here: the search keeps
+     walking forward through each of those in turn, since none of them
+     revisit an already-seen arrangement, until the third move exposes a
+     card that reaches a Foundation. */
+  // Columns are sorted before joining, not kept in left-to-right order -
+  // no rule in this game cares WHICH physical column holds a given stack,
+  // only what each stack actually contains, so two arrangements that are
+  // just the same set of column-stacks in a different left-to-right order
+  // (two Kings each alone in an otherwise-interchangeable column, say) are
+  // the same arrangement for search purposes and must produce the same
+  // key - otherwise the search wastes its whole state budget rediscovering
+  // the same handful of real positions over and over under every possible
+  // reshuffling of which column each one happens to sit in, and can burn
+  // through PROGRESS_SEARCH_MAX_STATES on a board that isn't nearly as
+  // complex as that count makes it look, hitting the safety valve (and
+  // wrongly declaring progress still possible) on a board that's actually
+  // stuck.
+  function tableauKey(tableau){
+    return tableau.map(col => col.map(c => c.suit + c.rank + (c.faceUp?'1':'0')).join(',')).sort().join('|');
+  }
+  function canMoveToFoundationIn(foundations, card){
+    const pile = foundations[card.suit];
+    if(pile.length === 0) return card.rank === 'A';
+    return RANK_VALUE[card.rank] === RANK_VALUE[pile[pile.length-1].rank] + 1;
+  }
+  function canMoveToTableauIn(tableau, card, colIndex){
+    const col = tableau[colIndex];
+    if(col.length === 0) return card.rank === 'K';
+    const top = col[col.length-1];
+    if(!top.faceUp) return false;
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1 && isRed(top.suit) !== isRed(card.suit);
+  }
+  // Every legal move out of one (tableau, foundations) pair - unlike
+  // findAvailableMove()/findProductiveMove(), which only need the FIRST
+  // match, isProgressPossible() below needs the complete list so it can
+  // branch out to every reachable arrangement, not just one.
+  function allLegalMovesIn(tableau, foundations){
+    const moves = [];
+    for(let i=0;i<7;i++){
+      const col = tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(!top.faceUp) continue;
+      if(canMoveToFoundationIn(foundations, top)) moves.push({ type:'foundation', from:i });
+      let runStart = col.length - 1;
+      while(runStart > 0 && col[runStart-1].faceUp) runStart--;
+      for(let k=runStart; k<col.length; k++){
+        const card = col[k];
+        for(let t=0;t<7;t++){
+          if(t === i) continue;
+          if(canMoveToTableauIn(tableau, card, t)) moves.push({ type:'tableau', from:i, cardIndex:k, to:t });
+        }
+      }
+    }
+    return moves;
+  }
+  function applyMoveToClone(tableau, foundations, move){
+    const newTableau = tableau.map(col => col.map(c => ({...c})));
+    const newFoundations = {};
+    for(const s in foundations) newFoundations[s] = foundations[s].map(c => ({...c}));
+    if(move.type === 'foundation'){
+      const card = newTableau[move.from].pop();
+      newFoundations[card.suit].push(card);
+    } else {
+      const group = newTableau[move.from].splice(move.cardIndex);
+      newTableau[move.to].push(...group);
+    }
+    const src = newTableau[move.from];
+    if(src.length && !src[src.length-1].faceUp) src[src.length-1].faceUp = true;
+    return { tableau: newTableau, foundations: newFoundations };
+  }
+  // Purely a safety valve against a pathological board with an enormous
+  // number of reachable arrangements - if this cap is hit before the
+  // search finishes, it errs toward NOT stuck (a popup shown one move too
+  // late beats a false one), same spirit as the "any legal move counts"
+  // fix this search itself replaces for the popup's own decision. Raised
+  // well above its original 3000 after Perry hit a real dead-end board
+  // (a Red 7 stuck bouncing between two Black 8s, with nothing else on the
+  // board actually able to move) that this search gave up on before
+  // finishing - tableauKey()'s column-order sorting above cuts out a lot
+  // of the redundant re-exploring that was eating into that budget, but a
+  // much higher ceiling gives real dead-end boards far more room before
+  // the valve ever needs to trip at all.
+  const PROGRESS_SEARCH_MAX_STATES = 15000;
+  function isProgressPossible(){
+    const visited = new Set([tableauKey(state.tableau)]);
+    const queue = [{ tableau: state.tableau, foundations: state.foundations }];
+    let qi = 0;
+    while(qi < queue.length){
+      const { tableau, foundations } = queue[qi++];
+      const moves = allLegalMovesIn(tableau, foundations);
+      for(const move of moves){
+        if(move.type === 'foundation') return true;
+        const next = applyMoveToClone(tableau, foundations, move);
+        const key = tableauKey(next.tableau);
+        if(visited.has(key)) continue;
+        visited.add(key);
+        if(visited.size > PROGRESS_SEARCH_MAX_STATES) return true;
+        queue.push(next);
+      }
+    }
+    return false;
+  }
+
+  // Turns one internal move (the {type, from, cardIndex?, to} shape
+  // allLegalMovesIn() produces) into the same {from, to} shape
+  // findAvailableMove()/findProductiveMove() return and hintElementFor()
+  // already knows how to read - `tableau` must be the arrangement `move`
+  // was generated from, so the Foundation case can look up which suit the
+  // moving card actually belongs to.
+  function moveToHintShape(move, tableau){
+    if(move.type === 'tableau') return { from:{type:'tableau', col:move.from}, to:{type:'tableau', col:move.to} };
+    const card = tableau[move.from][tableau[move.from].length - 1];
+    return { from:{type:'tableau', col:move.from}, to:{type:'foundation', suit:card.suit} };
+  }
+
+  // For the Hint (see the Hint section below): the same search as
+  // isProgressPossible() above, but instead of a yes/no answer, returns
+  // the actual FIRST move to make right now that's provably on some path
+  // toward a Foundation - not just whether such a path exists.
+  // findProductiveMove()'s one-move-deep "is THIS move productive" check
+  // has the exact same blind spot the old "no more moves" popup did: it
+  // can only ever say yes to a move that helps immediately, so it misses
+  // a move that only pays off two or three steps later - which is exactly
+  // Perry's four-Kings-and-one-empty-column report: shuffling any one
+  // King into the empty column looks pointless by itself (an empty column
+  // trading places with another empty-except-a-King column), so
+  // findProductiveMove() rejects all four and the Hint fell back to
+  // suggesting one anyway with no better option in view - even though a
+  // short sequence starting with one of those same King moves may well
+  // uncover real progress elsewhere on the board. This walks the same
+  // full search isProgressPossible() does and remembers, the first time
+  // each newly-reached arrangement is discovered, which move from THIS
+  // board actually started that path - so once some reachable arrangement
+  // turns up a Foundation move, the Hint can point at the real first step
+  // instead of a coin-flip between two equally pointless shuffles.
+  function findMoveTowardProgress(){
+    const visited = new Set([tableauKey(state.tableau)]);
+    const queue = [{ tableau: state.tableau, foundations: state.foundations, firstMoveShape: null }];
+    let qi = 0;
+    while(qi < queue.length){
+      const { tableau, foundations, firstMoveShape } = queue[qi++];
+      const moves = allLegalMovesIn(tableau, foundations);
+      for(const move of moves){
+        const shape = firstMoveShape || moveToHintShape(move, tableau);
+        if(move.type === 'foundation') return shape;
+        const next = applyMoveToClone(tableau, foundations, move);
+        const key = tableauKey(next.tableau);
+        if(visited.has(key)) continue;
+        visited.add(key);
+        if(visited.size > PROGRESS_SEARCH_MAX_STATES) return null; // safety valve - let findHintMove() fall back instead
+        queue.push({ tableau: next.tableau, foundations: next.foundations, firstMoveShape: shape });
+      }
+    }
+    return null; // matches isProgressPossible() === false - nothing anywhere leads to a Foundation
+  }
+
+  // Since the no-moves popup no longer ends the game (see checkGameEnd
+  // below), checkGameEnd() can get called again and again while the board
+  // stays stuck - every move, every Autoplay toggle - and without this
+  // flag it would pop the same notice up again each time. It's set once
+  // the popup is shown and only clears once the board is genuinely no
+  // longer stuck (a move became available - after an Undo, say), so it can
+  // correctly fire again the next time the game actually becomes stuck.
+  let noMovesAlreadyShown = false;
+
+  function checkGameEnd(){
+    if(!state.gameActive) return;
+    if(foundationCount() === 52){
+      state.gameActive = false;
+      playSound('win');
+      showEndModal();
+      return;
+    }
+    const stuck = !isProgressPossible();
+    if(!stuck){
+      debugLog('Check: OK, a move is available');
+      noMovesAlreadyShown = false;
+      return;
+    }
+    if(noMovesAlreadyShown){
+      debugLog('Check: still stuck (popup already shown)');
+      return;
+    }
+    noMovesAlreadyShown = true;
+    debugLog('Check: STUCK - no legal move found, showing popup');
+    // Unlike a win, running out of moves doesn't end the game - gameActive
+    // stays true so Undo keeps working if the player backs out of this
+    // popup's Exit option. The score is recorded the moment any of the
+    // popup's three buttons is clicked (see below), not the instant the
+    // stuck state is detected. This popup is not dismissable (no click-
+    // outside-to-close), so there's no way to get past it without recording
+    // the score first.
+    playSound('stuck');
+    // Body format matches the other popups (e.g. You Win!) - a stats line
+    // followed by a plain-language description.
+    const body = `
+      <p>Score: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
+      <p>No legal moves remain.</p>
+    `;
+    // New Game and Restart record this score, then deal immediately with no
+    // confirmation (the game is already stuck, so there's nothing further
+    // to lose). Exit records the score too, then shows the same Exit
+    // confirmation the header's own Exit button uses - it's the only one of
+    // the three that asks "are you sure" first.
+    showModal('There Are No More Moves.', body, `
+      <button onclick="recordScore(); dealNewGame(true);">New Game</button>
+      <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      <button onclick="recordScore(); confirmExitFromEndPopup();">Exit</button>
+    `, false);
+  }
+
+  // Shared by the win popup and the no-more-moves popup below, so a score
+  // gets recorded to the shared leaderboard the same way either time.
+  function recordScore(){
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, score: currentScore(), moves: state.moves, time: elapsedSeconds(),
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+
+  // Exit confirmation shared by the "You Win!" and "There Are No More
+  // Moves." end-of-game popups - same wording/behavior as the header's own
+  // Exit button. Cancel just closes this confirmation, the same as Cancel
+  // does everywhere else in the game.
+  function confirmExitFromEndPopup(){
+    showModal('Exit Yukon', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  }
+
+  function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  // The win case only now - running out of moves without winning has its
+  // own, simpler popup (see checkGameEnd's stuck-state branch above) that
+  // doesn't end the game.
+  function showEndModal(){
+    const score = currentScore();
+    const time = elapsedSeconds();
+    recordScore(); // recorded immediately here, unlike the no-moves popup, so New Game/Restart/Exit below don't need to record it again.
+    const body = `
+      <p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+      <p>All 52 cards are on the Foundations.</p>
+    `;
+    showModal('You Win!', body, `
+      <button onclick="dealNewGame(true)">New Game</button>
+      <button onclick="dealNewGame(false)">Restart</button>
+      <button onclick="confirmExitFromEndPopup()">Exit</button>
+    `, true);
+    document.getElementById('modalTitle').style.color = 'red';
+    document.getElementById('modalTitle').classList.add('win-blink');
+    render();
+  }
+
+  function flashMessage(msg){
+    showModal('One Moment', `<p>${msg}</p>`, `<button onclick="closeModal()">OK</button>`, true);
+  }
+
+  /* ---- Hint: after 6s of no move, show what the computer sees is
+     playable - a gold dotted halo around the source card and the card (or
+     empty slot/Foundation) it could go to, using findHintMove() (a
+     productive move when one exists, falling back to findAvailableMove()'s
+     own permissive search only when nothing productive is left) rather
+     than findAvailableMove() directly - otherwise, whenever a card is
+     already legally placed but could just as legally slide onto a second,
+     equally-valid spot, the Hint would point at that pointless sideways
+     move, and keep flipping back to suggest sliding it right back once the
+     player follows the suggestion. render() restarts this timer and clears
+     any halo already showing every time it runs, and render() runs after
+     every real move (see the render() call sites), so the countdown is
+     always measured from the player's last action. ---- */
+  const HINT_IDLE_MS = 8000;
+  let hintTimer = null;
+  let hintShowing = false;
+
+  function clearHint(){
+    if(!hintShowing) return;
+    document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
+    hintShowing = false;
+  }
+
+  function resetHintTimer(){
+    clearHint();
+    clearTimeout(hintTimer);
+    if(!state.gameActive) return;
+    hintTimer = setTimeout(showHint, HINT_IDLE_MS);
+  }
+
+  // Translates one findHintMove() endpoint into the actual element to
+  // put the halo on - the top card's own wrapper for a Tableau column (or
+  // its empty-slot placeholder if the column is empty), or the Foundation
+  // pile itself (already sized and bordered like one card, whether it's
+  // holding one or still empty).
+  function hintElementFor(loc){
+    if(loc.type === 'tableau'){
+      const col = document.getElementById('tableau-' + loc.col);
+      return col ? col.lastElementChild : null;
+    }
+    if(loc.type === 'foundation'){
+      return document.getElementById('foundation-' + SUIT_ID[loc.suit]);
+    }
+    return null;
+  }
+
+  function showHint(){
+    if(!state.gameActive) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return; // a popup is already up - don't hint underneath it
+    const move = findHintMove();
+    if(!move) return; // truly nothing left - the "no more moves" popup already covers this
+    const fromEl = hintElementFor(move.from);
+    const toEl = hintElementFor(move.to);
+    if(fromEl) fromEl.classList.add('hint-highlight');
+    if(toEl) toEl.classList.add('hint-highlight');
+    hintShowing = true;
+  }
+
+  /* ---- Rendering ---- */
+  function cardHtml(card){
+    return `<div class="card clickable"><img class="card-face-img" src="${cardImageSrc(card)}" alt="${card.rank} of ${card.suit}" draggable="false"></div>`;
+  }
+  // A card that's actively turning face up this render (mid-game, once the
+  // card that was covering it is moved away) - a two-sided flip3d wrapper
+  // (see the CSS) showing the cardback first, then the real card, instead
+  // of the plain, non-animating cardHtml() above. Not used for the initial
+  // deal at all - see animateYukonDealFlyIn()/dealNewGame() above.
+  function flipperHtml(card, delaySeconds){
+    const style = delaySeconds > 0 ? ` style="animation-delay:${delaySeconds.toFixed(2)}s"` : '';
+    return `<div class="flip3d clickable"${style}>
+      <div class="flip3d-face flip3d-back"></div>
+      <div class="flip3d-face flip3d-front">${cardHtml(card)}</div>
+    </div>`;
+  }
+
+  function render(){
+    // Foundations - stacked vertically on the right (see #foundationArea)
+    ['♠','♥','♣','♦'].forEach(suit=>{
+      const el = document.getElementById('foundation-' + SUIT_ID[suit]);
+      const pile = state.foundations[suit];
+      if(pile.length){
+        const fCard = pile[pile.length-1];
+        const anim = animFlags.foundationSuits.has(suit) ? ' foundation-anim' : '';
+        el.innerHTML = `<div class="card clickable${anim}"><img class="card-face-img" src="${cardImageSrc(fCard)}" alt="${fCard.rank} of ${fCard.suit}" draggable="false"></div>`;
+      } else {
+        el.innerHTML = 'A';
+      }
+    });
+    animFlags.foundationSuits.clear();
+
+    // Tableau
+    for(let i=0;i<7;i++){
+      const el = document.getElementById('tableau-' + i);
+      const col = state.tableau[i];
+      if(col.length === 0){
+        el.innerHTML = '<div class="empty-slot"></div>';
+        continue;
+      }
+      el.innerHTML = col.map((card, idx)=>{
+        if(!card.faceUp) return '<div class="cardWrap faceDown"><div class="cardback"></div></div>';
+        const isTop = (idx === col.length - 1);
+        // animFlags.flipCols is in the order columns were revealed - that
+        // position (0, 1, 2...) is also each card's 0.3s stagger slot, so
+        // several cards revealed in the same batch (e.g. a chain of
+        // Autoplay reveals) visibly turn over one at a time instead of all
+        // at once.
+        const staggerIndex = isTop ? animFlags.flipCols.indexOf(i) : -1;
+        if(staggerIndex !== -1){
+          return `<div class="cardWrap faceUp">${flipperHtml(card, staggerIndex*0.3)}</div>`;
+        }
+        return `<div class="cardWrap faceUp">${cardHtml(card)}</div>`;
+      }).join('');
+      // wire click and drag handlers (only meaningful on face-up cards, harmless no-op on face-down)
+      Array.from(el.children).forEach((wrap, idx)=>{
+        wrap.onclick = ()=> handleTableauCardClick(i, idx);
+        wrap.onpointerdown = (e)=> startDragCandidate(e, { col:i, index:idx });
+      });
+    }
+
+    // Staggered "cards turning over" sound for a mid-game reveal chain
+    // (e.g. an Autoplay run that flips more than one card underneath it).
+    // flipCols is deduplicated with a Set before counting, the same
+    // safeguard Klondike uses, in case a single column ends up pushed more
+    // than once in one render pass.
+    scheduleFlipSounds(new Set(animFlags.flipCols).size, 0);
+    animFlags.flipCols = [];
+
+    document.getElementById('scoreDisplay').textContent = currentScore();
+    document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+    document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
+    resetHintTimer();
+  }
+
+  /* ---- Options (Sound / Autoplay defaults - no draw-count row, since
+     Yukon has no Stock pile to draw from at all) ---- */
+  document.getElementById('optionsBtn').addEventListener('click', ()=>{
+    showModal('Options', `
+      <div class="options-grid">
+        <div class="options-question">Select the default for Sounds</div>
+        <label for="soundOnRadio">On</label>
+        <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
+        <label for="soundOffRadio">Off</label>
+        <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+
+        <div class="options-question">Select the default for Autoplay</div>
+        <label for="autoplayOnRadio">On</label>
+        <input type="radio" id="autoplayOnRadio" name="autoplaySetting" ${state.autoplay?'checked':''}>
+        <label for="autoplayOffRadio">Off</label>
+        <input type="radio" id="autoplayOffRadio" name="autoplaySetting" ${!state.autoplay?'checked':''}>
+      </div>
+    `, `
+      <button onclick="saveOptions()">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, true, 'optionsModal');
+  });
+  function saveOptions(){
+    state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    const autoplayDefault = document.getElementById('autoplayOnRadio').checked;
+    closeModal();
+    // If the chosen Autoplay default differs from the game's current
+    // Autoplay setting, flip it the same way clicking the Autoplay button
+    // does, instead of just changing the flag out from under the button -
+    // reusing that click keeps the Undo snapshot and the animated
+    // collection sweep (when turning it on) working correctly. That click
+    // already saves its own resume snapshot, so this only needs to below
+    // when Autoplay itself didn't change.
+    if(autoplayDefault !== state.autoplay){
+      document.getElementById('autoplayBtn').click();
+    } else {
+      saveResumeState();
+    }
+    // Persisted to the browser's own permanent storage, the same way the
+    // player name is - so these settings are still there the next time
+    // the game is opened, not just for the rest of this browser session.
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ soundEnabled: state.soundEnabled, autoplayDefault }));
+    } catch(e) {}
+  }
+
+  /* ---- Recorded Scores (Firebase-backed) ---- */
+  const MAX_RECORDED_SCORES = 30;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  function formatScoreRow(entry, rank){
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let listHtml;
+    if(sharedScores === null){
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b)=>
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
+      ).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
+      } else {
+        // The table itself scrolls (see .scores-scroll below) rather than
+        // the whole popup, so the title and buttons stay put and only the
+        // list of up to 30 rows grows a scroll bar once it runs out of room.
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
+          <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
+          ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
+        </table></div>`;
+      }
+    }
+    // The Scoring System Explanation button lives at the top of the popup
+    // body, under the title, rather than alongside OK - that leaves OK by
+    // itself in the button row below, where it's centered automatically.
+    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring System Explanation</button>${listHtml}`;
+    showModal('Recorded Scores', body, `
+      <button onclick="closeModal()">OK</button>
+    `, true, 'scoresModal');
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
+    const panel = document.getElementById('diagLogPanel');
+    panel.classList.toggle('show');
+    if(panel.classList.contains('show')){
+      // While the panel is display:none, the log can't correctly measure
+      // its own content height - re-fit it now that it's actually visible,
+      // in case entries piled up (from Autoplay, say) while it was closed.
+      fitDiagLogHeight();
+      const el = document.getElementById('diagLog');
+      el.scrollTop = el.scrollHeight;
+      // Focus lands in the log itself the instant it opens, so a Ctrl-A
+      // right after double-clicking selects only the log's own text - the
+      // normal browser behavior for a focused text field - instead of the
+      // whole page.
+      el.focus();
+    }
+  });
+
+  /* ---- Autoplay toggle ---- */
+  document.getElementById('autoplayBtn').addEventListener('click', ()=>{
+    state.autoplay = !state.autoplay;
+    render(); // reflects the button's own new On/Off state right away
+    if(state.autoplay){
+      // Turning Autoplay back on can immediately send a card (an exposed
+      // Ace, say) straight to a Foundation on its own, with no separate
+      // click of the player's - that move needs its own Undo snapshot
+      // taken first, or it can never be undone (this was the bug: an
+      // Autoplay-collected card stuck on the Foundation even after
+      // Undo-ing the move that came after it). The snapshot is taken
+      // before the (now animated, one-card-at-a-time) sweep starts, but
+      // only pushed once the whole sweep finishes.
+      const tentative = takeSnapshot();
+      autoplaySweep((madeAnyMove)=>{
+        if(madeAnyMove) pushUndoSnapshot(tentative);
+        checkGameEnd();
+        saveResumeState();
+      });
+    } else {
+      saveResumeState();
+    }
+  });
+
+  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    if(!gameEverStarted){ dealNewGame(true); return; }
+    showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    showModal('Restart This Game?', '<p>This replays the exact same deal from the very beginning. Your current progress will be lost.</p>', `
+      <button onclick="dealNewGame(false)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
+    // Deliberately clears (rather than saves) the resume state - going out
+    // through the Solitaire Menu should always deal a fresh game on the
+    // way back in, unlike the Instructions round-trip below.
+    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
+      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolYukonInstruc.html';
+  });
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    showModal('Exit Yukon', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+
+  // The mouse's (or trackpad's) "Back" button replays the browser's own
+  // back-navigation, which used to jump straight out of the game to
+  // whatever page came before it (usually Home) with no warning at all.
+  // This traps that action instead: on load it adds one extra step to the
+  // browser's history for this same page, and if that step is ever "gone
+  // back" past, it immediately re-adds itself (so the address bar never
+  // actually leaves this page) and shows the exact same Exit confirmation
+  // the Exit button already gives - so a stray Back press can't lose a
+  // game in progress, but a deliberate "Yes" still leaves normally.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
+  /* ---- Options (Sound / Autoplay default), persisted the same permanent
+     way the player name is below - loaded here, before Startup further
+     down decides whether to deal a new game or resume one, so a fresh
+     browser session still opens with the sound/Autoplay choice from last
+     time instead of resetting to Sound On / Autoplay On. If a game is
+     being resumed instead (see tryRestoreResumeState below), that resumed
+     state's own soundEnabled/autoplay - already whatever was last in
+     effect this session - simply overrides these once it loads. ---- */
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
+    if(savedOptions){
+      if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+      if(typeof savedOptions.autoplayDefault === 'boolean') state.autoplay = savedOptions.autoplayDefault;
+    }
+  } catch(e) {}
+
+  /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
+  const nameInput = document.getElementById('playerNameInput');
+  try {
+    const saved = localStorage.getItem(PLAYER_NAME_KEY);
+    if(saved) nameInput.value = saved;
+  } catch(e) {}
+  nameInput.addEventListener('change', ()=>{
+    const newName = nameInput.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+    document.getElementById('modalTitle').textContent = title;
+    // Reset every time so the win flash (added only at the "You Win!" call
+    // site) never leaks into the next, unrelated modal.
+    document.getElementById('modalTitle').style.color = '';
+    document.getElementById('modalTitle').classList.remove('win-blink');
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    // Reset to the base class every time so a one-off sizing class (like
+    // the Options modal's extra width) never leaks into the next,
+    // unrelated modal.
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    // Every popup is centered horizontally on the felt itself, not the
+    // whole page - the button column sitting to the felt's left otherwise
+    // pulls the page's own horizontal center off to the left of where the
+    // felt actually is.
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+  }
+  document.getElementById('universalModal').addEventListener('click', (e)=>{
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
+     back, but NOT a trip through the Solitaire Menu (see selectGameBtn
+     below), which should always deal a fresh game. Resuming only actually
+     happens when the page is opened via the Instructions page's own "Back
+     to Yukon" link, which tags the URL with ?resume=1 (see Startup below) -
+     just checking "is there saved data?" isn't enough on its own, since
+     leaving Instructions any OTHER way (Home, say) still left a saved
+     snapshot sitting here that a later, unrelated trip through the
+     Solitaire Menu would otherwise pick back up by mistake. ---- */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
+    } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      render();
+      return true;
+    } catch(e) {
+      console.error('tryRestoreResumeState error', e);
+      return false;
+    }
+  }
+
+  /* ---- Startup ----
+     Only resume if this load came from the Instructions page's tagged
+     "Back to Yukon" link (?resume=1) - any other way of opening this page
+     (the Solitaire Menu, a bookmark, a fresh tab, typing the address)
+     shows an empty table with nothing dealt, even if a stale snapshot is
+     still sitting in sessionStorage from an earlier Instructions trip that
+     never came back through that exact link. Nothing is dealt until "New
+     Game" is actually clicked - that click is also the user gesture that
+     unlocks the browser's audio, so the very first deal plays its sound
+     just like every deal after it. */
+  const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
+  let gameEverStarted = arrivedViaInstructionsBack && tryRestoreResumeState();
+  if(!gameEverStarted){
+    clearResumeState();
+    render();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 16;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
