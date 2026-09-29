@@ -1,5 +1,5 @@
 
-<!-- Revision 17 | Tuesday, September 29, 2026 -->
+<!-- Revision 18 | Tuesday, September 29, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 2260 -->
 
 <!DOCTYPE html>
@@ -1760,7 +1760,7 @@
     // followed by a plain-language description.
     const body = `
       <p>Score: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
-      <p>No legal moves remain.</p>
+      <p>No move leads to further progress.</p>
     `;
     // New Game and Restart record this score, then deal immediately with no
     // confirmation (the game is already stuck, so there's nothing further
@@ -2257,7 +2257,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 17;
+  const PAGE_REVISION = 18;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
