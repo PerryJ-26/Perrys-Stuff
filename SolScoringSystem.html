@@ -1,5 +1,5 @@
 
-<!-- Revision 3 | Monday, September 21, 2026 | Removed the "Solitaire Games" nav link. Changed "Home" to "OK", which now closes this tab and returns to the Recorded Scores popup still open on the game page behind it (this page is opened in its own tab from that popup). -->
+<!-- Revision 4 | Tuesday, September 29, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION AT LINE 220 -->
 
 <!DOCTYPE html>
@@ -197,14 +197,14 @@
       <p>This methodology applies to all Game Hub solitaire games.</p>
 
       <h2>Calculating Scores</h2>
-      <p>The starting score equals: &minus;52 points for games with one deck.</p>
+      <p>The starting score equals: &minus;52 points for games with one deck and 104 points for games with two decks.</p>
       <p>5 points are awarded for each card properly built on the foundations.</p>
 
       <div class="example-box">
         <p><strong>Example:</strong> If you play Klondike (1 deck = 52 cards), you start with a score of &minus;52; when you add a card to a foundation, the score is increased by 5 points (&minus;47, &minus;42, &minus;37, etc.).</p>
       </div>
 
-      <p>The highest possible score is 208 points.</p>
+      <p>The highest possible score is 208 points for one deck and 416 for two decks.</p>
 
       <h2>Recorded Scores</h2>
       <p>The Recorded Scores will be displayed in ranking order of the highest score, the least number of moves, and the lowest time. This combination will eliminate the chance of a tie score.</p>
@@ -217,7 +217,7 @@
   </main>
 
 <script>
-  const PAGE_REVISION = 3;
+  const PAGE_REVISION = 4;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
