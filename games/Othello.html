@@ -1,6 +1,6 @@
 
-<!-- Revision 44 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 767 -->
+<!-- Revision 45 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!doctype html>
 <html lang="en">
@@ -764,9 +764,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 44;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 (function(){
 
   // ---------------- state ----------------
@@ -1637,5 +1634,11 @@ window.addEventListener('resize', fitAppToViewport);
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
+
+<script>
+  const PAGE_REVISION = 45;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
