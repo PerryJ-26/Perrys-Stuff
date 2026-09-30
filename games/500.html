@@ -1,6 +1,6 @@
 
-<!-- Revision 51 | Tuesday, September 29, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 996 -->
+<!-- Revision 52 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -993,9 +993,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 51;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* =====================================================================
    500 — standalone game
    4 players (partnership): South = You, North = your partner (AI),
@@ -2823,5 +2820,11 @@ if(!gameEverStarted){
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
+
+<script>
+  const PAGE_REVISION = 52;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
