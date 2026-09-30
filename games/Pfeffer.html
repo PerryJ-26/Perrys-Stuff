@@ -1,6 +1,6 @@
 
-<!-- Revision 8 | Monday, September 28, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 840 -->
+<!-- Revision 9 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -837,9 +837,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 8;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* =====================================================================
    Pfeffer — standalone game
    4 players (2 partnerships): South = You, North = your partner (Ivy,
@@ -1153,7 +1150,7 @@ function animateDealIn(){
   const feltRect = document.getElementById('felt').getBoundingClientRect();
   const deckCenter = { x: feltRect.left + feltRect.width/2, y: feltRect.top + feltRect.height/2 };
   const ROTATE = { N:'', S:'', W:'rotate(90deg)', E:'rotate(90deg)' };
-  const FLIGHT_MS = 260, STAGGER_MS = 56; // same dealing speed as Pyramid's/500's/Spades'/Hearts'/Pinochle's DEAL_FLIGHT_MS/DEAL_STAGGER_MS
+  const FLIGHT_MS = 472.2, STAGGER_MS = 50.4; // same dealing speed as Pyramid's/500's/Spades'/Hearts'/Pinochle's DEAL_FLIGHT_MS/DEAL_STAGGER_MS
   scheduleFlipSounds(flat.length, 0, STAGGER_MS);
 
   const overflowEls = [
@@ -2402,5 +2399,11 @@ if(!gameEverStarted){
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
+
+<script>
+  const PAGE_REVISION = 9;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
