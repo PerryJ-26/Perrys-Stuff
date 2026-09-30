@@ -1,6 +1,6 @@
 
-<!-- Revision 23 | Monday, September 28, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1338 -->
+<!-- Revision 27 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -975,18 +975,13 @@
      define running out of moves as the actual loss - so this really does
      end the game, the same way winning does. */
   function hasAnyMoveAvailable(){
-    if(state.stock.length > 0) return true; // can always draw again
-    if(state.waste.length > 0 && state.redealsUsed < 2) return true; // a redeal is still available
-
-    // Stock is exhausted and no redeal remains - everything that could
-    // still be played has to already be visible: the currently-exposed
-    // Pyramid cards and the top of the Waste pile.
+    // The exposed Pyramid cards never change during this check, so look at
+    // them first: any King clears alone, and any two exposed cards summing
+    // to 13 pair off, regardless of what's in Stock/Waste.
     const exposedIdx = [];
     for(let i=0;i<28;i++) if(isExposed(i)) exposedIdx.push(i);
 
     for(const i of exposedIdx) if(state.pyramid[i].rank === 'K') return true;
-    if(state.waste.length && state.waste[state.waste.length-1].rank === 'K') return true;
-
     for(let a=0; a<exposedIdx.length; a++){
       for(let b=a+1; b<exposedIdx.length; b++){
         if(RANK_VALUE[state.pyramid[exposedIdx[a]].rank] + RANK_VALUE[state.pyramid[exposedIdx[b]].rank] === 13) return true;
@@ -994,7 +989,60 @@
     }
     if(state.waste.length){
       const w = state.waste[state.waste.length-1];
+      if(w.rank === 'K') return true;
       for(const i of exposedIdx) if(RANK_VALUE[w.rank] + RANK_VALUE[state.pyramid[i].rank] === 13) return true;
+    }
+
+    // Nothing playable from what's already exposed - but that doesn't mean
+    // the game is stuck. Whether continuing to draw (and redeal) could ever
+    // turn up a usable card depends on what's actually still IN the Stock
+    // and Waste, not just on whether those piles happen to be non-empty
+    // right now. This is what Adam ran into: the Tableau/Pyramid had
+    // nothing playable, he used his first redeal, and none of the cards
+    // that turned up could ever pair with anything either - a genuine dead
+    // end - but the old code below (removed) treated "Stock has cards" or
+    // "a redeal is still available" as reason enough on its own to call it
+    // not-stuck, without ever checking whether those remaining cards could
+    // actually be used. See stockWasteHoldsAMove() below.
+    return stockWasteHoldsAMove(exposedIdx);
+  }
+
+  // Simulates drawing through the rest of the Stock, and using up any
+  // redeals still available, WITHOUT touching real game state, to see
+  // whether any card still in play could ever be used - paired with an
+  // exposed Pyramid card, removed alone as a King, or paired directly
+  // against whatever's next on top of Stock (the same "select a card, then
+  // click Stock" pairing onStockClick() allows without drawing that card
+  // first). Same idea as Klondike's own findAvailableMove() simulation of
+  // its Stock/Waste cycle, adapted to Pyramid's rules: at most 2 redeals
+  // (3 total passes), not Klondike's unlimited redeals, so this is a
+  // strictly bounded search rather than needing loop-detection.
+  function stockWasteHoldsAMove(exposedIdx){
+    const exposedRanks = exposedIdx.map(i => state.pyramid[i].rank);
+    const pairs13 = (r1, r2) => RANK_VALUE[r1] + RANK_VALUE[r2] === 13;
+
+    let stock = state.stock.slice();
+    let waste = state.waste.slice();
+    let redealsLeft = 2 - state.redealsUsed;
+
+    const GUARD_LIMIT = 200; // generously above the real max of 2 redeals x up to 24 cards
+    for(let guard=0; guard<GUARD_LIMIT; guard++){
+      if(stock.length === 0){
+        if(waste.length === 0 || redealsLeft <= 0) return false; // truly nothing left to ever reveal
+        stock = waste.slice().reverse();
+        waste = [];
+        redealsLeft--;
+        continue;
+      }
+      const stockTop = stock[stock.length-1];
+      if(stockTop.rank !== 'K'){ // a King on Stock can't pair - it has to be drawn to Waste first
+        if(exposedRanks.some(r => pairs13(r, stockTop.rank))) return true;
+        if(waste.length && pairs13(waste[waste.length-1].rank, stockTop.rank)) return true;
+      }
+      const drawn = stock.pop();
+      waste.push(drawn);
+      if(drawn.rank === 'K') return true; // clears alone once it's the Waste top
+      if(exposedRanks.some(r => pairs13(r, drawn.rank))) return true;
     }
     return false;
   }
@@ -1184,8 +1232,14 @@
     if(sharedScores === null){
       listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
     } else {
+      // Final tiebreaker matches SolScoringSystem.html's "most current date"
+      // rule - compares the same calendar date shown in the Date column
+      // (entry.date, from toLocaleDateString()), parsed back into a real
+      // Date so "9/2/2026" sorts correctly against "12/1/2025" instead of
+      // comparing the raw strings. Only day precision, by design - two
+      // scores recorded the same day can still land as a genuine tie.
       const list = [...sharedScores].sort((a,b)=>
-        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time) || (new Date(b.date) - new Date(a.date))
       ).slice(0, MAX_RECORDED_SCORES);
       if(list.length === 0){
         listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
@@ -1335,7 +1389,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 23;
+  const PAGE_REVISION = 27;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
