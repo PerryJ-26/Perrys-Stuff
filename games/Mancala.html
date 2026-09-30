@@ -1,6 +1,6 @@
 
-<!-- Revision 11 | Friday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 1223 -->
+<!-- Revision 12 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -1219,9 +1219,6 @@
   if(!tryRestoreResumeState()){
     startGame();
   }
-
-  const PAGE_REVISION = 11;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 })();
 </script>
 
@@ -1259,6 +1256,11 @@
     const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  const PAGE_REVISION = 12;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
 </body>
