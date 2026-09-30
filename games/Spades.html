@@ -1,6 +1,6 @@
 
-<!-- Revision 54 | Tuesday, September 29, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 883 -->
+<!-- Revision 55 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -880,9 +880,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 54;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* =====================================================================
    Spades — standalone game
    4 players (partnership): South = You, North = your partner (AI),
@@ -2467,5 +2464,11 @@ if(!gameEverStarted){
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
+
+<script>
+  const PAGE_REVISION = 55;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
