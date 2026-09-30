@@ -1,6 +1,6 @@
 
-<!-- Revision 47 | Monday, September 28, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 2249 -->
+<!-- Revision 50 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -2012,8 +2012,14 @@
     if(sharedScores === null){
       listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
     } else {
+      // Final tiebreaker matches SolScoringSystem.html's "most current date"
+      // rule - compares the same calendar date shown in the Date column
+      // (entry.date, from toLocaleDateString()), parsed back into a real
+      // Date so "9/2/2026" sorts correctly against "12/1/2025" instead of
+      // comparing the raw strings. Only day precision, by design - two
+      // scores recorded the same day can still land as a genuine tie.
       const list = [...sharedScores].sort((a,b)=>
-        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time)
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time) || (new Date(b.date) - new Date(a.date))
       ).slice(0, MAX_RECORDED_SCORES);
       if(list.length === 0){
         listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
@@ -2246,7 +2252,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 47;
+  const PAGE_REVISION = 50;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
