@@ -1,5 +1,5 @@
 
-<!-- Revision 21 | Tuesday, September 29, 2026 -->
+<!-- Revision 22 | Tuesday, September 29, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1766,10 +1766,16 @@
     // confirmation (the game is already stuck, so there's nothing further
     // to lose). Exit records the score too, then shows the same Exit
     // confirmation the header's own Exit button uses - it's the only one of
-    // the three that asks "are you sure" first.
+    // the three that asks "are you sure" first. Continue Playing is the one
+    // way out that does NOT record a score or touch the board at all - it
+    // just closes the popup so Undo (which already revives a stuck/ended
+    // game on its own - see undoLastMove()) is reachable again, for anyone
+    // who wants to back up a move or two and try a different line instead
+    // of ending the round here.
     showModal('There Are No More Moves.', body, `
       <button onclick="recordScore(); dealNewGame(true);">New Game</button>
       <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      <button onclick="closeModal()">Continue<br>Playing</button>
       <button onclick="recordScore(); confirmExitFromEndPopup();">Exit</button>
     `, false);
   }
@@ -2263,7 +2269,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 21;
+  const PAGE_REVISION = 22;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 

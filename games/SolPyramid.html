@@ -1,5 +1,5 @@
 
-<!-- Revision 27 | Tuesday, September 29, 2026 -->
+<!-- Revision 29 | Tuesday, September 29, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1084,16 +1084,28 @@
   function showEndModal(won){
     const score = currentScore();
     const time = elapsedSeconds();
-    recordScore();
     const body = won
       ? `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
          <p>The Pyramid, Stock, and Waste are all empty.</p>`
       : `<p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
          <p>No valid pair, King, or redeal remains available.</p>`;
+    // New Game and Restart record this score, then deal immediately with no
+    // confirmation (the game has already ended, so there's nothing further
+    // to lose). Exit records the score too, then shows its own "are you
+    // sure" confirmation. Continue Playing only appears on the stuck ("No
+    // More Moves") outcome, not on a win, and is the one way out that does
+    // NOT record a score or touch the board at all - it just closes the
+    // popup so Undo (which already revives a stuck/ended game on its own -
+    // see undoLastMove()) is reachable again, for anyone who wants to back
+    // up a move or two and try a different line instead of ending the round
+    // here. This matches Klondike/Yukon, which defer recordScore() the same
+    // way rather than recording it the instant this popup appears.
+    const continuePlayingBtn = won ? '' : `<button onclick="closeModal()">Continue<br>Playing</button>`;
     showModal(won ? 'You Win!' : 'No More Moves - Game Over', body, `
-      <button onclick="dealNewGame(true)">New Game</button>
-      <button onclick="dealNewGame(false)">Restart</button>
-      <button onclick="confirmExitFromEndModal()">Exit</button>
+      <button onclick="recordScore(); dealNewGame(true);">New Game</button>
+      <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      ${continuePlayingBtn}
+      <button onclick="recordScore(); confirmExitFromEndModal();">Exit</button>
     `, false);
     if(won){
       document.getElementById('modalTitle').style.color = 'red';
@@ -1389,7 +1401,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 27;
+  const PAGE_REVISION = 29;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
