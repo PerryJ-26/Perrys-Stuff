@@ -1,6 +1,6 @@
 
-<!-- Revision 31 | Tuesday, September 29, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 829 -->
+<!-- Revision 32 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -826,9 +826,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 30;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* =====================================================================
    Hearts — standalone game
    4 individual players, no partnerships: South = You, West = Don,
@@ -2176,5 +2173,11 @@ if(!gameEverStarted){
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error("onValue(scoresRef) error", err));
 </script>
+
+<script>
+  const PAGE_REVISION = 32;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
