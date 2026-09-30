@@ -1,6 +1,6 @@
 
-<!-- Revision 12 | Wednesday, September 23, 2026 | The mouse/trackpad "Back" button no longer exits the game straight to Home with no warning - it's now trapped and shows the same Exit confirmation the Exit button already gives, so an accidental Back press can't lose a game in progress. -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 357 -->
+<!-- Revision 13 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -354,9 +354,6 @@
 </div>
 
 <script>
-  const PAGE_REVISION = 12;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* Global safety: capture errors and show overlay */
 (function(){
   const overlay = document.getElementById('errorOverlay');
@@ -670,5 +667,11 @@ function showExitScreen(){
   }
 }
 </script>
+
+<script>
+  const PAGE_REVISION = 13;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
