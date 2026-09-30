@@ -1,6 +1,6 @@
 
-<!-- Revision 22 | Thursday, September 25, 2026 -->
-<!-- ALSO CHANGE PAGE_REVISION AT LINE 644 -->
+<!-- Revision 23 | Tuesday, September 29, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -641,9 +641,6 @@
 
 
 <script>
-  const PAGE_REVISION = 22;
-  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
-
 /* Global safety: capture errors and show overlay */
 (function(){
   const overlay = document.getElementById('errorOverlay');
@@ -1890,5 +1887,11 @@ tryReconnectHighScoreFile();
     if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
   }, (err) => console.error('onValue(scoresRef) error', err));
 </script>
+
+<script>
+  const PAGE_REVISION = 23;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
 </body>
 </html>
