@@ -1,5 +1,5 @@
 
-<!-- Revision 53 | Wednesday, September 30, 2026 -->
+<!-- Revision 54 | Wednesday, September 30, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -702,10 +702,16 @@
   #logPanel{
     position:fixed; bottom:50px; left:10px; width:320px; max-height:50vh;
     background: var(--cream); border:2px solid var(--board-border); border-radius:8px;
-    padding:10px; overflow-y:auto; font-size:.78rem; z-index:50; display:none;
+    padding:10px; font-size:.78rem; z-index:50; display:none;
     color: var(--ink);
   }
-  #logPanel div{ margin-bottom:4px; border-bottom:1px solid #cbb; padding-bottom:3px;}
+  /* Flex column so the panel shrink-wraps to however many lines are logged so
+     far (growing taller as the game goes) and only starts scrolling once it
+     hits max-height above - #log (not #logPanel itself) is the part that
+     scrolls, via flex:1 1 auto + min-height:0. */
+  #logPanel.show{ display:flex; flex-direction:column; }
+  #log{ overflow-y:auto; flex:1 1 auto; min-height:0; }
+  #log div{ margin-bottom:4px; border-bottom:1px solid #cbb; padding-bottom:3px;}
 
   /* ---------- Universal modal ---------- */
   #universalModal{
@@ -982,7 +988,7 @@
 </div>
 
 <button id="logToggle">Game Log</button>
-<div id="logPanel"></div>
+<div id="logPanel"><div id="log"></div></div>
 
 <div id="universalModal">
   <div class="modalBox">
@@ -2206,7 +2212,7 @@ function newGame(){
   state.scores = { NS:0, EW:0 };
   state.dealerIdx = Math.floor(Math.random()*4); // first dealer of a new game is random, per the rules
   log = [];
-  document.getElementById('logPanel').innerHTML = '';
+  document.getElementById('log').innerHTML = '';
   try { sessionStorage.removeItem(RESUME_KEY); } catch (e) {}
   dealNewHand();
 }
@@ -2439,7 +2445,7 @@ function updateScoreTable(){
 
 function addLog(msg){
   log.push(msg);
-  const panel = document.getElementById('logPanel');
+  const panel = document.getElementById('log');
   const div = document.createElement('div');
   div.textContent = msg;
   panel.appendChild(div);
@@ -2449,7 +2455,7 @@ function addLog(msg){
 /* Rebuilds the log panel's DOM from a restored `log` array (mirrors the DOM half of addLog,
    without re-pushing into `log` itself) - used by tryRestoreResumeState below. */
 function rebuildLogPanel(){
-  const panel = document.getElementById('logPanel');
+  const panel = document.getElementById('log');
   panel.innerHTML = '';
   log.forEach(msg=>{
     const div = document.createElement('div');
@@ -2780,8 +2786,31 @@ document.getElementById('newHandBtn').addEventListener('click', ()=>{
   `, false);
 });
 document.getElementById('logToggle').addEventListener('dblclick', ()=>{
-  const p = document.getElementById('logPanel');
-  p.style.display = p.style.display === 'block' ? 'none' : 'block';
+  document.getElementById('logPanel').classList.toggle('show');
+});
+
+// While the log panel is open, Ctrl-A (Cmd-A on a Mac) selects only the
+// log's own text instead of the whole page - handy for copying it into a
+// bug report. The log is a plain div (kept that way so it keeps growing
+// taller on its own as lines are added), not a form field, so there's no
+// built-in "select just this box" behavior to lean on the way a real text
+// box gets for free - this fills that in by hand with the Selection API.
+// It only steps in when nothing else on the page is an active text field,
+// so a normal Ctrl-A still works everywhere else exactly as it always has,
+// even while the log happens to be left open in the background.
+document.addEventListener('keydown', (e)=>{
+  if(!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'a') return;
+  if(!document.getElementById('logPanel').classList.contains('show')) return;
+  const active = document.activeElement;
+  const activeIsEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+  if(activeIsEditable) return;
+  e.preventDefault();
+  const logEl = document.getElementById('log');
+  const range = document.createRange();
+  range.selectNodeContents(logEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
 });
 
 let gameEverStarted = tryRestoreResumeState();
@@ -2839,7 +2868,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 53;
+  const PAGE_REVISION = 54;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
