@@ -1,5 +1,5 @@
 
-<!-- Revision 52 | Tuesday, September 29, 2026 -->
+<!-- Revision 53 | Wednesday, September 30, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1232,7 +1232,24 @@ function sortHand(cards, trump){
 }
 
 function pausableTimeout(fn, delay){
+  // Every pausableTimeout call drives one step of the CURRENT hand (an AI's
+  // bid, an AI's card play, a trick resolving, a deal-in animation frame).
+  // A hand can be abandoned mid-resolution - the "New Game" button works even
+  // while the AI is still "thinking" about a bid or a play - and with nothing
+  // to cancel it, that old callback would later fire anyway, against the NEW
+  // hand's state: pulling a freshly-dealt card out of whichever seat still
+  // had a pending action and silently discarding it, leaving that seat one
+  // card short for the rest of the new hand (seen in the wild: a Nullo hand
+  // where two of the three active players ran out of cards one trick early
+  // and the game froze waiting on a play that could never come). dealAnimId
+  // already increments exactly once per new deal (see animateDealIn), so
+  // capturing it here and checking it when the callback actually fires is
+  // enough to tell "this hand" from "a hand that's since been abandoned" -
+  // a stale callback then just quietly does nothing instead of corrupting
+  // the new hand.
+  const scheduledForHand = dealAnimId;
   const wrapped = () => {
+    if(scheduledForHand !== dealAnimId) return;
     if(state.paused){
       setTimeout(wrapped, 200);
     } else {
@@ -2822,7 +2839,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 52;
+  const PAGE_REVISION = 53;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
