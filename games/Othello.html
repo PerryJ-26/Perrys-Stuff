@@ -1,5 +1,5 @@
 
-<!-- Revision 45 | Tuesday, September 29, 2026 -->
+<!-- Revision 46 | Wednesday, September 30, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!doctype html>
@@ -1430,6 +1430,31 @@
     document.getElementById('logPanel').classList.toggle('show');
   });
 
+  // While the log panel is open, Ctrl-A (Cmd-A on a Mac) selects only the
+  // log's own text instead of the whole page - handy for copying it into a
+  // bug report. The log is a plain div (kept that way so it keeps growing
+  // taller on its own as lines are added, the way it always has), not a
+  // form field, so there's no built-in "select just this box" behavior to
+  // lean on the way a real text box gets for free - this fills that in by
+  // hand with the Selection API. It only steps in when nothing else on the
+  // page is an active text field (the player Name box, say), so a normal
+  // Ctrl-A still works everywhere else exactly as it always has, even
+  // while the log happens to be left open in the background.
+  document.addEventListener('keydown', (e)=>{
+    if(!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'a') return;
+    if(!document.getElementById('logPanel').classList.contains('show')) return;
+    const active = document.activeElement;
+    const activeIsEditable = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable);
+    if(activeIsEditable) return;
+    e.preventDefault();
+    const logEl = document.getElementById('log');
+    const range = document.createRange();
+    range.selectNodeContents(logEl);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  });
+
   // ---------------- game over ----------------
   function endGame(){
     phase = 'game-over';
@@ -1636,7 +1661,7 @@ window.addEventListener('resize', fitAppToViewport);
 </script>
 
 <script>
-  const PAGE_REVISION = 45;
+  const PAGE_REVISION = 46;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
