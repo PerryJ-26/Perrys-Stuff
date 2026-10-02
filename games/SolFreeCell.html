@@ -1,0 +1,1961 @@
+
+<!-- Revision 8 | Thursday, October 01, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FreeCell - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - matches the rest of the site's card-game theme (from Klondike) ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+
+    --drop-target-color: #57e389;
+    --select-color: #ffd700;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* Centers the whole button-column + felt group as one unit within the
+     page, both horizontally and vertically - same pattern as Klondike/Yukon. */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #gameLayout {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 10px;
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack (identical pattern to every other Solitaire game) ---- */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+
+  #nameScoreBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+  #nameScoreBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameScoreBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+    margin-bottom: 8px;
+  }
+  #scoreDisplay{
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+  .scoreLabel{ text-align: center; }
+
+  /* ---- Felt / board ----
+     Eight Tableau columns, grouped visually in two sets of four (per
+     Perry's own reference layout graphic): the four Free Cells sit above
+     the first four Tableau columns, the four Foundations sit above the
+     last four, and there's a noticeably wider gap down the middle than
+     between any two columns within the same group of four - both in the
+     top row AND in the Tableau row below it, so the two halves of the
+     board line up into two clean groups of four from top to bottom. Every
+     column/cell is the same 71.4px width with the same 12px gap within a
+     group, so the top row and the Tableau row automatically stay aligned
+     without any separate positioning math. */
+  #table-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 20px;
+    margin: 0;
+    width: 727.2px;
+    height: 504.6px;
+    box-sizing: border-box;
+  }
+  /* align-items: flex-start - without this, flex's own default (stretch)
+     would stretch every Tableau column to match the TALLEST column on the
+     board, leaving an invisible dead zone below a short or empty column's
+     own visible content (its cards, or its dashed empty-slot placeholder)
+     that looked clickable but wasn't wired to anything. */
+  .cell-row{ display: flex; align-items: flex-start; }
+  .cell-row > *{ margin-right: 12px; }
+  .cell-row > *:last-child{ margin-right: 0; }
+  /* Top row only: the 4th slot (last Free Cell) gets the wide center gap
+     instead of the normal 12px, so Free Cells and Foundations visually
+     split into two groups of four - matches Perry's own reference layout
+     graphic. */
+  .top-row > *:nth-child(4){ margin-right: 36px; }
+  /* Tableau row only: spacing between all eight columns equalized, per
+     Perry's request - the outer edges (column 1's left edge, column 8's
+     right edge) stay exactly where they were, since this redistributes
+     the SAME total gap width (6 * 12px + 1 * 36px = 108px) evenly across
+     all 7 gaps instead of grouping it 4-and-4, so the row's overall width
+     - and therefore both outer edges - doesn't move at all. */
+  .tableau-row > *{ margin-right: calc(108px / 7); }
+
+  .pile{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.55);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.65);
+    font-size: 1.87rem;
+    font-weight: 800;
+    cursor: pointer;
+    position: relative;
+  }
+  .pile.empty-hint{ font-size: 2.04rem; }
+
+  .tableau-col{
+    position: relative;
+    width: 71.4px;
+    min-height: 100.3px;
+  }
+  .tableau-col .empty-slot{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.35);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  /* Every FreeCell card is face-up from the moment it's dealt and stays
+     that way for the whole game - there is no face-down state at all, so
+     (unlike Klondike/Yukon) only one overlap value is ever needed, and no
+     flip-reveal animation exists anywhere in this file.
+     Sized to comfortably hold a long column: the felt's own fixed height
+     above budgets room for about 15 overlapping cards in one column
+     (reduced from ~19 when the felt was shortened by .75in at Perry's
+     request) before a truly extreme pile-up would start to run past the
+     felt's own bottom edge - exceedingly unlikely in real play, and (same
+     as Klondike's own tableau) not guaranteed to fit if it ever happened. */
+  .cardWrap:not(:first-child){ margin-top: -83.3px; }
+
+  /* ---- Playing cards, same visual family as every other Game Hub Solitaire game ---- */
+  .card{
+    width: 71.4px; height: 100.3px;
+    border-radius: 6px;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    user-select: none;
+  }
+  .card-face-img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
+  .card.clickable{ cursor: pointer; }
+  /* Hover halo: a gold outline hinting "this can be picked up", shown on
+     hover for drag-and-drop. */
+  .card.clickable:hover{
+    outline: 3px solid var(--select-color);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* Selected halo: marks the card/location armed by the first click of a
+     two-click move (click-to-move, restored at Perry's request to work
+     alongside drag-and-drop, order-independent - see the "Click-to-move"
+     script section). Red so it's unmistakably different from the gold
+     hover halo above. Covers the empty-column placeholder too (it has no
+     .card/.clickable classes, so this plain rule is the only one that
+     applies there). */
+  .card-selected{
+    outline: 3px solid var(--red);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  /* A selected card is very often also the hovered card (the pointer is
+     usually still sitting right on top of whatever was just clicked) -
+     .card.clickable:hover above has equal selector weight (three classes/
+     pseudo-classes) to this rule, so without this override the two would
+     tie and the LATER one in the file (:hover, declared above) would win,
+     burying the red selection under gold. Raising this rule to the same
+     weight and keeping it declared after :hover makes red correctly win
+     whenever a card is both selected and hovered. */
+  .card.clickable.card-selected{
+    outline: 3px solid var(--red);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @keyframes foundationLand{
+    0%   { transform: scale(1.9) rotate(-12deg); box-shadow: 0 0 0 6px #fff, 0 0 30px 12px rgba(255,215,0,.9); }
+    55%  { transform: scale(0.9) rotate(4deg); box-shadow: 0 0 0 3px #fff, 0 0 16px 6px rgba(255,215,0,.55); }
+    100% { transform: scale(1) rotate(0deg); box-shadow: 1px 2px 3px var(--shadow-medium); }
+  }
+  .foundation-anim{ animation: foundationLand 0.55s cubic-bezier(.34,1.56,.64,1); }
+
+  /* Hint: the gold dotted halo shown after 8s of no move (see the Hint
+     section of the script) around the card that could be played and the
+     card/pile/cell it could go to. */
+  .hint-highlight{
+    outline: 3px dotted gold;
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Drag and drop (an alternative to click-to-select, see the script
+     section of the same name) ---- */
+  .dragGhost{
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0.92;
+    filter: drop-shadow(2px 4px 6px var(--shadow-strong));
+  }
+  .dragSourceHidden{ opacity: 0.35; }
+  .dropTargetValid{
+    outline: 3px solid var(--drop-target-color);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Troubleshooting log (see the script section of the same name) ---- */
+  #diagLogToggleBtn{
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 44px; height: 44px;
+    padding: 0; margin: 0; border: none;
+    background: transparent;
+    opacity: 0;
+    cursor: default;
+    z-index: 600;
+  }
+  #diagLogPanel{
+    display: none;
+    position: fixed;
+    bottom: 10px; left: 10px;
+    width: 320px;
+    max-height: 520px;
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    z-index: 550;
+    box-shadow: 0 4px 20px var(--shadow-strong);
+  }
+  #diagLogPanel.show{ display: flex; flex-direction: column; }
+  #diagLogPanelTitle{
+    font-weight: 800;
+    font-size: .9rem;
+    margin-bottom: 6px;
+    flex: 0 0 auto;
+  }
+  #diagLog{
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    line-height: 1.45;
+    max-height: 460px;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--cream);
+    color: var(--ink);
+    padding: 0;
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: .85rem;
+  }
+  .scores-table th, .scores-table td{
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .scores-table th{ background: #e8e2c8; }
+  .scores-explain-btn{ margin-bottom: 12px; }
+
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+
+  #universalModal .modalBox.optionsModal{ max-width: 704px; }
+
+  /* Recorded Scores modal only - sized to sit comfortably inside the
+     felt's own footprint (#table-wrap is a fixed 727.2x504.6 - see that
+     rule) with a little breathing room, same idea as Klondike's. */
+  #universalModal .modalBox.scoresModal{ max-width: 680px; max-height: 430px; }
+  .scores-scroll{ max-height: 225px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">FreeCell</h1>
+    <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
+    <button id="restartBtn" title="Restart the current game.">Restart</button>
+    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
+    <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="autoplayBtn" title="Automatically move eligible cards to the foundation">Autoplay: ON</button>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
+    <button id="optionsBtn" title="Customize the game.">Options</button>
+    <button id="exitBtn" title="Quit the game.">Exit</button>
+
+    <div id="nameScoreBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="scoreLabel">Score</label>
+      <div id="scoreDisplay" title="The current score.">0</div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div class="cell-row top-row">
+      <div class="pile" id="freecell-0"></div>
+      <div class="pile" id="freecell-1"></div>
+      <div class="pile" id="freecell-2"></div>
+      <div class="pile" id="freecell-3"></div>
+      <div class="pile empty-hint" id="foundation-s"></div>
+      <div class="pile empty-hint" id="foundation-h"></div>
+      <div class="pile empty-hint" id="foundation-c"></div>
+      <div class="pile empty-hint" id="foundation-d"></div>
+    </div>
+    <div class="cell-row tableau-row">
+      <div class="tableau-col" id="tableau-0"></div>
+      <div class="tableau-col" id="tableau-1"></div>
+      <div class="tableau-col" id="tableau-2"></div>
+      <div class="tableau-col" id="tableau-3"></div>
+      <div class="tableau-col" id="tableau-4"></div>
+      <div class="tableau-col" id="tableau-5"></div>
+      <div class="tableau-col" id="tableau-6"></div>
+      <div class="tableau-col" id="tableau-7"></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+  <!-- Hidden double-click toggle for the troubleshooting log - invisible,
+       sits in the very bottom-left corner of the screen. Same pattern used
+       across the Game Hub. -->
+  <button id="diagLogToggleBtn" aria-label="Toggle troubleshooting log"></button>
+  <div id="diagLogPanel">
+    <div id="diagLogPanelTitle">Troubleshooting Log</div>
+    <textarea id="diagLog" readonly></textarea>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (SolFreeCellScores) so FreeCell's leaderboard is separate
+  // from every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'SolFreeCellScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     FREECELL SOLITAIRE - game engine
+     Built from Klondike's engine (button bar, scoring, Undo, Recorded
+     Scores, sound system) with Yukon's "real progress" Hint/stuck-
+     detection search. Move interaction supports BOTH drag-and-drop and
+     click-to-move, built on one unified Pointer Events system (see the
+     Drag and drop / Click-to-move section below): pick up a card (or the
+     exposed start of a sequential run) and drop it on its destination, OR
+     click the card-to-move and the destination in EITHER order - click the
+     card first then the destination, or the destination first then the
+     card - and the move completes as soon as both ends of a legal move
+     have been named. FreeCell routinely has more than one legal
+     destination for a card, so a single click can't just auto-pick "the"
+     destination the way Klondike/Yukon do; the currently-armed click is
+     shown with a red outline (see .card-selected) to make the two-click
+     model clear.
+     ============================================================ */
+
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RED_SUITS = ['♥','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
+  const SUIT_ID = { '♠':'s', '♥':'h', '♣':'c', '♦':'d' };
+  const ID_TO_SUIT = { s:'♠', h:'♥', c:'♣', d:'♦' };
+  // Real card-face artwork (Perry's own cards/ folder, one SVG per card),
+  // same deck used by every other Solitaire game. This page lives in
+  // games/ while cards/ stays at the site root, so the path climbs up one
+  // level with ../ before going into cards/.
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `../cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
+
+  const PLAYER_NAME_KEY = 'solFreeCellPlayerName_v1';
+  const RESUME_KEY = 'solFreeCellResumeState_v1';
+  const OPTIONS_KEY = 'solFreeCellOptions_v1';
+
+  function isRed(suit){ return RED_SUITS.includes(suit); }
+
+  // ---- Troubleshooting log - double-click the hidden button in the very
+  // bottom-left corner of the screen to open a scrolling panel listing the
+  // last DIAGNOSTIC_LOG_MAX events. Same pattern as every other Game Hub game.
+  const DIAGNOSTIC_LOG_MAX = 200;
+  function debugLog(msg){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    const t = new Date();
+    const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+    const lines = el.value ? el.value.split('\n') : [];
+    lines.push(`[${stamp}] ${msg}`);
+    while(lines.length > DIAGNOSTIC_LOG_MAX) lines.shift();
+    el.value = lines.join('\n');
+    fitDiagLogHeight();
+    el.scrollTop = el.scrollHeight;
+  }
+  function fitDiagLogHeight(){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function makeDeck(){
+    const deck = [];
+    SUIT_CHARS.forEach(suit => RANKS.forEach(rank => deck.push({ suit, rank })));
+    return deck;
+  }
+  function shuffle(deck){
+    const d = [...deck];
+    for(let i=d.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [d[i],d[j]] = [d[j],d[i]];
+    }
+    return d;
+  }
+
+  const state = {
+    tableau: [[],[],[],[],[],[],[],[]],
+    freeCells: [null, null, null, null],
+    foundations: { '♠':[], '♥':[], '♣':[], '♦':[] },
+    autoplay: true,
+    soundEnabled: true,
+    moves: 0,
+    startTime: 0,
+    dealOrder: null,
+    gameActive: true,
+    undoStack: []
+  };
+
+  // One-shot animation flag - which suits just received a new Foundation
+  // card this render() call, so only that card plays the landing pop.
+  const animFlags = { foundationSuits: new Set() };
+
+  /* ---- Sound effects (Web Audio API - synthesized, no external audio
+     files, same convention as every other Game Hub game). ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'move':
+        tone(320, now, 0.09, 'triangle', 0.14);
+        break;
+      case 'foundation':
+        tone(659, now, 0.11, 'sine', 0.16);
+        tone(988, now + 0.08, 0.16, 'sine', 0.16);
+        break;
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'stuck':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+    }
+  }
+  // A quick card-landing snap - a short, filtered noise burst rather than a
+  // musical tone, same synthesis Klondike/Yukon use for their own flip/deal
+  // sounds.
+  function playFlipSnap(ctx, startTime){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime);
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+
+  const DEAL_FLIGHT_MS = 472.2, DEAL_STAGGER_MS = 50.4;
+
+  function scheduleDealLandingSounds(flat){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    flat.forEach(({ origIndex }) => playFlipSnap(ctx, now + origIndex * (DEAL_STAGGER_MS/1000)));
+  }
+
+  /* ---- Initial deal: zig-zag round-robin, "back-and-forth" across the
+     eight columns (per Perry's own Design Notes) - round 1 deals one card
+     to every column left-to-right, round 2 deals right-to-left, round 3
+     left-to-right again, and so on, until the first four columns each have
+     7 cards and the last four each have 6 (52 total). Every card is dealt
+     face-up and stays that way for the whole game - there's no face-down
+     phase at all, unlike Klondike/Yukon. Because a column is only ever
+     visited in increasing round order, simply pushing cards onto
+     state.tableau[col] in this exact visiting order produces the correct
+     final bottom-to-top stack for free. */
+  function buildDealOrder(lengths){
+    const order = []; // column index per dealt card, in exact zig-zag sequence
+    const pointers = new Array(lengths.length).fill(0);
+    let active = lengths.map((_,i)=>i);
+    let dir = 1; // 1 = left-to-right, -1 = right-to-left
+    while(active.length){
+      const seq = dir === 1 ? active.slice() : active.slice().reverse();
+      for(const c of seq){
+        if(pointers[c] < lengths[c]){
+          order.push(c);
+          pointers[c]++;
+        }
+      }
+      active = active.filter(c => pointers[c] < lengths[c]);
+      dir *= -1;
+    }
+    return order;
+  }
+
+  /* Flies every dealt card in from a fixed point below the felt's own
+     bottom edge (FreeCell has no Stock pile to serve as a visual origin,
+     same situation as Yukon) to its already-rendered final Tableau slot,
+     staggered by the card's own position in the round-robin deal order -
+     same FLIP (First-Last-Invert-Play) technique used across the Game Hub:
+     render() has already built the exact final board, so this never
+     changes WHAT gets shown, only how it arrives.
+     `dealSeq` is the full { column index per card } order from
+     buildDealOrder(), in original deal order - but if Autoplay's silent
+     pre-deal sweep (see dealNewGame()) already collected one or more
+     columns' own exposed starting card(s) to a Foundation before this ever
+     ran, those cards are simply gone from state.tableau and never fly in
+     or make a sound at all. Since a sweep only ever pops a column's own
+     LAST (most recently dealt) card, the cards that remain in any one
+     column are always exactly the FIRST occurrences of that column in
+     `dealSeq` - walking `dealSeq` while counting each column's own
+     occurrences (occ) and keeping only the ones still within that
+     column's current (post-sweep) length correctly reconstructs which
+     cards actually survived to be shown. */
+  function animateDealFlyIn(dealSeq){
+    const pointers = new Array(8).fill(0);
+    const flat = []; // { el, origIndex }
+    dealSeq.forEach((col, i) => {
+      const occ = pointers[col]++;
+      if(occ < state.tableau[col].length){
+        const colEl = document.getElementById('tableau-' + col);
+        flat.push({ el: colEl.children[occ], origIndex: i });
+      }
+    });
+    if(flat.length === 0) return;
+
+    const tableWrap = document.getElementById('table-wrap');
+    const wrapRect = tableWrap.getBoundingClientRect();
+    const originX = wrapRect.left + wrapRect.width / 2;
+    const originY = wrapRect.bottom + 40;
+
+    const prevOverflow = tableWrap.style.overflow;
+    tableWrap.style.overflow = 'visible';
+    // See the comment above animateDealFlyIn: the fly-in origin point sits
+    // just below the felt's bottom edge, which can be close to (or past)
+    // a shorter window's own bottom edge - suppress the page's own
+    // scrollbar for the whole deal animation so that never causes a
+    // flicker, since the cards passing through there are invisible anyway.
+    const prevBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    flat.forEach(({el}) => {
+      const r = el.getBoundingClientRect();
+      const dx = originX - (r.left + r.width/2);
+      const dy = originY - (r.top + r.height/2);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
+    });
+
+    flat.forEach(({el, origIndex}) => {
+      setTimeout(() => {
+        void el.offsetWidth;
+        el.style.transition = `transform ${DEAL_FLIGHT_MS}ms cubic-bezier(.22,.85,.4,1), opacity 180ms ease`;
+        requestAnimationFrame(() => {
+          el.style.opacity = '1';
+          el.style.transform = 'translate(0,0) scale(1)';
+        });
+      }, origIndex * DEAL_STAGGER_MS);
+    });
+
+    scheduleDealLandingSounds(flat);
+
+    const lastOrigIndex = flat[flat.length - 1].origIndex;
+    setTimeout(() => {
+      tableWrap.style.overflow = prevOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      flat.forEach(({el}) => {
+        el.style.transition = '';
+        el.style.opacity = '';
+        el.style.transform = '';
+      });
+    }, lastOrigIndex * DEAL_STAGGER_MS + DEAL_FLIGHT_MS + 60);
+  }
+
+  function dealNewGame(freshShuffle){
+    gameEverStarted = true;
+    if(freshShuffle || !state.dealOrder){
+      state.dealOrder = shuffle(makeDeck());
+    }
+    const order = state.dealOrder;
+    state.tableau = [[],[],[],[],[],[],[],[]];
+    state.freeCells = [null, null, null, null];
+    state.foundations = { '♠':[], '♥':[], '♣':[], '♦':[] };
+    state.moves = 0;
+    state.startTime = Date.now();
+    state.gameActive = true;
+    state.undoStack = [];
+    noMovesAlreadyShown = false;
+    pendingClick = null;
+
+    const lengths = [7,7,7,7,6,6,6,6]; // first four columns get 7 cards, last four get 6
+    const colOrder = buildDealOrder(lengths);
+    let idx = 0;
+    colOrder.forEach(col => {
+      const card = { ...order[idx++] };
+      card.faceUp = true;
+      state.tableau[col].push(card);
+    });
+
+    closeModal();
+    // Silent, instant pre-deal sweep only - nothing has been shown to the
+    // player yet, so an Ace already exposed at deal time (Autoplay on from
+    // a previous game) doesn't need the animated one-at-a-time treatment.
+    if(state.autoplay){ while(takeOneAutoplayCard()){} }
+    render();
+    animateDealFlyIn(colOrder);
+    saveResumeState();
+  }
+
+  /* ---- Legality checks ----
+     Unlike Klondike/Yukon, an empty Tableau column accepts ANY single card
+     or valid sequential stack here, not just a King - that's FreeCell's
+     own rule (see SolFreeCellInstruc.html). */
+  function canMoveToFoundation(card){
+    const pile = state.foundations[card.suit];
+    if(pile.length === 0) return card.rank === 'A';
+    return RANK_VALUE[card.rank] === RANK_VALUE[pile[pile.length-1].rank] + 1;
+  }
+  function canMoveToTableau(card, colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length === 0) return true;
+    const top = col[col.length-1];
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1 && isRed(top.suit) !== isRed(card.suit);
+  }
+  function firstLegalTableauTarget(card, skipCol){
+    for(let i=0;i<8;i++){
+      if(i === skipCol) continue;
+      if(canMoveToTableau(card, i)) return i;
+    }
+    return -1;
+  }
+  function emptyFreeCellCount(){
+    return state.freeCells.filter(c => c === null).length;
+  }
+  // The traditional FreeCell supermove formula: the number of cards you
+  // can move as a single sequential stack equals (empty Free Cells + 1),
+  // doubled again for every OTHER empty Tableau column available to stage
+  // a sub-stack through - "other" meaning the column the move is actually
+  // headed to never counts toward its own multiplier, since it's about to
+  // be occupied by the move itself, not available as a staging spot.
+  // `destCol` is the tableau column index the move is headed to; omit it
+  // (e.g. a legality check with no real destination yet) and every empty
+  // column counts.
+  function maxSupermoveSize(destCol){
+    let emptyCols = 0;
+    for(let i=0;i<8;i++){
+      if(i === destCol) continue;
+      if(state.tableau[i].length === 0) emptyCols++;
+    }
+    return (emptyFreeCellCount() + 1) * Math.pow(2, emptyCols);
+  }
+  // Is the run from `startIdx` through the top of `col` already a valid,
+  // legally-stacked sequence (each card one rank lower than the one below
+  // it, alternating color)? The single top card (startIdx === col.length-1)
+  // always counts as valid on its own.
+  function tableauRunIsSequential(col, startIdx){
+    for(let k=startIdx; k<col.length-1; k++){
+      const a = col[k], b = col[k+1];
+      if(!(RANK_VALUE[a.rank] === RANK_VALUE[b.rank] + 1 && isRed(a.suit) !== isRed(b.suit))) return false;
+    }
+    return true;
+  }
+
+  // Centralizes every "a card just landed on a Foundation" move so the
+  // landing animation and sound always fire together, from every call site.
+  function moveCardToFoundation(card){
+    state.foundations[card.suit].push(card);
+    state.moves++;
+    animFlags.foundationSuits.add(card.suit);
+    playSound('foundation');
+  }
+
+  /* ---- Snapshot / Undo (up to MAX_UNDO levels, oldest dropped once full) ---- */
+  const MAX_UNDO = 8;
+  function takeSnapshot(){
+    return JSON.parse(JSON.stringify({
+      tableau: state.tableau, foundations: state.foundations,
+      freeCells: state.freeCells, moves: state.moves
+    }));
+  }
+  function pushUndoSnapshot(snap){
+    state.undoStack.push(snap);
+    if(state.undoStack.length > MAX_UNDO) state.undoStack.shift();
+  }
+  function restoreSnapshot(snap){
+    state.tableau = snap.tableau;
+    state.foundations = snap.foundations;
+    state.freeCells = snap.freeCells;
+    state.moves = snap.moves;
+  }
+  function undoLastMove(){
+    if(state.undoStack.length === 0) return;
+    restoreSnapshot(state.undoStack.pop());
+    // Undoing the move that ended the game (a win or a stuck/no-moves
+    // state) should bring the game back to life, not leave it frozen.
+    state.gameActive = true;
+    pendingClick = null;
+    render();
+    saveResumeState();
+  }
+
+  function afterMove(){
+    render();
+    if(state.autoplay){
+      autoplaySweep(()=>{ checkGameEnd(); saveResumeState(); });
+    } else {
+      checkGameEnd();
+      saveResumeState();
+    }
+  }
+
+  /* ---- Drag and drop / Click-to-move - two ways to make the same move.
+     Built on one unified Pointer Events system: a pointerdown on a card or
+     location only ARMS a possible drag candidate; it becomes a real visual
+     drag once the pointer moves past DRAG_MOVE_THRESHOLD, exactly as
+     before. If the pointer releases without ever moving that far, nothing
+     was dragged - instead the pointerdown location is handed to the
+     click-to-move system below (attemptTargetOrSelect), which was restored
+     at Perry's request, order-independent: click the card-to-move and the
+     destination in either order. A pointerdown on a location with nothing
+     liftable (an empty column, an empty Free Cell, a non-empty Foundation
+     while Autoplay is on, or a buried Tableau card that isn't the start of
+     a valid run) can never become a real drag, but it's still armed as a
+     "click-only candidate" (cards: null) so it can register as a click -
+     every pile is a legal move DESTINATION even when it isn't a legal
+     source. ---- */
+  const DRAG_MOVE_THRESHOLD = 5;
+  let dragState = null;
+  let pendingClick = null;
+
+  // What (if anything) can be lifted from a card/location right now.
+  // Returns { cards:[...] } for a liftable card or run, { blocked:'autoplay' }
+  // for a non-empty Foundation while Autoplay is on (liftable in principle,
+  // just not right now), or null when there is truly nothing to lift. Never
+  // has a side effect (no flashMessage) - a blocked or empty location is
+  // still a perfectly legal click DESTINATION, so warning here would
+  // misfire constantly; see explainIfBlocked below for where the Autoplay
+  // warning is actually shown.
+  function locationLiftability(loc){
+    if(!state.gameActive) return null;
+    if(loc.type === 'tableau'){
+      if(loc.index === undefined || loc.index === null) return null; // empty-column click: nothing to lift
+      const col = state.tableau[loc.col];
+      const card = col[loc.index];
+      if(!card) return null;
+      if(loc.index !== col.length - 1 && !tableauRunIsSequential(col, loc.index)) return null;
+      return { cards: col.slice(loc.index) };
+    }
+    if(loc.type === 'freecell'){
+      const card = state.freeCells[loc.index];
+      if(!card) return null;
+      return { cards: [card] };
+    }
+    if(loc.type === 'foundation'){
+      const pile = state.foundations[loc.suit];
+      if(!pile.length) return null;
+      // Intentional house rule: a Foundation card CAN move back to the
+      // Tableau or a Free Cell, but only while Autoplay is off (otherwise
+      // Autoplay would just immediately send it right back up) - same note
+      // shown in the Instructions page.
+      if(state.autoplay) return { blocked: 'autoplay' };
+      return { cards: [ pile[pile.length-1] ] };
+    }
+    return null;
+  }
+
+  function startDragCandidate(e, source){
+    if(dragState) return;
+    if(!state.gameActive) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return;
+    if(autoplaySweepActive) return;
+
+    const lift = locationLiftability(source);
+    const cards = (lift && lift.cards) ? lift.cards : null;
+    const blocked = (lift && lift.blocked) ? lift.blocked : null;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      source, cards, blocked,
+      startX: e.clientX, startY: e.clientY,
+      grabOffsetX: e.clientX - rect.left, grabOffsetY: e.clientY - rect.top,
+      moved: false,
+      ghostEl: null,
+      hoverEl: null,
+    };
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+    document.addEventListener('pointercancel', onDragPointerUp);
+  }
+
+  function beginVisualDrag(){
+    const ghost = document.createElement('div');
+    ghost.className = 'tableau-col dragGhost';
+    ghost.innerHTML = dragState.cards.map(card => `<div class="cardWrap">${cardHtml(card)}</div>`).join('');
+    document.body.appendChild(ghost);
+    dragState.ghostEl = ghost;
+
+    if(dragState.source.type === 'tableau'){
+      const colEl = document.getElementById('tableau-' + dragState.source.col);
+      Array.from(colEl.children).slice(dragState.source.index).forEach(el => el.classList.add('dragSourceHidden'));
+    } else if(dragState.source.type === 'freecell'){
+      const fcEl = document.getElementById('freecell-' + dragState.source.index);
+      Array.from(fcEl.children).forEach(el => el.classList.add('dragSourceHidden'));
+    } else {
+      const fEl = document.getElementById('foundation-' + SUIT_ID[dragState.source.suit]);
+      Array.from(fEl.children).forEach(el => el.classList.add('dragSourceHidden'));
+    }
+  }
+
+  function updateGhostPosition(x, y){
+    dragState.ghostEl.style.transform = `translate(${x - dragState.grabOffsetX}px, ${y - dragState.grabOffsetY}px)`;
+  }
+
+  function findDropTargetAt(x, y){
+    const el = document.elementFromPoint(x, y);
+    if(!el) return null;
+    const col = el.closest('.tableau-col');
+    if(col) return { type:'tableau', col: parseInt(col.id.slice('tableau-'.length), 10), el: col };
+    const pile = el.closest('.pile');
+    if(pile && pile.id.startsWith('foundation-')) return { type:'foundation', suit: ID_TO_SUIT[pile.id.slice('foundation-'.length)], el: pile };
+    if(pile && pile.id.startsWith('freecell-')) return { type:'freecell', index: parseInt(pile.id.slice('freecell-'.length), 10), el: pile };
+    return null;
+  }
+
+  function isDropTargetValid(target){
+    const cards = dragState.cards;
+    if(target.type === 'tableau'){
+      if(dragState.source.type === 'tableau' && dragState.source.col === target.col) return false;
+      if(cards.length > 1 && cards.length > maxSupermoveSize(target.col)) return false;
+      return canMoveToTableau(cards[0], target.col);
+    }
+    if(target.type === 'freecell'){
+      if(cards.length !== 1) return false;
+      if(state.freeCells[target.index] !== null) return false;
+      if(dragState.source.type === 'freecell' && dragState.source.index === target.index) return false;
+      return true;
+    }
+    if(target.type === 'foundation'){
+      if(cards.length !== 1) return false;
+      return cards[0].suit === target.suit && canMoveToFoundation(cards[0]);
+    }
+    return false;
+  }
+
+  function updateHoverTarget(x, y){
+    const target = findDropTargetAt(x, y);
+    const validEl = (target && isDropTargetValid(target)) ? target.el : null;
+    if(dragState.hoverEl !== validEl){
+      if(dragState.hoverEl) dragState.hoverEl.classList.remove('dropTargetValid');
+      if(validEl) validEl.classList.add('dropTargetValid');
+      dragState.hoverEl = validEl;
+    }
+  }
+
+  function onDragPointerMove(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    if(!dragState.moved){
+      if(Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) < DRAG_MOVE_THRESHOLD) return;
+      dragState.moved = true;
+      if(dragState.cards){
+        beginVisualDrag();
+      } else if(dragState.blocked === 'autoplay'){
+        // A real drag attempt (the pointer actually moved) on a Foundation
+        // card while Autoplay is on - warn right away, same as before
+        // clicking was restored. There's no ambiguity to protect here the
+        // way there is for a plain click: a drag can only ever mean "move
+        // this card".
+        flashMessage('Turn Autoplay off first to move a card back from a Foundation.');
+      }
+      // else: a click-only candidate (nothing liftable here at all) can't
+      // become a real drag - let the pointer keep moving; onDragPointerUp
+      // below resolves the eventual release as a plain click instead.
+    }
+    if(dragState.cards){
+      updateGhostPosition(e.clientX, e.clientY);
+      updateHoverTarget(e.clientX, e.clientY);
+    }
+  }
+
+  function cleanupDragVisuals(){
+    if(dragState.ghostEl) dragState.ghostEl.remove();
+    document.querySelectorAll('.dragSourceHidden').forEach(el => el.classList.remove('dragSourceHidden'));
+    document.querySelectorAll('.dropTargetValid').forEach(el => el.classList.remove('dropTargetValid'));
+  }
+
+  function performDragMove(target){
+    pendingClick = null; // any armed click selection is superseded by this move
+    const cards = dragState.cards;
+    const tentative = takeSnapshot();
+    if(dragState.source.type === 'tableau'){
+      const col = state.tableau[dragState.source.col];
+      if(target.type === 'tableau'){
+        state.tableau[target.col].push(...cards);
+        col.length = dragState.source.index;
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards.length > 1 ? cards.length + '-card run' : cards[0].rank + cards[0].suit} tableau col${dragState.source.col} -> tableau col${target.col}`);
+      } else if(target.type === 'freecell'){
+        col.pop();
+        state.freeCells[target.index] = cards[0];
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} tableau col${dragState.source.col} -> Free Cell ${target.index+1}`);
+      } else {
+        col.pop();
+        moveCardToFoundation(cards[0]);
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} tableau col${dragState.source.col} -> Foundation`);
+      }
+    } else if(dragState.source.type === 'freecell'){
+      if(target.type === 'tableau'){
+        state.freeCells[dragState.source.index] = null;
+        state.tableau[target.col].push(cards[0]);
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Free Cell ${dragState.source.index+1} -> tableau col${target.col}`);
+      } else if(target.type === 'freecell'){
+        state.freeCells[dragState.source.index] = null;
+        state.freeCells[target.index] = cards[0];
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Free Cell ${dragState.source.index+1} -> Free Cell ${target.index+1}`);
+      } else {
+        state.freeCells[dragState.source.index] = null;
+        moveCardToFoundation(cards[0]);
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Free Cell ${dragState.source.index+1} -> Foundation`);
+      }
+    } else {
+      // Foundation source - only Autoplay-off single-card moves back to the
+      // Tableau or a Free Cell ever reach here (locationLiftability already
+      // blocks picking a Foundation card up at all while Autoplay is on,
+      // and foundation-to-foundation is never a legal drop target).
+      state.foundations[dragState.source.suit].pop();
+      if(target.type === 'tableau'){
+        state.tableau[target.col].push(cards[0]);
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Foundation -> tableau col${target.col}`);
+      } else {
+        state.freeCells[target.index] = cards[0];
+        state.moves++;
+        playSound('move');
+        debugLog(`Drag: ${cards[0].rank}${cards[0].suit} Foundation -> Free Cell ${target.index+1}`);
+      }
+    }
+    pushUndoSnapshot(tentative);
+    afterMove();
+  }
+
+  function onDragPointerUp(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.removeEventListener('pointercancel', onDragPointerUp);
+
+    const wasRealDrag = dragState.moved && dragState.cards;
+    const wasBlockedDragAttempt = dragState.moved && dragState.blocked === 'autoplay';
+    const clickSource = (!dragState.moved) ? dragState.source : null;
+
+    if(wasRealDrag){
+      const target = findDropTargetAt(e.clientX, e.clientY);
+      const valid = target && isDropTargetValid(target);
+      cleanupDragVisuals();
+      if(valid) performDragMove(target);
+      dragState = null;
+      return;
+    }
+
+    dragState = null;
+    if(wasBlockedDragAttempt) return; // the warning was already shown in onDragPointerMove
+    if(clickSource) attemptTargetOrSelect(clickSource);
+  }
+
+  /* ---- Click-to-move: the second way to make a move, restored at Perry's
+     request alongside drag-and-drop above, and made order-independent this
+     time - click the card-to-move and the destination in EITHER order.
+     pendingClick holds the first (unresolved) click; the second click tries
+     BOTH directions - (pendingClick as source, new click as destination)
+     and (new click as source, pendingClick as destination) - and whichever
+     direction is legal executes. Clicking the same card/location a second
+     time cancels the selection instead. The Autoplay-Foundation-lock
+     warning is deliberately NOT shown until both directions have already
+     failed (see explainIfBlocked) - otherwise clicking a Foundation first,
+     simply to use it as an intended destination (the common case, since
+     Autoplay is normally on), would trip a false warning every time. ---- */
+  function clearPending(){
+    if(pendingClick){
+      pendingClick = null;
+      render();
+    }
+  }
+
+  function isSameClick(a, b){
+    if(!a || !b || a.type !== b.type) return false;
+    if(a.type === 'tableau') return a.col === b.col;
+    if(a.type === 'freecell') return a.index === b.index;
+    if(a.type === 'foundation') return a.suit === b.suit;
+    return false;
+  }
+
+  function computeSelectableSource(loc){
+    const lift = locationLiftability(loc);
+    return (lift && lift.cards) ? lift.cards : null;
+  }
+
+  function clickInfoToDropTarget(loc){
+    if(loc.type === 'tableau') return { type:'tableau', col: loc.col };
+    if(loc.type === 'freecell') return { type:'freecell', index: loc.index };
+    if(loc.type === 'foundation') return { type:'foundation', suit: loc.suit };
+    return null;
+  }
+
+  // Tries sourceLoc -> destLoc as a move. Stages a temporary dragState so
+  // this reuses isDropTargetValid/performDragMove exactly as-is - click
+  // moves and drag moves are always governed by identical rules (including
+  // the supermove cap), with no duplicated legality logic to drift out of
+  // sync. Returns true/false.
+  function tryExecuteMove(sourceLoc, destLoc){
+    const cards = computeSelectableSource(sourceLoc);
+    if(!cards) return false;
+    const target = clickInfoToDropTarget(destLoc);
+    if(!target) return false;
+
+    const savedDragState = dragState;
+    dragState = { source: sourceLoc, cards: cards };
+    const valid = isDropTargetValid(target);
+    if(valid) performDragMove(target);
+    dragState = savedDragState;
+    return valid;
+  }
+
+  // Shows the deferred Autoplay-Foundation-lock warning, but only for a
+  // location that was genuinely trying to act as a blocked move SOURCE (a
+  // non-empty Foundation while Autoplay is on) - never for one that was
+  // just an invalid destination attempt. Called only after both directions
+  // of a two-click attempt have already failed.
+  function explainIfBlocked(loc){
+    if(loc.type !== 'foundation') return false;
+    if(state.foundations[loc.suit].length && state.autoplay){
+      flashMessage('Turn Autoplay off first to move a card back from a Foundation.');
+      return true;
+    }
+    return false;
+  }
+
+  function attemptTargetOrSelect(clickInfo){
+    if(!state.gameActive) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return;
+    if(autoplaySweepActive) return;
+
+    if(!pendingClick){
+      pendingClick = clickInfo;
+      render();
+      return;
+    }
+
+    if(isSameClick(pendingClick, clickInfo)){
+      clearPending();
+      return;
+    }
+
+    const first = pendingClick;
+    const second = clickInfo;
+
+    if(tryExecuteMove(first, second)) return;  // move made; afterMove() already re-rendered
+    if(tryExecuteMove(second, first)) return;
+
+    explainIfBlocked(first) || explainIfBlocked(second);
+
+    // Neither direction was legal. Rather than silently dropping the second
+    // click, arm it as the new pending selection - mirrors how a fresh drag
+    // can begin right after an invalid one, and lets the player simply
+    // click a different card to change their mind.
+    pendingClick = clickInfo;
+    render();
+  }
+
+  function isTableauCardSelected(col, idx){
+    return !!(pendingClick && pendingClick.type === 'tableau' && pendingClick.col === col &&
+      pendingClick.index !== undefined && pendingClick.index !== null && idx >= pendingClick.index);
+  }
+  function isTableauColSelected(col){
+    return !!(pendingClick && pendingClick.type === 'tableau' && pendingClick.col === col &&
+      (pendingClick.index === undefined || pendingClick.index === null));
+  }
+  function isFreecellSelected(i){
+    return !!(pendingClick && pendingClick.type === 'freecell' && pendingClick.index === i);
+  }
+  function isFoundationSelected(suit){
+    return !!(pendingClick && pendingClick.type === 'foundation' && pendingClick.suit === suit);
+  }
+
+  /* ---- Autoplay ---- */
+  function takeOneAutoplayCard(){
+    for(let i=0;i<4;i++){
+      const c = state.freeCells[i];
+      if(c && canMoveToFoundation(c)){
+        state.freeCells[i] = null;
+        moveCardToFoundation(c);
+        debugLog(`Autoplay: ${c.rank}${c.suit} Free Cell ${i+1} -> Foundation`);
+        return true;
+      }
+    }
+    for(let i=0;i<8;i++){
+      const col = state.tableau[i];
+      if(col.length){
+        const c = col[col.length-1];
+        if(canMoveToFoundation(c)){
+          col.pop();
+          moveCardToFoundation(c);
+          debugLog(`Autoplay: ${c.rank}${c.suit} tableau col${i} -> Foundation`);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  const AUTOPLAY_STEP_MS = 300;
+  let autoplaySweepActive = false;
+  function autoplaySweep(onDone){
+    autoplaySweepActive = true;
+    let madeAnyMove = false;
+    function step(){
+      if(!takeOneAutoplayCard()){
+        autoplaySweepActive = false;
+        if(typeof onDone === 'function') onDone(madeAnyMove);
+        return;
+      }
+      madeAnyMove = true;
+      render();
+      setTimeout(step, AUTOPLAY_STEP_MS);
+    }
+    step();
+  }
+
+  function foundationCount(){
+    return Object.values(state.foundations).reduce((sum,pile)=> sum + pile.length, 0);
+  }
+  function currentScore(){
+    return -52 + 5 * foundationCount();
+  }
+
+  /* ============================================================
+     Hint / "is any real progress still possible" - Yukon's deep-search
+     approach (per Perry's own instruction), extended here for Free Cells.
+     A supermove is just a shorthand for moving its cards one at a time
+     through empty Free Cells/columns, so this search only ever needs to
+     model SINGLE-card transitions (Tableau top <-> Free Cell <-> Tableau
+     <-> Foundation) - any arrangement reachable by a real supermove is
+     also reachable by some sequence of these single-card moves, so
+     nothing is missed by not modeling multi-card moves directly. ---- */
+  function tableauKey(tableau, freeCells){
+    const tKey = tableau.map(col => col.map(c => c.suit + c.rank).join(',')).sort().join('|');
+    const fKey = freeCells.filter(c => c).map(c => c.suit + c.rank).sort().join(',');
+    return tKey + '#' + fKey;
+  }
+  function canMoveToFoundationIn(foundations, card){
+    const pile = foundations[card.suit];
+    if(pile.length === 0) return card.rank === 'A';
+    return RANK_VALUE[card.rank] === RANK_VALUE[pile[pile.length-1].rank] + 1;
+  }
+  function canMoveToTableauIn(tableau, card, colIndex){
+    const col = tableau[colIndex];
+    if(col.length === 0) return true;
+    const top = col[col.length-1];
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1 && isRed(top.suit) !== isRed(card.suit);
+  }
+  // Every legal single-card move out of one (tableau, foundations,
+  // freeCells) arrangement. Only ONE "move to an empty Free Cell" is ever
+  // generated per source card, even if several cells are empty - every
+  // empty cell is interchangeable for search purposes (tableauKey's own
+  // fKey ignores which specific slot holds a card), so generating more
+  // than one would only waste the search's state budget rediscovering the
+  // same handful of real positions.
+  function allLegalMovesIn(tableau, foundations, freeCells){
+    const moves = [];
+    for(let i=0;i<8;i++){
+      const col = tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(canMoveToFoundationIn(foundations, top)) moves.push({ type:'t2f', from:i });
+      if(freeCells.some(c => c === null)) moves.push({ type:'t2c', from:i });
+      for(let t=0;t<8;t++){
+        if(t === i) continue;
+        if(canMoveToTableauIn(tableau, top, t)) moves.push({ type:'t2t', from:i, to:t });
+      }
+    }
+    for(let j=0;j<4;j++){
+      const card = freeCells[j];
+      if(!card) continue;
+      if(canMoveToFoundationIn(foundations, card)) moves.push({ type:'c2f', cell:j });
+      for(let t=0;t<8;t++){
+        if(canMoveToTableauIn(tableau, card, t)) moves.push({ type:'c2t', cell:j, to:t });
+      }
+    }
+    return moves;
+  }
+  function applyMoveToClone(tableau, foundations, freeCells, move){
+    const newTableau = tableau.map(col => col.map(c => ({...c})));
+    const newFoundations = {};
+    for(const s in foundations) newFoundations[s] = foundations[s].map(c => ({...c}));
+    const newFreeCells = freeCells.map(c => c ? {...c} : null);
+    if(move.type === 't2f'){
+      const card = newTableau[move.from].pop();
+      newFoundations[card.suit].push(card);
+    } else if(move.type === 't2c'){
+      const card = newTableau[move.from].pop();
+      newFreeCells[newFreeCells.findIndex(c => c === null)] = card;
+    } else if(move.type === 't2t'){
+      const card = newTableau[move.from].pop();
+      newTableau[move.to].push(card);
+    } else if(move.type === 'c2f'){
+      const card = newFreeCells[move.cell]; newFreeCells[move.cell] = null;
+      newFoundations[card.suit].push(card);
+    } else if(move.type === 'c2t'){
+      const card = newFreeCells[move.cell]; newFreeCells[move.cell] = null;
+      newTableau[move.to].push(card);
+    }
+    return { tableau: newTableau, foundations: newFoundations, freeCells: newFreeCells };
+  }
+  // Safety valve against a pathological board with an enormous number of
+  // reachable arrangements - raised above Yukon's own 15000 since Free
+  // Cells add extra branching at every step; if this cap is hit before the
+  // search finishes, it errs toward NOT stuck (a popup shown one move too
+  // late beats a false one).
+  const PROGRESS_SEARCH_MAX_STATES = 20000;
+  function isProgressPossible(){
+    const visited = new Set([tableauKey(state.tableau, state.freeCells)]);
+    const queue = [{ tableau: state.tableau, foundations: state.foundations, freeCells: state.freeCells }];
+    let qi = 0;
+    while(qi < queue.length){
+      const { tableau, foundations, freeCells } = queue[qi++];
+      const moves = allLegalMovesIn(tableau, foundations, freeCells);
+      for(const move of moves){
+        if(move.type === 't2f' || move.type === 'c2f') return true;
+        const next = applyMoveToClone(tableau, foundations, freeCells, move);
+        const key = tableauKey(next.tableau, next.freeCells);
+        if(visited.has(key)) continue;
+        visited.add(key);
+        if(visited.size > PROGRESS_SEARCH_MAX_STATES) return true;
+        queue.push(next);
+      }
+    }
+    return false;
+  }
+  function moveToHintShape(move, tableau, freeCells){
+    if(move.type === 't2f'){
+      const card = tableau[move.from][tableau[move.from].length - 1];
+      return { from:{type:'tableau', col:move.from}, to:{type:'foundation', suit:card.suit} };
+    }
+    if(move.type === 't2c'){
+      return { from:{type:'tableau', col:move.from}, to:{type:'freecell', index: freeCells.findIndex(c => c === null)} };
+    }
+    if(move.type === 't2t'){
+      return { from:{type:'tableau', col:move.from}, to:{type:'tableau', col:move.to} };
+    }
+    if(move.type === 'c2f'){
+      const card = freeCells[move.cell];
+      return { from:{type:'freecell', index:move.cell}, to:{type:'foundation', suit:card.suit} };
+    }
+    return { from:{type:'freecell', index:move.cell}, to:{type:'tableau', col:move.to} };
+  }
+  // The same search as isProgressPossible() above, but instead of a
+  // yes/no answer, returns the actual first move to make right now that's
+  // provably on some path toward a Foundation.
+  function findMoveTowardProgress(){
+    const visited = new Set([tableauKey(state.tableau, state.freeCells)]);
+    const queue = [{ tableau: state.tableau, foundations: state.foundations, freeCells: state.freeCells, firstMoveShape: null }];
+    let qi = 0;
+    while(qi < queue.length){
+      const { tableau, foundations, freeCells, firstMoveShape } = queue[qi++];
+      const moves = allLegalMovesIn(tableau, foundations, freeCells);
+      for(const move of moves){
+        const shape = firstMoveShape || moveToHintShape(move, tableau, freeCells);
+        if(move.type === 't2f' || move.type === 'c2f') return shape;
+        const next = applyMoveToClone(tableau, foundations, freeCells, move);
+        const key = tableauKey(next.tableau, next.freeCells);
+        if(visited.has(key)) continue;
+        visited.add(key);
+        if(visited.size > PROGRESS_SEARCH_MAX_STATES) return null; // safety valve - let findHintMove() fall back instead
+        queue.push({ tableau: next.tableau, foundations: next.foundations, freeCells: next.freeCells, firstMoveShape: shape });
+      }
+    }
+    return null; // matches isProgressPossible() === false - nothing anywhere leads to a Foundation
+  }
+  // Last-resort Hint fallback: ANY currently-available single move, full
+  // stop, no matter how pointless - only ever reached if the deep search
+  // above hits its own safety cap, since a genuinely stuck board never
+  // gets this far (checkGameEnd() will already have shown the popup).
+  function findAvailableMove(){
+    for(let i=0;i<8;i++){
+      const col = state.tableau[i];
+      if(!col.length) continue;
+      const top = col[col.length-1];
+      if(canMoveToFoundation(top)) return { from:{type:'tableau', col:i}, to:{type:'foundation', suit:top.suit} };
+      const target = firstLegalTableauTarget(top, i);
+      if(target !== -1) return { from:{type:'tableau', col:i}, to:{type:'tableau', col:target} };
+      const emptyCell = state.freeCells.findIndex(c => c === null);
+      if(emptyCell !== -1) return { from:{type:'tableau', col:i}, to:{type:'freecell', index:emptyCell} };
+    }
+    for(let j=0;j<4;j++){
+      const card = state.freeCells[j];
+      if(!card) continue;
+      if(canMoveToFoundation(card)) return { from:{type:'freecell', index:j}, to:{type:'foundation', suit:card.suit} };
+      const target = firstLegalTableauTarget(card, -1);
+      if(target !== -1) return { from:{type:'freecell', index:j}, to:{type:'tableau', col:target} };
+    }
+    return null;
+  }
+  function findHintMove(){
+    return findMoveTowardProgress() || findAvailableMove();
+  }
+
+  let noMovesAlreadyShown = false;
+  function checkGameEnd(){
+    if(!state.gameActive) return;
+    if(foundationCount() === 52){
+      state.gameActive = false;
+      playSound('win');
+      showEndModal();
+      return;
+    }
+    const stuck = !isProgressPossible();
+    if(!stuck){
+      debugLog('Check: OK, a move is available');
+      noMovesAlreadyShown = false;
+      return;
+    }
+    if(noMovesAlreadyShown){
+      debugLog('Check: still stuck (popup already shown)');
+      return;
+    }
+    noMovesAlreadyShown = true;
+    debugLog('Check: STUCK - no legal move found, showing popup');
+    playSound('stuck');
+    const body = `
+      <p>Score: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
+      <p>No move leads to further progress.</p>
+    `;
+    showModal('There Are No More Moves.', body, `
+      <button onclick="recordScore(); dealNewGame(true);">New Game</button>
+      <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      <button onclick="closeModal()">Continue<br>Playing</button>
+      <button onclick="recordScore(); confirmExitFromEndPopup();">Exit</button>
+    `, false);
+  }
+
+  function recordScore(){
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, score: currentScore(), moves: state.moves, time: elapsedSeconds(),
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+  function confirmExitFromEndPopup(){
+    showModal('Exit FreeCell', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  }
+  function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+  function showEndModal(){
+    const score = currentScore();
+    const time = elapsedSeconds();
+    recordScore();
+    const body = `
+      <p>Score: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+      <p>All 52 cards are on the Foundations.</p>
+    `;
+    showModal('You Win!', body, `
+      <button onclick="dealNewGame(true)">New Game</button>
+      <button onclick="dealNewGame(false)">Restart</button>
+      <button onclick="confirmExitFromEndPopup()">Exit</button>
+    `, true);
+    document.getElementById('modalTitle').style.color = 'red';
+    document.getElementById('modalTitle').classList.add('win-blink');
+  }
+  function flashMessage(msg){
+    showModal('One Moment', `<p>${msg}</p>`, `<button onclick="closeModal()">OK</button>`, true);
+  }
+
+  /* ---- Hint: after 8s of no move, show what the computer sees is
+     playable - a gold dotted halo around the source and the destination,
+     using findHintMove(). render() restarts this timer and clears any
+     halo already showing every time it runs, so the countdown is always
+     measured from the player's last action. ---- */
+  const HINT_IDLE_MS = 8000;
+  let hintTimer = null;
+  let hintShowing = false;
+  function clearHint(){
+    if(!hintShowing) return;
+    document.querySelectorAll('.hint-highlight').forEach(el => el.classList.remove('hint-highlight'));
+    hintShowing = false;
+  }
+  function resetHintTimer(){
+    clearHint();
+    clearTimeout(hintTimer);
+    if(!state.gameActive) return;
+    hintTimer = setTimeout(showHint, HINT_IDLE_MS);
+  }
+  function hintElementFor(loc){
+    if(loc.type === 'tableau'){
+      const col = document.getElementById('tableau-' + loc.col);
+      return col ? col.lastElementChild : null;
+    }
+    if(loc.type === 'foundation'){
+      return document.getElementById('foundation-' + SUIT_ID[loc.suit]);
+    }
+    if(loc.type === 'freecell'){
+      return document.getElementById('freecell-' + loc.index);
+    }
+    return null;
+  }
+  function showHint(){
+    if(!state.gameActive) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return;
+    const move = findHintMove();
+    if(!move) return;
+    const fromEl = hintElementFor(move.from);
+    const toEl = hintElementFor(move.to);
+    if(fromEl) fromEl.classList.add('hint-highlight');
+    if(toEl) toEl.classList.add('hint-highlight');
+    hintShowing = true;
+  }
+
+  /* ---- Rendering ---- */
+  function cardHtml(card, selected){
+    return `<div class="card clickable${selected ? ' card-selected' : ''}"><img class="card-face-img" src="${cardImageSrc(card)}" alt="${card.rank} of ${card.suit}" draggable="false"></div>`;
+  }
+
+  function render(){
+    // Free Cells - onpointerdown is bound on the outer pile container every
+    // time (not just when a card is present) so an EMPTY Free Cell is still
+    // clickable as a move destination; the container and the card inside it
+    // share identical dimensions, so this changes nothing about drag feel.
+    for(let i=0;i<4;i++){
+      const el = document.getElementById('freecell-' + i);
+      const card = state.freeCells[i];
+      if(card){
+        el.innerHTML = cardHtml(card, isFreecellSelected(i));
+      } else {
+        el.innerHTML = '';
+      }
+      el.onpointerdown = (e)=> startDragCandidate(e, { type:'freecell', index:i });
+    }
+
+    // Foundations - same always-bound-on-the-container treatment as Free
+    // Cells above, so an empty Foundation (still showing its 'A' letter)
+    // can be clicked as a move destination.
+    ['♠','♥','♣','♦'].forEach(suit=>{
+      const el = document.getElementById('foundation-' + SUIT_ID[suit]);
+      const pile = state.foundations[suit];
+      if(pile.length){
+        const fCard = pile[pile.length-1];
+        const anim = animFlags.foundationSuits.has(suit) ? ' foundation-anim' : '';
+        const selected = isFoundationSelected(suit);
+        el.innerHTML = `<div class="card clickable${anim}${selected ? ' card-selected' : ''}"><img class="card-face-img" src="${cardImageSrc(fCard)}" alt="${fCard.rank} of ${fCard.suit}" draggable="false"></div>`;
+      } else {
+        el.innerHTML = 'A';
+      }
+      el.onpointerdown = (e)=> startDragCandidate(e, { type:'foundation', suit });
+    });
+    animFlags.foundationSuits.clear();
+
+    // Tableau
+    for(let i=0;i<8;i++){
+      const el = document.getElementById('tableau-' + i);
+      const col = state.tableau[i];
+      if(col.length === 0){
+        // An empty column has no card to lift, but it's still a legal move
+        // destination (FreeCell's own rule - any card/run can land here),
+        // so it needs its own click target too.
+        const selected = isTableauColSelected(i);
+        el.innerHTML = `<div class="empty-slot${selected ? ' card-selected' : ''}"></div>`;
+        el.firstElementChild.onpointerdown = (e)=> startDragCandidate(e, { type:'tableau', col:i });
+        continue;
+      }
+      el.innerHTML = col.map((card, idx) => `<div class="cardWrap">${cardHtml(card, isTableauCardSelected(i, idx))}</div>`).join('');
+      Array.from(el.children).forEach((wrap, idx)=>{
+        wrap.firstElementChild.onpointerdown = (e)=> startDragCandidate(e, { type:'tableau', col:i, index:idx });
+      });
+    }
+
+    document.getElementById('scoreDisplay').textContent = currentScore();
+    document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+    document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
+    resetHintTimer();
+  }
+
+  /* ---- Options (Sound / Autoplay default - no draw-count, FreeCell has no Stock) ---- */
+  document.getElementById('optionsBtn').addEventListener('click', ()=>{
+    showModal('Options', `
+      <div class="options-grid">
+        <div class="options-question">Select the default for Sounds</div>
+        <label for="soundOnRadio">On</label>
+        <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
+        <label for="soundOffRadio">Off</label>
+        <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+
+        <div class="options-question">Select the default for Autoplay</div>
+        <label for="autoplayOnRadio">On</label>
+        <input type="radio" id="autoplayOnRadio" name="autoplaySetting" ${state.autoplay?'checked':''}>
+        <label for="autoplayOffRadio">Off</label>
+        <input type="radio" id="autoplayOffRadio" name="autoplaySetting" ${!state.autoplay?'checked':''}>
+      </div>
+    `, `
+      <button onclick="saveOptions()">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, true, 'optionsModal');
+  });
+  function saveOptions(){
+    state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    const autoplayDefault = document.getElementById('autoplayOnRadio').checked;
+    closeModal();
+    if(autoplayDefault !== state.autoplay){
+      document.getElementById('autoplayBtn').click();
+    } else {
+      saveResumeState();
+    }
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ soundEnabled: state.soundEnabled, autoplayDefault }));
+    } catch(e) {}
+  }
+
+  /* ---- Recorded Scores (Firebase-backed) ---- */
+  const MAX_RECORDED_SCORES = 30;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  function formatScoreRow(entry, rank){
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.score}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let listHtml;
+    if(sharedScores === null){
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b)=>
+        (b.score - a.score) || (a.moves - b.moves) || (a.time - b.time) || (new Date(b.date) - new Date(a.date))
+      ).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
+      } else {
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
+          <tr><th>Rank</th><th>Player</th><th>Score</th><th>Moves</th><th>Time</th><th>Date</th></tr>
+          ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
+        </table></div>`;
+      }
+    }
+    const body = `<button class="scores-explain-btn" onclick="window.open('../SolScoringSystem.html','_blank')">Scoring Explanation</button>${listHtml}`;
+    showModal('Recorded Scores', body, `
+      <button onclick="closeModal()">OK</button>
+    `, true, 'scoresModal');
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
+    const panel = document.getElementById('diagLogPanel');
+    panel.classList.toggle('show');
+    if(panel.classList.contains('show')){
+      fitDiagLogHeight();
+      const el = document.getElementById('diagLog');
+      el.scrollTop = el.scrollHeight;
+      el.focus();
+    }
+  });
+
+  /* ---- Autoplay toggle ---- */
+  document.getElementById('autoplayBtn').addEventListener('click', ()=>{
+    state.autoplay = !state.autoplay;
+    render();
+    if(state.autoplay){
+      const tentative = takeSnapshot();
+      autoplaySweep((madeAnyMove)=>{
+        if(madeAnyMove) pushUndoSnapshot(tentative);
+        checkGameEnd();
+        saveResumeState();
+      });
+    } else {
+      saveResumeState();
+    }
+  });
+
+  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    if(!gameEverStarted){ dealNewGame(true); return; }
+    showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    showModal('Restart This Game?', '<p>This replays the exact same deal from the very beginning. Your current progress will be lost.</p>', `
+      <button onclick="dealNewGame(false)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
+    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
+      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolFreeCellInstruc.html';
+  });
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    showModal('Exit FreeCell', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+
+  // Traps the mouse/trackpad "Back" button the same way every other Game
+  // Hub Solitaire game does - a stray Back press shows the Exit
+  // confirmation instead of silently leaving a game in progress.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
+  /* ---- Options (Sound / Autoplay default), persisted permanently ---- */
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
+    if(savedOptions){
+      if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+      if(typeof savedOptions.autoplayDefault === 'boolean') state.autoplay = savedOptions.autoplayDefault;
+    }
+  } catch(e) {}
+
+  /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
+  const nameInput = document.getElementById('playerNameInput');
+  try {
+    const saved = localStorage.getItem(PLAYER_NAME_KEY);
+    if(saved) nameInput.value = saved;
+  } catch(e) {}
+  nameInput.addEventListener('change', ()=>{
+    const newName = nameInput.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalTitle').style.color = '';
+    document.getElementById('modalTitle').classList.remove('win-blink');
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+  }
+  document.getElementById('universalModal').addEventListener('click', (e)=>{
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions
+     and back, but NOT a trip through the Solitaire Menu, same pattern as
+     every other Game Hub Solitaire game. ---- */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
+    } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      render();
+      return true;
+    } catch(e) {
+      console.error('tryRestoreResumeState error', e);
+      return false;
+    }
+  }
+
+  /* ---- Startup ----
+     Only resume if this load came from the Instructions page's tagged
+     "Back to FreeCell" link (?resume=1) - any other way of opening this
+     page shows an empty table with nothing dealt until "New Game" is
+     actually clicked, same as every other Game Hub Solitaire game. */
+  const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
+  let gameEverStarted = arrivedViaInstructionsBack && tryRestoreResumeState();
+  if(!gameEverStarted){
+    clearResumeState();
+    render();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 8;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
