@@ -1,5 +1,5 @@
 
-<!-- Revision 54 | Wednesday, September 30, 2026 -->
+<!-- Revision 55 | Tuesday, October 06, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -793,6 +793,13 @@
 
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  /* Hand-summary popup only (see finishHand()/showHandSummary()): nudges the
+     hand-result note ("{name} took..." / "made their contract" / etc.) down
+     about .25in from the new "Recorded Score:" line directly above it, per
+     Perry's request. Only fires when that line is present (the game was
+     just won), via the adjacent-sibling combinator - noteHtml's own <p>
+     markup never needs to change. */
+  #universalModal .modalBody .recordedScoreLine + p{ margin-top: 24px; }
   #universalModal .modalBtns{
     display:flex; gap:10px; justify-content:center; margin-top:16px;
   }
@@ -2133,6 +2140,12 @@ function finishHand(){
   const heading = winnerTeam ? `${getTeamLabel(winnerTeam).toUpperCase()} WIN THE GAME!` : 'Hand Complete';
   const btnLabel = winnerTeam ? 'Start a new game' : 'Deal The Next Hand';
   const row = (label, ns, ew) => `<tr><td style="font-weight:600;">${label}</td><td>${ns}</td><td>${ew}</td></tr>`;
+  // "Margin" is the winning team's final point lead over the losing team -
+  // the exact number recordScore() saves to the shared Recorded Scores list
+  // below. Computed once here, up front, so the "Recorded Score:" line shown
+  // in the popup and the value actually recorded can never disagree.
+  const loserTeamForScore = winnerTeam ? (winnerTeam === 'NS' ? 'EW' : 'NS') : null;
+  const recordedMargin = winnerTeam ? (state.scores[winnerTeam] - state.scores[loserTeamForScore]) : null;
 
   // Wrapped in its own function (and stashed in modalReopenFn) purely so this
   // exact summary can be redrawn if the player clicks Quit and then Cancel -
@@ -2141,6 +2154,7 @@ function finishHand(){
   // because the popup gets redrawn, so they stay outside this function.
   function showHandSummary(){
     showModal(heading, `
+      ${winnerTeam ? `<p class="recordedScoreLine">Recorded Score: <strong>${recordedMargin}</strong></p>` : ''}
       ${noteHtml}
       <table>
         <tr><th></th><th>${getTeamLabel('NS')}</th><th>${getTeamLabel('EW')}</th></tr>
@@ -2168,11 +2182,12 @@ function finishHand(){
     updateSessionWinsDisplay();
 
     // Shared (cross-device) recorded score for this finished game - see the
-    // Firebase block near the end of the file. "Margin" is the winning
-    // team's final point lead over the losing team. Same pattern used in
-    // Pinochle's Recorded Scores feature.
-    const loserTeamForScore = winnerTeam === 'NS' ? 'EW' : 'NS';
-    recordScore(getTeamLabel(winnerTeam), state.scores[winnerTeam] - state.scores[loserTeamForScore], getTeamLabel(loserTeamForScore));
+    // Firebase block near the end of the file. Same pattern used in
+    // Pinochle's Recorded Scores feature. recordedMargin/loserTeamForScore
+    // were computed above, alongside the popup's own "Recorded Score:" line,
+    // so the number shown to the player and the number actually saved are
+    // always identical.
+    recordScore(getTeamLabel(winnerTeam), recordedMargin, getTeamLabel(loserTeamForScore));
   }
 }
 
@@ -2868,7 +2883,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 54;
+  const PAGE_REVISION = 55;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
