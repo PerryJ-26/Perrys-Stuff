@@ -1,5 +1,5 @@
 
-<!-- Revision 6 | Thursday, October 08, 2026 -->
+<!-- Revision 8 | Thursday, October 08, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -181,6 +181,12 @@
     gap: 18px;
     flex: 1;
     width: 100%;
+  }
+  .bettingPrompt{
+    color: #d7ecd9;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
   }
   #chipTray{
     display: grid;
@@ -489,6 +495,7 @@
   <div id="table-wrap">
 
     <div id="bettingScreen">
+      <div class="bettingPrompt">Place Your Bid</div>
       <div id="chipTray"></div>
       <div id="pendingBetLine">
         <div class="betChipIcon" id="pendingBetChip">$0</div>
@@ -1220,6 +1227,21 @@
     const hole = state.dealerCards[1];
     dealTokenCounter++;
     hole._dealToken = dealTokenCounter;
+    // The hole card still carries _dealSeq from the INITIAL deal (its
+    // position among that batch of 4 cards, e.g. 3) - cardHtml() reuses
+    // that same field to stagger the deal-in animation's delay, so left
+    // unreset here it gave the reveal flip a leftover ~0.3-0.4s delay that
+    // had nothing to do with the reveal itself. Some settlement paths then
+    // re-render before that delayed animation ever got to start (killing
+    // it outright), while others left it dangling long enough to visibly
+    // play AFTER the card's face was already showing (since
+    // dealerHoleRevealed flips to true, and the image with it, the instant
+    // this function runs - well before the animation's delay elapses) -
+    // together producing an instant, animation-less reveal immediately
+    // followed by a second, disconnected flip motion on a card that had
+    // already turned face-up. Zeroing it here makes the flip start right
+    // away, once, consistently.
+    hole._dealSeq = 0;
     state._revealing = true;
     state.dealerHoleRevealed = true;
     render();
@@ -1309,7 +1331,7 @@
     recordScore();
     showModal('Game Over', `<p>You're out of chips!</p><p>Final Bank: <strong>$0</strong></p>`, `
       <button onclick="closeModal(); resetBankrollAndContinue();">Play Again</button>
-      <button onclick="location.href='../index.html';">Exit to Menu</button>
+      <button onclick="exitAfterGameOver()">Exit to Menu</button>
     `, false);
   }
   function resetBankrollAndContinue(){
@@ -1318,6 +1340,19 @@
     state.lastBet = 0;
     persistBankroll();
     startNextBettingRound();
+  }
+  // Exiting from Game Over used to leave the $0 bankroll persisted with no
+  // way to recover - the next visit would load straight into a betting
+  // screen where every chip and Deal are permanently disabled (nothing to
+  // bet with), looking exactly like a frozen page. Exiting from here now
+  // resets the bankroll first, same as Play Again, just without staying on
+  // this page.
+  function exitAfterGameOver(){
+    state.bankroll = STARTING_BANKROLL;
+    state.handsPlayedThisSession = 0;
+    state.lastBet = 0;
+    persistBankroll();
+    location.href='../index.html';
   }
 
   document.getElementById('cashOutBtn').addEventListener('click', () => {
@@ -1503,6 +1538,21 @@
     sessionStorage.removeItem(RESUME_KEY);
     try {
       const saved = JSON.parse(raw);
+      // Validate the saved snapshot is well-formed and financially sane
+      // before trusting it. In particular, a pendingBet left greater than
+      // bankroll (which can't happen from normal play, but could from a
+      // stale/corrupted save) would silently disable every chip and the
+      // Deal button on restore - nothing wrong would be visible, the
+      // betting screen would just look permanently frozen. Any failed
+      // check here falls through to the normal fresh-start path below
+      // instead of risking that.
+      const validPhase = ['betting', 'playerTurn', 'dealerTurn', 'resolved'].includes(saved.phase);
+      const validBankroll = typeof saved.bankroll === 'number' && isFinite(saved.bankroll) && saved.bankroll >= 0;
+      const validPendingBet = typeof saved.pendingBet === 'number' && isFinite(saved.pendingBet) && saved.pendingBet >= 0 && saved.pendingBet <= saved.bankroll;
+      const validHands = Array.isArray(saved.hands);
+      if(!validPhase || !validBankroll || !validPendingBet || !validHands){
+        return false;
+      }
       Object.assign(state, saved);
       if(state.phase === 'dealerTurn'){
         render();
@@ -1545,10 +1595,21 @@
     state.pendingBet = state.repeatLastBet ? Math.min(state.lastBet, state.bankroll) : 0;
     render();
   }
+  // Safety net: a betting screen with $0 bankroll has every chip and Deal
+  // permanently disabled - there's literally nothing affordable to bet,
+  // which looks exactly like a frozen page with no way out. This can only
+  // happen from a persisted $0 bankroll (normally only reachable by exiting
+  // the old Game Over popup instead of using Play Again - now fixed above,
+  // but this also recovers anyone already stuck with that $0 saved from
+  // before). If we land on the betting screen at $0, show the same Game
+  // Over choice immediately instead of a dead end.
+  if(state.phase === 'betting' && state.bankroll <= 0){
+    setTimeout(showGameOverModal, 300);
+  }
 </script>
 
 <script>
-  const PAGE_REVISION = 6;
+  const PAGE_REVISION = 8;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
