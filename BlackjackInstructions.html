@@ -1,0 +1,325 @@
+
+<!-- Revision 2 | Wednesday, October 07, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="games/Blackjack.html">Back to Blackjack</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Blackjack Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>The origin of Blackjack is still under debate, but researchers agree that Blackjack probably originated in the French casinos around 1700. The French cards were called &ldquo;Vingt-et-Un,&rdquo; which translates to &ldquo;Twenty-one.&rdquo; These cards are probably derived from the card game Chemin de Fer, which was popular at that time. The card game was played at the French Royal Court during the reign of King Louis XV.</p>
+      <p>The card game made it to the American shore in the 18th century with the help of French colonists. The game couldn&rsquo;t spread and develop in France in the 19th century. However, during this time the game evolved and gained popularity in America. The game was played in New Orleans in 1820 at the legalized gambling halls.</p>
+
+      <h2>Overview</h2>
+      <p>The objective is to finish with a hand closer to 21 than the dealer&rsquo;s hand without exceeding 21. A hand over 21 busts and loses immediately.</p>
+
+      <h2>Players</h2>
+      <p>Blackjack is a single-player game against the dealer.</p>
+
+      <h2>Cards</h2>
+      <p>The game uses four standard 52-card decks.</p>
+
+      <h3>Card Values</h3>
+      <ul>
+        <li>Number Cards (2&ndash;10): Count at their face value.</li>
+        <li>Face Cards (Jack, Queen, King): Count as 10 points.</li>
+        <li>Aces: Count as 1 or 11, depending on which value helps your hand more.</li>
+      </ul>
+
+      <p>Because an Ace can count as either 1 or 11, hands fall into two types. A hard hand has no Ace or counts every Ace as 1. A soft hand counts an Ace as 11 without exceeding 21. Drawing to a soft hand is safer because the Ace can revert from 11 to 1 if the next card would otherwise cause a bust.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> A 10 and a 7 form a hard 17. An Ace and a 6 form a soft 17, which can also be valued as 7.</p>
+      </div>
+
+      <h2>Setup</h2>
+      <p>You begin the game with a chip bankroll of $1,000.</p>
+
+      <h2>Gameplay</h2>
+      <ol>
+        <li>Place your bet.</li>
+        <li>The dealer gives you two cards face up.</li>
+        <li>The dealer also takes two cards &mdash; one face up and one face down (the hole card).</li>
+        <li>If your first two cards total 21 &mdash; an Ace and a 10-value card &mdash; you have a natural Blackjack. It pays 3:2, so you win an amount equal to 150% of your original bet, unless the dealer also has a natural Blackjack, in which case the hand is a push instead. If the dealer&rsquo;s upcard is an Ace or a 10-value card, the dealer checks the hole card for Blackjack right away, before any further play, so this is settled immediately. With any other upcard, the dealer cannot have Blackjack, so your natural Blackjack pays out immediately.</li>
+      </ol>
+
+      <h2>Player Actions</h2>
+      <ul>
+        <li><strong>Hit:</strong> Take another card to get closer to 21.</li>
+        <li><strong>Stand:</strong> Keep your current hand and end your turn.</li>
+        <li><strong>Double Down:</strong> Add a wager of up to the amount of your original bet, then receive exactly one additional card and end the hand. You may double down on any initial two-card combination except Blackjack or split Aces.</li>
+        <li><strong>Split:</strong> If your first two cards have equal values, you may separate them into two hands by placing an additional wager equal to your original bet. Play the first hand until you select Stand, then play the second hand. You may split matching cards up to three times, creating no more than four hands. A pair of Aces may be split only once, creating two hands, and each split Ace receives exactly one additional card. A split hand containing an Ace and a 10-value card counts as 21, not Blackjack. Blackjack applies only when the original two cards form that combination.</li>
+        <li><strong>Surrender:</strong> Lets you fold a poor starting hand and reclaim half your bet rather than risk the whole thing. You can only surrender immediately after the deal and before any cards are played. It&rsquo;s a defensive move reserved for the worst situations, such as a hard 16 against a dealer&rsquo;s strong upcard.</li>
+        <li><strong>Insurance (optional):</strong> If the dealer&rsquo;s upcard is an Ace, players are offered insurance &mdash; an additional wager betting that the dealer does have Blackjack. You may wager up to half of your original bet by placing chips on the Insurance Line. At this time, any player dealt Blackjack can immediately be paid dollar for dollar on their original wager, regardless of the dealer&rsquo;s hole card.
+          <p style="margin: 10px 0 0;">The dealer then closes insurance and checks the hole card. If the dealer does have Blackjack, insurance pays 2:1 and the hand is over. If the dealer does not have Blackjack, the insurance wager loses and the hand continues.</p>
+        </li>
+        <li><strong>Push (tie):</strong> If you and the dealer have tying points, the turn ends and your bet is returned.</li>
+        <li><strong>Bust:</strong> If your cards total more than 21, your turn is over and you lose your bet.</li>
+      </ul>
+
+      <h2>Dealer Actions</h2>
+      <ul>
+        <li>The dealer reveals their hole card after you have finished your turn, except when checking for a dealer Blackjack against an Ace or 10-value upcard (see Gameplay), which is settled immediately.</li>
+        <li>The dealer must hit a soft 17 (e.g. Ace and 6) or anything below 17.</li>
+        <li>The dealer must stand if their total is a hard 17 (e.g. King and 7) or higher.</li>
+        <li>If the dealer busts, you win.</li>
+      </ul>
+
+      <h2>Game Over</h2>
+      <p>The game ends when you choose to cash in your chips or when your chip balance reaches zero.</p>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 2;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
