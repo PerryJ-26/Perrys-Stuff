@@ -1,0 +1,1556 @@
+
+<!-- Revision 6 | Thursday, October 08, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blackjack - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - reuses Klondike's felt/card theme, plus
+     a few banner/chip colors specific to Blackjack ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --cardback-1: #d6394a;
+    --cardback-2: #ffffff;
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+
+    /* Banner ribbon colors, matched to Perry's mockup screenshots */
+    --banner-dealer: #4a90c2;
+    --banner-win: #d9365a;
+    --banner-push: #2f9e52;
+    --banner-bust: #64748b;
+    --gold: #d4af37;
+
+    /* Chip colors, matched to the chip art in the mockup (minus the $1
+       and $1000 chips, which Perry dropped - see BlackjackInstructions
+       discussion) */
+    --chip-5: #1f3a6e;
+    --chip-25: #4aa3d6;
+    --chip-50: #6c3faa;
+    --chip-100: #c0392b;
+    --chip-500: #7a1f2b;
+    --chip-clear: #7a8694;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  /* align-items: flex-start (not center) so the top of the button column -
+     the "Blackjack" title - lines up with the felt's own top edge, per
+     Perry's request, instead of the shorter button column being centered
+     against the taller felt. */
+  #gameLayout {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    padding: 10px;
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack - same design as Klondike's ---- */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+  #buttonGroup button:disabled{ opacity: .45; cursor: not-allowed; }
+  #buttonGroup button:disabled:hover{ background: var(--cream); }
+
+  /* Name field, same box design as Klondike's nameScoreBox, with a Bank
+     line added below the Name field (per Perry's request) so the running
+     bankroll is visible at all times, not just on the betting screen.
+     Taller padding than Klondike's box to comfortably fit both fields. */
+  #nameBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 14px 10px;
+    font-size: .8rem;
+  }
+  #nameBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+  }
+  #nameBox .bankLabel{ margin-top: 10px; font-size: 1.05rem; text-align: center; }
+  #nameBoxBank{
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+
+  /* ---- Felt / board ---- */
+  #table-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 24px;
+    margin: 0;
+    width: 760px;
+    min-height: 600px;
+    box-sizing: border-box;
+  }
+
+  /* ---- Betting screen (shown before a hand is dealt) ---- */
+  #bettingScreen{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    flex: 1;
+    width: 100%;
+  }
+  #chipTray{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    background: rgba(0,0,0,.35);
+    border: 2px dashed rgba(255,255,255,.5);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .chip{
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #fff; font-size: .95rem;
+    border: 3px dashed rgba(255,255,255,.65);
+    box-shadow: 0 3px 6px rgba(0,0,0,.45), inset 0 0 0 4px rgba(255,255,255,.12);
+    cursor: pointer;
+    user-select: none;
+  }
+  .chip:hover{ filter: brightness(1.12); transform: translateY(-2px); }
+  .chip.disabled{ opacity: .4; cursor: not-allowed; pointer-events: none; }
+  .chip[data-value="5"]{ background: var(--chip-5); }
+  .chip[data-value="25"]{ background: var(--chip-25); }
+  .chip[data-value="50"]{ background: var(--chip-50); }
+  .chip[data-value="100"]{ background: var(--chip-100); }
+  .chip[data-value="500"]{ background: var(--chip-500); }
+  .chip.clearChip{ background: var(--chip-clear); font-size: .72rem; }
+
+  #pendingBetLine{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .betChipIcon{
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: #22303d;
+    border: 3px dashed rgba(255,255,255,.65);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 800; font-size: .85rem;
+    box-shadow: 0 3px 6px rgba(0,0,0,.45);
+  }
+  #dealBtn{
+    background: linear-gradient(#6bb8f2, #2f7dc2);
+    color: #fff;
+    border: 2px solid #15466e;
+    border-radius: 8px;
+    padding: 10px 34px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #dealBtn:hover:not(:disabled){ filter: brightness(1.08); }
+  #dealBtn:disabled{ opacity: .45; cursor: not-allowed; }
+
+  /* ---- Hand screen (shown during/after a dealt hand) ---- */
+  #handScreen{
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    flex: 1;
+    gap: 10px;
+  }
+  .handLabel{
+    color: #d7ecd9;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .handLabel .totalNum{
+    color: #fff;
+    font-size: 1.3rem;
+    margin-left: 6px;
+  }
+  #dealerArea{ text-align: center; }
+  #dealerCardRow{ display: flex; justify-content: center; min-height: 120.36px; position: relative; }
+
+  #centerArea{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 120px;
+    position: relative;
+  }
+  #actionButtons{ display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #actionButtons button{
+    background: linear-gradient(#a7e06a, #5fae33);
+    color: #163a0a;
+    border: 2px solid #2e5c16;
+    border-radius: 24px;
+    padding: 10px 22px;
+    font-weight: 800;
+    font-size: .95rem;
+    letter-spacing: .5px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #actionButtons button:hover{ filter: brightness(1.06); }
+  #actionButtons button.hidden{ display: none; }
+
+  #postHandControls{ display: none; gap: 12px; }
+  #postHandControls.show{ display: flex; }
+  #postHandControls button{
+    background: var(--green-btn); color: #fff;
+    border: 2px solid var(--board-border); border-radius: 8px;
+    padding: 9px 20px; cursor: pointer; font-weight: 700; font-family: inherit;
+  }
+  #postHandControls button:hover{ background: var(--green-btn-dark); }
+
+  #playerArea{ text-align: center; }
+  #handsRow{ display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; min-height: 120.36px; }
+
+  .handSlot{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 10px;
+  }
+  .handSlot.activeHand{
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+    background: rgba(255,255,255,.07);
+  }
+  .handSlot .cardRow{ display: flex; position: relative; }
+  .handSlot .cardRow .cardSlot:not(:first-child){ margin-left: -32px; }
+  .handSlot.compact .cardRow .cardSlot:not(:first-child){ margin-left: -46px; }
+  /* Result banner (You Win! / Dealer Wins! / Push! / BUST!) - centered
+     directly over the hand's own cards, both ways, per Perry's request. */
+  .bannerOverlay{
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 5;
+  }
+  /* Each split hand's own running count, shown under its cards - restored
+     per Perry's request for split hands specifically; a single (un-split)
+     hand still shows its total up in the shared Player label instead. */
+  .handCount{ color: #fff; font-weight: 800; font-size: .95rem; }
+  .handBadge{
+    font-size: .72rem;
+    font-weight: 800;
+    color: #fff;
+    background: rgba(0,0,0,.4);
+    border-radius: 4px;
+    padding: 1px 8px;
+    min-height: 1.4em;
+  }
+
+  /* ---- Playing cards - same visual family as Klondike - sized 20% larger
+     than the original 71.4px x 100.3px, per Perry's request ---- */
+  .cardSlot{
+    width: 85.68px; height: 120.36px;
+    border-radius: 6px;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    user-select: none;
+    position: relative;
+  }
+  .cardSlot img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
+  .cardSlot.cardback{
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+  }
+
+  /* Cards fly in from the right edge of the felt (per Perry's Development
+     Notes item 3), staggered per card - see dealTokenCounter in the
+     script, which decides which cards get this class on a given render(). */
+  @keyframes dealFromRight{
+    0%   { transform: translateX(260px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  .dealAnim{ animation: dealFromRight .35s ease-out both; }
+
+  /* Dealer hole-card reveal - a quick horizontal squash/unsquash while the
+     image src is swapped underneath at the midpoint (see revealDealerHole
+     in the script). A simplified stand-in for Klondike's true two-sided
+     3D flip - good enough for a single one-off reveal per hand. */
+  @keyframes flipRevealAnim{
+    0%   { transform: scaleX(1); }
+    50%  { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+  .flipReveal{ animation: flipRevealAnim .3s ease-in-out; }
+
+  /* ---- Result banners - ribbon shape via clip-path notches on both
+     ends, matching the mockup screenshots ---- */
+  .banner{
+    display: inline-block;
+    padding: 7px 22px;
+    font-weight: 800;
+    font-size: .95rem;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,.35);
+    box-shadow: 0 3px 8px rgba(0,0,0,.4);
+    clip-path: polygon(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%, 9% 50%);
+    white-space: nowrap;
+  }
+  .banner.dealerWins{ background: var(--banner-dealer); }
+  .banner.youWin{ background: var(--banner-win); }
+  .banner.push{ background: var(--banner-push); }
+  .banner.bust{ background: var(--banner-bust); }
+
+  /* ---- Blackjack medallion - CSS stand-in for the gold coin graphic in
+     the mockup, shown on a hand that won as a natural Blackjack ---- */
+  .medallion{
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff6cf, #e8c454 45%, #a67c1e 80%, #7a5a12 100%);
+    box-shadow: 0 0 10px 3px rgba(255,215,0,.6), inset 0 0 6px rgba(0,0,0,.35);
+    margin: 0 auto;
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the
+     Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: .85rem; }
+  .scores-table th, .scores-table td{ border: 1px solid var(--card-border); padding: 4px 8px; text-align: center; }
+  .scores-table th{ background: #e8e2c8; }
+  .scores-scroll{ max-height: 300px; overflow-y: auto; }
+
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; grid-column: 1 / -1; }
+  #universalModal .modalBox.optionsModal{ max-width: 520px; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">Blackjack</h1>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous sessions.">Recorded Scores</button>
+    <button id="optionsBtn" title="Customize the game.">Options</button>
+    <button id="cashOutBtn" title="Cash out and end this session.">Cash Out</button>
+    <button id="exitBtn" title="Exit the game. Your progress is saved so you can resume later.">Exit</button>
+
+    <div id="nameBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="bankLabel">Bank</label>
+      <div id="nameBoxBank">$<span id="bankAmount">1000</span></div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+
+    <div id="bettingScreen">
+      <div id="chipTray"></div>
+      <div id="pendingBetLine">
+        <div class="betChipIcon" id="pendingBetChip">$0</div>
+      </div>
+      <button id="dealBtn" disabled>DEAL</button>
+    </div>
+
+    <div id="handScreen">
+      <div id="dealerArea">
+        <div class="handLabel" id="dealerLabel">Dealer</div>
+        <div id="dealerCardRow"></div>
+      </div>
+
+      <div id="centerArea">
+        <div id="pendingBetLine2" style="display:flex; align-items:center; gap:12px;">
+          <div class="betChipIcon" id="activeBetChip">$0</div>
+        </div>
+        <div id="actionButtons">
+          <button id="hitBtn" onclick="onHit()">Hit</button>
+          <button id="standBtn" onclick="onStand()">Stand</button>
+          <button id="doubleBtn" onclick="onDouble()">Double Down</button>
+          <button id="splitBtn" onclick="onSplit()">Split</button>
+          <button id="surrenderBtn" onclick="onSurrender()">Surrender</button>
+        </div>
+        <div id="postHandControls">
+          <button id="nextHandBtn" onclick="startNextBettingRound()">Deal Next Hand</button>
+        </div>
+      </div>
+
+      <div id="playerArea">
+        <div class="handLabel" id="playerLabel">Player</div>
+        <div id="handsRow"></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (BlackjackScores) so Blackjack's Recorded Scores list is
+  // separate from every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'BlackjackScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     BLACKJACK - game engine
+     4-deck shoe, dealer hits soft 17, natural Blackjack pays 3:2,
+     Double Down (incl. after Split), Split up to 3 times (4 hands),
+     Aces split only once (one card each, no further action),
+     Surrender (first action only), Insurance/Even Money on a dealer
+     Ace upcard, and an immediate dealer peek against any Ace or
+     10-value upcard so a natural Blackjack never pays out before a
+     possible Push is confirmed. See BlackjackInstructions.html for
+     the player-facing rules this engine follows.
+     ============================================================ */
+
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RED_SUITS = ['♥','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `../cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
+
+  const CHIP_VALUES = [5, 25, 50, 100, 500];
+  const DECK_COUNT = 4;
+  const STARTING_BANKROLL = 1000;
+  // Reshuffle the whole 4-deck shoe once fewer than this many cards remain
+  // - per Perry's answer (75 cards), checked at the start of each new deal
+  // so a reshuffle never interrupts a hand already in progress.
+  const RESHUFFLE_THRESHOLD = 75;
+  const MAX_SPLIT_HANDS = 4; // original hand + 3 splits
+
+  const PLAYER_NAME_KEY = 'blackjackPlayerName_v1';
+  const BANKROLL_KEY = 'blackjackBankroll_v1';
+  const OPTIONS_KEY = 'blackjackOptions_v1';
+  const RESUME_KEY = 'blackjackResumeState_v1';
+
+  let state = {
+    bankroll: STARTING_BANKROLL,
+    handsPlayedThisSession: 0,
+    pendingBet: 0,
+    lastBet: 0,
+    shoe: [],
+    hands: [],
+    activeHandIndex: 0,
+    dealerCards: [],
+    dealerHoleRevealed: false,
+    totalSplitsThisRound: 0,
+    anyActionTaken: false,
+    phase: 'betting', // betting | playerTurn | dealerTurn | resolved
+    soundEnabled: true,
+    repeatLastBet: false,
+    provideInsurance: true
+  };
+
+  // ---- Card value helpers ----
+  function handValue(cards){
+    let total = 0, aces = 0;
+    cards.forEach(c => {
+      if(c.rank === 'A'){ total += 11; aces++; }
+      else if(c.rank === 'J' || c.rank === 'Q' || c.rank === 'K' || c.rank === '10'){ total += 10; }
+      else { total += parseInt(c.rank, 10); }
+    });
+    while(total > 21 && aces > 0){ total -= 10; aces--; }
+    return { total, soft: aces > 0 };
+  }
+  // Natural Blackjack: original two cards (not a split hand) totaling 21.
+  function isBlackjack(hand){
+    return hand.cards.length === 2 && !hand.fromSplit && handValue(hand.cards).total === 21;
+  }
+  function isTenValueCard(card){
+    return card.rank === '10' || card.rank === 'J' || card.rank === 'Q' || card.rank === 'K';
+  }
+
+  // ---- Shoe ----
+  function buildShoe(){
+    const shoe = [];
+    for(let d = 0; d < DECK_COUNT; d++){
+      for(const suit of SUIT_CHARS){
+        for(const rank of RANKS){
+          shoe.push({ rank, suit });
+        }
+      }
+    }
+    // Fisher-Yates shuffle
+    for(let i = shoe.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+    }
+    return shoe;
+  }
+  function shuffleNewShoe(){
+    state.shoe = buildShoe();
+  }
+
+  // Every card dealt is stamped with the current dealTokenCounter and its
+  // position within that batch - render() uses this to decide which cards
+  // just arrived (and should fly in from the right / play a sound) versus
+  // cards already on the table from an earlier action. Incrementing this
+  // BEFORE drawing a batch, then comparing against it at render time,
+  // means older cards automatically stop matching on every later render -
+  // no per-row bookkeeping needed.
+  let dealTokenCounter = 0;
+  function drawCard(seq){
+    if(state.shoe.length === 0) shuffleNewShoe();
+    const card = state.shoe.pop();
+    card._dealToken = dealTokenCounter;
+    card._dealSeq = seq || 0;
+    return card;
+  }
+
+  /* ---- Sound effects (Web Audio API - synthesized, no external audio
+     files, same approach as Klondike) ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(audioCtx.state === 'suspended'){ audioCtx.resume().catch(()=>{}); }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'push':
+        tone(440, now, 0.16, 'triangle', 0.16);
+        tone(440, now + 0.18, 0.16, 'triangle', 0.16);
+        break;
+      case 'lose':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+      case 'chip':
+        tone(880, now, 0.05, 'square', 0.08);
+        break;
+    }
+  }
+  // Same "paper snap" noise-burst technique as Klondike's playFlipSnap -
+  // used here both for a single card landing and, scheduled rapidly, for
+  // the shoe-reshuffle riffle sound.
+  function playFlipSnap(ctx, startTime){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < bufferSize; i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime);
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+  // One snap per card dealt (deal, hit, split, double, dealer draw) -
+  // matches "Use the Klondike sound of cards being flipped" (Development
+  // Notes item 3).
+  function scheduleDealSounds(count){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    for(let i = 0; i < count; i++){ playFlipSnap(ctx, now + i * 0.14); }
+  }
+  // A rapid riffle of ~18 snaps - the shoe being reshuffled, per Perry's
+  // "Create sound effects for shuffling cards" request.
+  function playShuffleSound(){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    for(let i = 0; i < 18; i++){ playFlipSnap(ctx, now + i * 0.045); }
+  }
+
+  // ---- Card / hand rendering ----
+  function cardHtml(card, faceDown, animClass){
+    // _dealAnimPlayed is a one-shot marker: render() rebuilds every card's
+    // HTML from scratch on every call (chip clicks, split-hand advances,
+    // starting the dealer's turn, etc.), and dealTokenCounter only changes
+    // when a NEW card is drawn - so without this flag, a card already on
+    // the table would replay its fly-in animation (and sound-free "jump")
+    // on every one of those later render() calls, not just the render()
+    // right after it was dealt. This was the "cards are dealt twice and
+    // move during playing" bug.
+    const animate = !faceDown && card._dealToken === dealTokenCounter && !card._dealAnimPlayed;
+    if(animate) card._dealAnimPlayed = true;
+    const cls = 'cardSlot' + (faceDown ? ' cardback' : '') + (animate ? ' ' + (animClass || 'dealAnim') : '');
+    const delay = animate ? (card._dealSeq || 0) * 0.14 : 0;
+    const style = animate ? ` style="animation-delay:${delay}s"` : '';
+    if(faceDown){
+      return `<div class="${cls}"${style}></div>`;
+    }
+    return `<div class="${cls}"${style}><img src="${cardImageSrc(card)}" alt="${card.rank}${card.suit}"></div>`;
+  }
+
+  // Player-side badges - a loss to the dealer (not a bust) no longer shows
+  // anything here at all; that result is announced once on the DEALER's
+  // own cards instead (see dealerBannerInfo below), per Perry's request.
+  function badgeForHand(hand){
+    const playerName = getPlayerDisplayName();
+    if(hand.result === 'surrender') return 'Surrendered';
+    if(hand.status === 'bust') return `${playerName} Busts`;
+    if(hand.isBlackjack && (hand.result === 'win' || hand.result === 'evenMoney')) return 'Black Jack!';
+    if(hand.result === 'win' || hand.result === 'evenMoney') return `${playerName} Wins!`;
+    if(hand.result === 'push') return 'Push!';
+    if(hand.doubled) return 'Doubled';
+    return '';
+  }
+  function bannerClassForHand(hand){
+    if(hand.status === 'bust') return 'bust';
+    if(hand.result === 'win' || hand.result === 'evenMoney') return 'youWin';
+    if(hand.result === 'push') return 'push';
+    return '';
+  }
+  // A single banner for the dealer's own cards, covering the outcome that
+  // belongs to the dealer's side: the dealer busting, or the dealer
+  // beating at least one hand outright (not a push, not a hand that had
+  // already busted or surrendered on its own). Only meaningful once the
+  // round is fully resolved.
+  function dealerBannerInfo(){
+    if(state.phase !== 'resolved') return null;
+    if(handValue(state.dealerCards).total > 21) return { text: 'Dealer Busts', cls: 'bust' };
+    if(state.hands.some(h => h.result === 'lose')) return { text: 'Dealer Wins!', cls: 'dealerWins' };
+    return null;
+  }
+
+  function renderHandSlot(hand, idx, isActive, compact){
+    const cardsHtml = hand.cards.map(c => cardHtml(c, false)).join('');
+    const showMedallion = hand.isBlackjack && (hand.result === 'win' || hand.result === 'evenMoney');
+    const badgeText = badgeForHand(hand);
+    const bannerCls = bannerClassForHand(hand);
+    // A result banner (<Name> Wins! / Push! / <Name> Busts) sits centered
+    // directly over the hand's own cards, both ways, per Perry's request -
+    // it's an absolutely-positioned overlay inside .cardRow rather than a
+    // block stacked below the cards. A non-banner badge (Doubled /
+    // Surrendered) isn't one of Perry's mockup ribbons, so it stays below
+    // the cards as plain text.
+    const bannerOverlayHtml = (badgeText && bannerCls) ? `<div class="bannerOverlay"><div class="banner ${bannerCls}">${badgeText}</div></div>` : '';
+    const plainBadgeHtml = (badgeText && !bannerCls) ? `<div class="handBadge">${badgeText}</div>` : '';
+    // Split hands (compact) each show their own count underneath their
+    // cards, since a shared total in the Player label wouldn't make sense
+    // once there's more than one hand in play.
+    const countHtml = compact ? `<div class="handCount">${handValue(hand.cards).total}</div>` : '';
+    return `
+      <div class="handSlot${isActive ? ' activeHand' : ''}${compact ? ' compact' : ''}">
+        <div class="cardRow">${cardsHtml}${bannerOverlayHtml}</div>
+        ${showMedallion ? '<div class="medallion"></div>' : ''}
+        ${countHtml}
+        ${plainBadgeHtml}
+      </div>`;
+  }
+
+  function render(){
+    document.getElementById('bankAmount').textContent = state.bankroll;
+    document.getElementById('playerNameInput').value = loadPlayerName();
+
+    const betting = state.phase === 'betting';
+    document.getElementById('bettingScreen').style.display = betting ? 'flex' : 'none';
+    document.getElementById('handScreen').style.display = betting ? 'none' : 'flex';
+
+    if(betting){
+      renderChipTray();
+      document.getElementById('pendingBetChip').textContent = state.pendingBet > 0 ? ('$' + state.pendingBet) : '$0';
+      document.getElementById('dealBtn').disabled = !(state.pendingBet > 0 && state.pendingBet <= state.bankroll);
+    } else {
+      // Dealer row
+      const dealerHtml = state.dealerCards.map((c, i) => {
+        if(i === 1 && !state.dealerHoleRevealed) return cardHtml(c, true);
+        return cardHtml(c, false, c._dealToken === dealTokenCounter && state._revealing ? 'flipReveal' : 'dealAnim');
+      }).join('');
+      const dealerBanner = dealerBannerInfo();
+      const dealerBannerHtml = dealerBanner ? `<div class="bannerOverlay"><div class="banner ${dealerBanner.cls}">${dealerBanner.text}</div></div>` : '';
+      document.getElementById('dealerCardRow').innerHTML = dealerHtml + dealerBannerHtml;
+      if(state.dealerHoleRevealed || state.dealerCards.length === 0){
+        const dv = handValue(state.dealerCards);
+        document.getElementById('dealerLabel').innerHTML = state.dealerCards.length
+          ? `Dealer <span class="totalNum">${dv.total}</span>` : 'Dealer';
+      } else {
+        // Hole card still hidden - show only the up-card's own value, not
+        // the (unknown-to-the-player) full total.
+        const upVal = handValue([state.dealerCards[0]]);
+        document.getElementById('dealerLabel').innerHTML = `Dealer <span class="totalNum">${upVal.total}</span>`;
+      }
+
+      // Bet display in the center area reflects the active hand's bet
+      // while a hand is in progress.
+      const activeHand = state.hands[state.activeHandIndex] || state.hands[0];
+      const betShown = activeHand ? activeHand.bet : state.lastBet;
+      document.getElementById('activeBetChip').textContent = '$' + betShown;
+
+      // Player hands row
+      const compact = state.hands.length > 1;
+      document.getElementById('handsRow').innerHTML = state.hands.map((h, i) =>
+        renderHandSlot(h, i, state.phase === 'playerTurn' && i === state.activeHandIndex, compact)
+      ).join('');
+      const totalsForLabel = state.hands.map(h => handValue(h.cards).total);
+      const playerName = getPlayerDisplayName();
+      document.getElementById('playerLabel').innerHTML = state.hands.length === 1
+        ? `${playerName} <span class="totalNum">${totalsForLabel[0]}</span>`
+        : playerName;
+
+      updateActionButtons();
+      const showPostHand = (state.phase === 'resolved');
+      document.getElementById('postHandControls').classList.toggle('show', showPostHand);
+      document.getElementById('actionButtons').style.display = (state.phase === 'playerTurn') ? 'flex' : 'none';
+    }
+
+    document.getElementById('cashOutBtn').disabled = (state.phase !== 'betting') || state.bankroll <= 0;
+  }
+
+  function renderChipTray(){
+    const tray = document.getElementById('chipTray');
+    let html = '';
+    CHIP_VALUES.forEach(v => {
+      const disabled = (state.pendingBet + v) > state.bankroll;
+      html += `<div class="chip${disabled ? ' disabled' : ''}" data-value="${v}" onclick="onChipClick(${v})">${v}</div>`;
+    });
+    html += `<div class="chip clearChip" onclick="onChipClear()">Clear</div>`;
+    tray.innerHTML = html;
+  }
+
+  function onChipClick(value){
+    if(state.pendingBet + value > state.bankroll) return;
+    state.pendingBet += value;
+    playSound('chip');
+    render();
+  }
+  function onChipClear(){
+    state.pendingBet = 0;
+    render();
+  }
+  document.getElementById('dealBtn').addEventListener('click', startHand);
+
+  // ---- Action-button legality ----
+  function computeLegalActions(hand){
+    const v = handValue(hand.cards);
+    const isFirstActionOfRound = (state.hands.length === 1 && hand.cards.length === 2 && !state.anyActionTaken);
+    return {
+      hit: hand.cards.length >= 2 && v.total < 21,
+      stand: true,
+      double: hand.cards.length === 2 && !hand.fromAceSplit && !hand.isBlackjack && state.bankroll >= hand.bet,
+      split: hand.cards.length === 2 && !hand.fromAceSplit
+        && hand.cards[0].rank === hand.cards[1].rank
+        && state.hands.length < MAX_SPLIT_HANDS
+        && state.bankroll >= hand.bet
+        && !(hand.cards[0].rank === 'A' && state.totalSplitsThisRound > 0 && hand.fromSplit), // aces split only once total
+      surrender: isFirstActionOfRound
+    };
+  }
+  function updateActionButtons(){
+    const hand = state.hands[state.activeHandIndex];
+    if(!hand){ return; }
+    const legal = computeLegalActions(hand);
+    document.getElementById('hitBtn').classList.toggle('hidden', !legal.hit);
+    document.getElementById('standBtn').classList.toggle('hidden', !legal.stand);
+    document.getElementById('doubleBtn').classList.toggle('hidden', !legal.double);
+    document.getElementById('splitBtn').classList.toggle('hidden', !legal.split);
+    document.getElementById('surrenderBtn').classList.toggle('hidden', !legal.surrender);
+  }
+
+  // ---- Starting a hand ----
+  function startHand(){
+    if(!(state.pendingBet > 0 && state.pendingBet <= state.bankroll)) return;
+    state.bankroll -= state.pendingBet;
+    state.lastBet = state.pendingBet;
+    persistBankroll();
+
+    if(state.shoe.length < RESHUFFLE_THRESHOLD){
+      shuffleNewShoe();
+      playShuffleSound();
+    }
+
+    state.hands = [{ cards: [], bet: state.pendingBet, status: 'active', fromSplit: false, fromAceSplit: false, doubled: false, isBlackjack: false, result: null, insurance: 0 }];
+    state.activeHandIndex = 0;
+    state.dealerCards = [];
+    state.dealerHoleRevealed = false;
+    state.totalSplitsThisRound = 0;
+    state.anyActionTaken = false;
+    state.phase = 'dealing';
+    state.handsPlayedThisSession++;
+    state.pendingBet = 0;
+
+    dealTokenCounter++;
+    const p1 = drawCard(0), d1 = drawCard(1), p2 = drawCard(2), d2 = drawCard(3);
+    state.hands[0].cards = [p1, p2];
+    state.dealerCards = [d1, d2];
+    state.hands[0].isBlackjack = isBlackjack(state.hands[0]);
+
+    render();
+    scheduleDealSounds(4);
+    setTimeout(afterInitialDeal, 4 * 140 + 350);
+  }
+
+  function afterInitialDeal(){
+    const upcard = state.dealerCards[0];
+    const hand = state.hands[0];
+
+    if(upcard.rank === 'A'){
+      if(hand.isBlackjack){
+        offerEvenMoney();
+      } else if(state.provideInsurance){
+        offerInsurance();
+      } else {
+        peekAndContinue();
+      }
+      return;
+    }
+    if(isTenValueCard(upcard)){
+      peekAndContinue();
+      return;
+    }
+    // Any other upcard - the dealer cannot have Blackjack.
+    if(hand.isBlackjack){
+      settleRoundWithPlayerBlackjackOnly();
+    } else {
+      beginPlayerTurn();
+    }
+  }
+
+  // Dealer checks the hole card immediately against an Ace or 10-value
+  // upcard (per the "upcard case" fix in BlackjackInstructions.html),
+  // before any player action, so a natural Blackjack is never paid out
+  // ahead of a possible Push.
+  function peekAndContinue(){
+    const dealerBJ = isBlackjack({ cards: state.dealerCards, fromSplit: false });
+    const hand = state.hands[0];
+    if(dealerBJ){
+      revealDealerHole(() => {
+        hand.result = hand.isBlackjack ? 'push' : 'lose';
+        hand.status = 'stood';
+        creditHandResult(hand);
+        finishRoundNoFurtherPlay();
+      });
+    } else if(hand.isBlackjack){
+      settleRoundWithPlayerBlackjackOnly();
+    } else {
+      beginPlayerTurn();
+    }
+  }
+  function settleRoundWithPlayerBlackjackOnly(){
+    const hand = state.hands[0];
+    hand.result = 'win';
+    creditHandResult(hand);
+    revealDealerHole(() => finishRoundNoFurtherPlay());
+  }
+
+  function offerEvenMoney(){
+    showModal('Even Money?', `
+      <p>You have a natural Blackjack and the dealer is showing an Ace.</p>
+      <p>Take Even Money now (a guaranteed 1:1 payout), or wait to see if the dealer also has Blackjack - in which case this hand pushes instead of winning 3:2?</p>
+    `, `
+      <button onclick="takeEvenMoney()">Take Even Money</button>
+      <button onclick="declineEvenMoney()">Wait and See</button>
+    `, false);
+  }
+  function takeEvenMoney(){
+    closeModal();
+    const hand = state.hands[0];
+    hand.result = 'evenMoney';
+    creditHandResult(hand);
+    revealDealerHole(() => finishRoundNoFurtherPlay());
+  }
+  function declineEvenMoney(){
+    closeModal();
+    peekAndContinue();
+  }
+
+  function offerInsurance(){
+    const insuranceAmount = Math.floor(state.hands[0].bet / 2);
+    showModal('Insurance?', `
+      <p>The dealer is showing an Ace. Insurance costs half your original bet ($${insuranceAmount}) and pays 2:1 if the dealer has Blackjack.</p>
+    `, `
+      <button onclick="takeInsurance(${insuranceAmount})">Take Insurance ($${insuranceAmount})</button>
+      <button onclick="declineInsurance()">No Insurance</button>
+    `, false);
+  }
+  function takeInsurance(amount){
+    closeModal();
+    if(amount > state.bankroll) amount = state.bankroll;
+    state.bankroll -= amount;
+    state.hands[0].insurance = amount;
+    persistBankroll();
+    resolveInsuranceThenContinue();
+  }
+  function declineInsurance(){
+    closeModal();
+    resolveInsuranceThenContinue();
+  }
+  function resolveInsuranceThenContinue(){
+    const dealerBJ = isBlackjack({ cards: state.dealerCards, fromSplit: false });
+    const hand = state.hands[0];
+    if(dealerBJ && hand.insurance > 0){
+      state.bankroll += hand.insurance * 3; // 2:1 payout + original insurance wager back
+      persistBankroll();
+    }
+    if(dealerBJ){
+      revealDealerHole(() => {
+        hand.result = hand.isBlackjack ? 'push' : 'lose';
+        hand.status = 'stood';
+        creditHandResult(hand);
+        finishRoundNoFurtherPlay();
+      });
+    } else {
+      beginPlayerTurn();
+    }
+  }
+
+  function beginPlayerTurn(){
+    state.phase = 'playerTurn';
+    state.activeHandIndex = 0;
+    render();
+  }
+
+  // ---- Player actions ----
+  function onHit(){
+    const hand = state.hands[state.activeHandIndex];
+    state.anyActionTaken = true;
+    dealTokenCounter++;
+    hand.cards.push(drawCard(0));
+    scheduleDealSounds(1);
+    const v = handValue(hand.cards);
+    if(v.total > 21){
+      hand.status = 'bust';
+      render();
+      setTimeout(advanceAfterHandAction, 500);
+    } else if(v.total === 21){
+      hand.status = 'stood';
+      render();
+      setTimeout(advanceAfterHandAction, 500);
+    } else {
+      render();
+    }
+  }
+  function onStand(){
+    state.anyActionTaken = true;
+    state.hands[state.activeHandIndex].status = 'stood';
+    render();
+    advanceAfterHandAction();
+  }
+  function onDouble(){
+    const hand = state.hands[state.activeHandIndex];
+    if(state.bankroll < hand.bet) return;
+    state.anyActionTaken = true;
+    state.bankroll -= hand.bet;
+    hand.bet *= 2;
+    hand.doubled = true;
+    persistBankroll();
+    dealTokenCounter++;
+    hand.cards.push(drawCard(0));
+    scheduleDealSounds(1);
+    const v = handValue(hand.cards);
+    hand.status = (v.total > 21) ? 'bust' : 'stood';
+    render();
+    setTimeout(advanceAfterHandAction, 500);
+  }
+  function onSplit(){
+    const hand = state.hands[state.activeHandIndex];
+    if(state.bankroll < hand.bet) return;
+    state.anyActionTaken = true;
+    state.bankroll -= hand.bet;
+    persistBankroll();
+    state.totalSplitsThisRound++;
+
+    const isAceSplit = hand.cards[0].rank === 'A';
+    const newHandA = { cards: [hand.cards[0]], bet: hand.bet, status: 'active', fromSplit: true, fromAceSplit: isAceSplit, doubled: false, isBlackjack: false, result: null, insurance: 0 };
+    const newHandB = { cards: [hand.cards[1]], bet: hand.bet, status: 'active', fromSplit: true, fromAceSplit: isAceSplit, doubled: false, isBlackjack: false, result: null, insurance: 0 };
+    state.hands.splice(state.activeHandIndex, 1, newHandA, newHandB);
+
+    dealTokenCounter++;
+    newHandA.cards.push(drawCard(0));
+    newHandB.cards.push(drawCard(1));
+    scheduleDealSounds(2);
+
+    // Each split Ace receives exactly one additional card and then stands
+    // automatically - no further action on that hand.
+    if(isAceSplit){
+      newHandA.status = 'stood';
+      newHandB.status = 'stood';
+    }
+    render();
+    if(isAceSplit){
+      setTimeout(advanceAfterHandAction, 500);
+    }
+  }
+  function onSurrender(){
+    const hand = state.hands[state.activeHandIndex];
+    hand.result = 'surrender';
+    hand.status = 'stood';
+    state.bankroll += Math.floor(hand.bet / 2);
+    persistBankroll();
+    render();
+    setTimeout(finishRoundNoFurtherPlay, 400);
+  }
+
+  function advanceAfterHandAction(){
+    const nextIdx = state.hands.findIndex(h => h.status === 'active');
+    if(nextIdx === -1){
+      beginDealerTurn();
+    } else {
+      state.activeHandIndex = nextIdx;
+      render();
+    }
+  }
+
+  // ---- Dealer's turn ----
+  function beginDealerTurn(){
+    state.phase = 'dealerTurn';
+    render();
+    revealDealerHole(() => {
+      const anyLiveHand = state.hands.some(h => h.status === 'stood' || h.status === 'doubled');
+      if(anyLiveHand){
+        setTimeout(dealerPlayStep, 500);
+      } else {
+        setTimeout(resolveHands, 400);
+      }
+    });
+  }
+  function revealDealerHole(callback){
+    const hole = state.dealerCards[1];
+    dealTokenCounter++;
+    hole._dealToken = dealTokenCounter;
+    state._revealing = true;
+    state.dealerHoleRevealed = true;
+    render();
+    state._revealing = false;
+    const ctx = getAudioCtx();
+    if(ctx && state.soundEnabled) playFlipSnap(ctx, ctx.currentTime);
+    setTimeout(callback, 400);
+  }
+  function dealerPlayStep(){
+    const v = handValue(state.dealerCards);
+    if(v.total < 17 || (v.total === 17 && v.soft)){
+      dealTokenCounter++;
+      state.dealerCards.push(drawCard(0));
+      render();
+      scheduleDealSounds(1);
+      setTimeout(dealerPlayStep, 650);
+    } else {
+      setTimeout(resolveHands, 400);
+    }
+  }
+
+  // ---- Resolution ----
+  function creditHandResult(hand){
+    if(hand.result === 'win'){ state.bankroll += hand.isBlackjack ? Math.round(hand.bet * 2.5) : hand.bet * 2; }
+    else if(hand.result === 'evenMoney'){ state.bankroll += hand.bet * 2; }
+    else if(hand.result === 'push'){ state.bankroll += hand.bet; }
+    // 'lose' and already-settled 'surrender' credit nothing further here.
+    persistBankroll();
+  }
+  function resolveHands(){
+    const dealerBust = handValue(state.dealerCards).total > 21;
+    const dealerTotal = handValue(state.dealerCards).total;
+    state.hands.forEach(hand => {
+      if(hand.result) return; // already settled (naturals / surrender / even money)
+      if(hand.status === 'bust'){ hand.result = 'lose'; return; }
+      const pTotal = handValue(hand.cards).total;
+      if(dealerBust || pTotal > dealerTotal){ hand.result = 'win'; }
+      else if(pTotal === dealerTotal){ hand.result = 'push'; }
+      else { hand.result = 'lose'; }
+      creditHandResult(hand);
+    });
+    finishRoundNoFurtherPlay();
+  }
+  function finishRoundNoFurtherPlay(){
+    state.phase = 'resolved';
+    const anyWin = state.hands.some(h => h.result === 'win' || h.result === 'evenMoney');
+    const anyPush = state.hands.some(h => h.result === 'push');
+    const anyLose = state.hands.some(h => h.result === 'lose');
+    if(anyWin) playSound('win');
+    else if(anyLose && !anyPush) playSound('lose');
+    else if(anyPush) playSound('push');
+    render();
+    if(state.bankroll <= 0){
+      setTimeout(showGameOverModal, 600);
+    }
+  }
+
+  // ---- Next hand / betting round ----
+  function startNextBettingRound(){
+    state.phase = 'betting';
+    state.pendingBet = state.repeatLastBet ? Math.min(state.lastBet, state.bankroll) : 0;
+    render();
+  }
+
+  // ---- Recorded Scores ----
+  function loadPlayerName(){
+    try { return localStorage.getItem(PLAYER_NAME_KEY) || ''; } catch(e){ return ''; }
+  }
+  // Used wherever the UI would otherwise just say "Player" (the Player
+  // hand label, Recorded Scores) - falls back to "Player 1" when the Name
+  // field is empty, same fallback the other Game Hub games use.
+  function getPlayerDisplayName(){
+    const el = document.getElementById('playerNameInput');
+    return ((el && el.value) || 'Player 1').trim() || 'Player 1';
+  }
+  function recordScore(){
+    const name = getPlayerDisplayName();
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, bank: state.bankroll, bets: state.handsPlayedThisSession,
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+
+  function showGameOverModal(){
+    recordScore();
+    showModal('Game Over', `<p>You're out of chips!</p><p>Final Bank: <strong>$0</strong></p>`, `
+      <button onclick="closeModal(); resetBankrollAndContinue();">Play Again</button>
+      <button onclick="location.href='../index.html';">Exit to Menu</button>
+    `, false);
+  }
+  function resetBankrollAndContinue(){
+    state.bankroll = STARTING_BANKROLL;
+    state.handsPlayedThisSession = 0;
+    state.lastBet = 0;
+    persistBankroll();
+    startNextBettingRound();
+  }
+
+  document.getElementById('cashOutBtn').addEventListener('click', () => {
+    if(state.phase !== 'betting' || state.bankroll <= 0) return;
+    showModal('Cash Out?', `<p>Cash out with <strong>$${state.bankroll}</strong>? This ends your current session.</p>`, `
+      <button onclick="doCashOut()">Yes, Cash Out</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  function doCashOut(){
+    closeModal();
+    const amount = state.bankroll;
+    recordScore();
+    showModal('Cashed Out', `<p>You cashed out with <strong>$${amount}</strong>. Thanks for playing!</p>`, `
+      <button onclick="closeModal(); resetBankrollAndContinue();">Play Again</button>
+      <button onclick="location.href='../index.html';">Exit to Menu</button>
+    `, false);
+  }
+
+  // ---- Exit (saves progress, including a hand in progress, so it can be
+  // resumed the next time Blackjack.html loads - see saveResumeState /
+  // tryRestoreResumeState in the Startup section below) ----
+  document.getElementById('exitBtn').addEventListener('click', () => {
+    showModal('Exit Blackjack?', `<p>Your progress will be saved, including a hand in progress, so you can resume right where you left off next time.</p>`, `
+      <button onclick="confirmExitAndSave()">Yes, Exit</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  function confirmExitAndSave(){
+    closeModal();
+    saveResumeState();
+    location.href='../index.html';
+  }
+
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  const MAX_RECORDED_SCORES = 30;
+  function formatScoreRow(entry, number){
+    return `<tr><td>${number}</td><td>${entry.name}</td><td>$${entry.bank}</td><td>${entry.bets}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let listHtml;
+    if(sharedScores === null){
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        listHtml = `<p>No scores recorded yet. Cash out a session to add one!</p>`;
+      } else {
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
+          <tr><th>Number</th><th>Name</th><th>Bank</th><th>Bets</th><th>Date</th></tr>
+          ${list.map((entry,i) => formatScoreRow(entry, i+1)).join('')}
+        </table></div>`;
+      }
+    }
+    showModal('Recorded Scores', listHtml, `<button onclick="closeModal()">OK</button>`, true);
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  // ---- Options ----
+  document.getElementById('optionsBtn').addEventListener('click', () => {
+    showModal('Options', `
+      <div class="options-grid">
+        <div class="options-question">Sound</div>
+        <label for="soundOnRadio">On</label>
+        <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled ? 'checked' : ''}>
+        <label for="soundOffRadio">Off</label>
+        <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled ? 'checked' : ''}>
+
+        <div class="options-question">Repeat Last Bet</div>
+        <label for="repeatYesRadio">Yes</label>
+        <input type="radio" id="repeatYesRadio" name="repeatSetting" ${state.repeatLastBet ? 'checked' : ''}>
+        <label for="repeatNoRadio">No</label>
+        <input type="radio" id="repeatNoRadio" name="repeatSetting" ${!state.repeatLastBet ? 'checked' : ''}>
+
+        <div class="options-question">Provide Insurance</div>
+        <label for="insuranceYesRadio">Yes</label>
+        <input type="radio" id="insuranceYesRadio" name="insuranceSetting" ${state.provideInsurance ? 'checked' : ''}>
+        <label for="insuranceNoRadio">No</label>
+        <input type="radio" id="insuranceNoRadio" name="insuranceSetting" ${!state.provideInsurance ? 'checked' : ''}>
+      </div>
+    `, `
+      <button onclick="saveOptions()">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, true, 'optionsModal');
+  });
+  function saveOptions(){
+    state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    state.repeatLastBet = document.getElementById('repeatYesRadio').checked;
+    state.provideInsurance = document.getElementById('insuranceYesRadio').checked;
+    closeModal();
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({
+        soundEnabled: state.soundEnabled, repeatLastBet: state.repeatLastBet, provideInsurance: state.provideInsurance
+      }));
+    } catch(e) {}
+  }
+
+  document.getElementById('playerNameInput').addEventListener('change', (e) => {
+    const newName = e.target.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  document.getElementById('instructionsBtn').addEventListener('click', () => {
+    saveResumeState();
+    window.location.href = '../BlackjackInstructions.html';
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalTitle').style.color = '';
+    document.getElementById('modalTitle').classList.remove('win-blink');
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+  }
+  document.getElementById('universalModal').addEventListener('click', (e) => {
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Persistence ---- */
+  function persistBankroll(){
+    try {
+      localStorage.setItem(BANKROLL_KEY, JSON.stringify({
+        bankroll: state.bankroll, handsPlayedThisSession: state.handsPlayedThisSession, lastBet: state.lastBet
+      }));
+    } catch(e) {}
+  }
+  function loadPersistedBankroll(){
+    try {
+      const saved = JSON.parse(localStorage.getItem(BANKROLL_KEY));
+      if(saved && typeof saved.bankroll === 'number'){
+        state.bankroll = saved.bankroll;
+        state.handsPlayedThisSession = saved.handsPlayedThisSession || 0;
+        state.lastBet = saved.lastBet || 0;
+      }
+    } catch(e) {}
+  }
+  function loadOptions(){
+    try {
+      const saved = JSON.parse(localStorage.getItem(OPTIONS_KEY));
+      if(saved){
+        if(typeof saved.soundEnabled === 'boolean') state.soundEnabled = saved.soundEnabled;
+        if(typeof saved.repeatLastBet === 'boolean') state.repeatLastBet = saved.repeatLastBet;
+        if(typeof saved.provideInsurance === 'boolean') state.provideInsurance = saved.provideInsurance;
+      }
+    } catch(e) {}
+  }
+
+  // Resume mid-hand state (sessionStorage) - survives a trip to
+  // Instructions and back, same pattern as Klondike.
+  function saveResumeState(){
+    try { sessionStorage.setItem(RESUME_KEY, JSON.stringify(state)); } catch(e) {}
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      if(state.phase === 'dealerTurn'){
+        render();
+        setTimeout(dealerPlayStep, 500);
+      } else {
+        render();
+      }
+      return true;
+    } catch(e) { return false; }
+  }
+
+  /* ---- Exit / back-button trap - same pattern as Klondike's Exit ---- */
+  function confirmExit(){
+    showModal('Exit Blackjack', 'Are you sure you want to exit? Your bank balance is saved automatically.', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  }
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    confirmExit();
+  });
+
+  /* ---- Startup ---- */
+  loadPersistedBankroll();
+  loadOptions();
+  // Always check sessionStorage for a saved game, not just when arriving
+  // back from Instructions with ?resume=1 - Exit saves progress too, and
+  // Exit goes back to the Game Hub menu, not to a URL we control, so there's
+  // no query param to gate on for that path. This is safe because nothing
+  // ever writes RESUME_KEY except a deliberate Instructions or Exit click
+  // (see saveResumeState) - a failed/declined restore always clears it
+  // below, so stale state never lingers to be picked up by accident.
+  const restored = tryRestoreResumeState();
+  if(!restored){
+    clearResumeState();
+    shuffleNewShoe();
+    state.phase = 'betting';
+    state.pendingBet = state.repeatLastBet ? Math.min(state.lastBet, state.bankroll) : 0;
+    render();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 6;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
