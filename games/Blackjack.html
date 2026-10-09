@@ -1,5 +1,5 @@
 
-<!-- Revision 8 | Thursday, October 08, 2026 -->
+<!-- Revision 9 | Thursday, October 08, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -459,7 +459,7 @@
 
   .options-grid{
     display: grid;
-    grid-template-columns: auto auto auto auto;
+    grid-template-columns: auto auto auto auto auto;
     row-gap: 14px;
     column-gap: 12px;
     align-items: center;
@@ -467,8 +467,13 @@
     margin-top: 10px;
   }
   .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
-  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; grid-column: 1 / -1; }
-  #universalModal .modalBox.optionsModal{ max-width: 520px; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+
+  /* Options modal only - widened from the shared modal's 560px max-width to
+     fit each question's label on the same row as its On/Off (or Yes/No)
+     radio pair, matching the layout used across the rest of the Game Hub
+     (e.g. SolYukon). */
+  #universalModal .modalBox.optionsModal{ max-width: 704px; }
 </style>
 </head>
 <body>
@@ -1404,7 +1409,14 @@
     if(sharedScores === null){
       listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
     } else {
-      const list = [...sharedScores].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, MAX_RECORDED_SCORES);
+      // Ranked highest Bank first; ties broken by lowest Bets (fewer bets to
+      // reach that bank is the better result); any remaining tie broken by
+      // newest Date.
+      const list = [...sharedScores].sort((a,b) => {
+        if(b.bank !== a.bank) return b.bank - a.bank;
+        if(a.bets !== b.bets) return a.bets - b.bets;
+        return new Date(b.date) - new Date(a.date);
+      }).slice(0, MAX_RECORDED_SCORES);
       if(list.length === 0){
         listHtml = `<p>No scores recorded yet. Cash out a session to add one!</p>`;
       } else {
@@ -1609,7 +1621,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 8;
+  const PAGE_REVISION = 9;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
