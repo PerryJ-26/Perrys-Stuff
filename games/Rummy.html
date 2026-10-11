@@ -1,5 +1,5 @@
 
-<!-- Revision 21 | Saturday, October 10, 2026 -->
+<!-- Revision 22 | Saturday, October 10, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -422,31 +422,6 @@
   }
   #discardPile{ position:relative; } /* Revision 12, point 5: lets the incoming card (below) overlay the outgoing one instead of the pile briefly having nothing to show */
   #discardPile .discardIncoming{ position:absolute; top:0; left:0; }
-
-  #stockChoiceBar{
-    display:none;
-    gap:8px;
-    flex-wrap:wrap;
-    justify-content:center;
-    align-items:center;
-    background: var(--cream-panel);
-    border: 2px solid var(--cream-panel-border);
-    border-radius: 10px;
-    padding: 6px 10px;
-    flex-shrink:0;
-  }
-  #stockChoiceBar button{
-    background: #fff;
-    color: var(--ink-primary);
-    border: 2px solid var(--board-frame);
-    border-radius: 6px;
-    padding: 6px 12px;
-    cursor:pointer;
-    font-weight:700;
-    font-size:.82rem;
-  }
-  #stockChoiceBar button:hover{ background:#f2f6fa; }
-  #stockChoiceBar button:disabled{ opacity:.35; cursor:not-allowed; }
 
   /* ---------- Melds on the table ---------- */
   #meldsArea{
@@ -922,10 +897,6 @@
       </div>
       <div id="meldPreview"></div>
     </div>
-    <div id="stockChoiceBar">
-      <button onclick="onChooseDrawDiscard()">Draw Discard Top</button>
-      <button id="reshuffleBtn" onclick="onChooseReshuffle()">Reshuffle Discard Into New Stock</button>
-    </div>
   </div>
   <!-- end #felt -->
 
@@ -952,6 +923,12 @@
       <div id="actionBar">
         <button id="meldLayOffBtn" onclick="toggleMeldMode()" disabled>Meld or<br>Lay Off</button>
         <button id="cancelMeldBtn" onclick="cancelMeldMode()" style="display:none;">Cancel Meld</button>
+        <!-- Revision 22: the old in-felt #stockChoiceBar (removed) was mostly
+             clipped away by #felt's fixed 226px height + overflow:hidden -
+             this "Draw Discard Top" button is its replacement, placed here
+             next to Reshuffle where it's guaranteed to actually be visible,
+             the same way Reshuffle already was. -->
+        <button id="sideDrawDiscardBtn" onclick="onChooseDrawDiscard()" style="display:none;">Draw<br>Discard Top</button>
         <button id="sideReshuffleBtn" onclick="onChooseReshuffle()" style="display:none;">Reshuffle</button>
       </div>
     </div>
@@ -2449,7 +2426,6 @@ function renderSouthHand(){
 function renderCenterPiles(){
   const stockCountEl = document.getElementById('stockCount');
   const discardEl = document.getElementById('discardPile');
-  const choiceBar = document.getElementById('stockChoiceBar');
   stockCountEl.textContent = state.stock.length;
   const topDiscard = state.discard[state.discard.length-1];
   const topDiscardId = topDiscard ? topDiscard.id : null;
@@ -2499,16 +2475,14 @@ function renderCenterPiles(){
     _lastDiscardTopId = topDiscardId;
   }
 
+  // Revision 22: the stock-choice-pending buttons (Draw Discard Top /
+  // Reshuffle) live in #actionBar now, next to Meld/Lay Off - see
+  // renderActionButtons() - not here. The pile areas themselves stay
+  // non-clickable while that choice is pending either way.
   const isHumanDraw = state.turnSeat === 'S' && state.phase === 'draw' && !state.actionLock;
-  const showChoice = isHumanDraw && state.stockChoicePending;
 
   document.getElementById('stockPileArea').classList.toggle('disabled-pile', !(isHumanDraw && !state.stockChoicePending && state.stock.length>0));
   document.getElementById('discardPileArea').classList.toggle('disabled-pile', !(isHumanDraw && !state.stockChoicePending && topDiscard));
-
-  choiceBar.style.display = showChoice ? 'flex' : 'none';
-  if(showChoice){
-    document.getElementById('reshuffleBtn').disabled = state.discard.length < 2;
-  }
 }
 
 // Melds are shown as compact text pills (suit+rank pairs), not full card
@@ -2552,12 +2526,21 @@ function renderActionButtons(){
   cancelBtn.style.display = showCancel ? '' : 'none';
   cancelBtn.disabled = !showCancel;
 
-  // Reshuffle button next to Meld/Lay Off - shown only while it's your
-  // draw and the stock-pile-empty choice is pending (Revision 5, point 2).
+  // Draw Discard Top / Reshuffle buttons next to Meld/Lay Off - shown only
+  // while it's your draw and the stock-pile-empty choice is pending
+  // (Revision 5, point 2; Revision 22: Draw Discard Top added here too -
+  // it used to live in its own #stockChoiceBar inside #felt, but #felt's
+  // fixed height + overflow:hidden was clipping that bar almost entirely
+  // out of view, leaving no visible way to choose Draw Discard Top even
+  // though Reshuffle happened to still be reachable from here).
+  const showStockChoice = state.turnSeat === 'S' && state.phase === 'draw' && state.stockChoicePending && !state.actionLock;
+  const drawDiscardBtn2 = document.getElementById('sideDrawDiscardBtn');
+  drawDiscardBtn2.style.display = showStockChoice ? '' : 'none';
+  drawDiscardBtn2.disabled = !showStockChoice;
+
   const reshuffleBtn2 = document.getElementById('sideReshuffleBtn');
-  const showReshuffle = state.turnSeat === 'S' && state.phase === 'draw' && state.stockChoicePending && !state.actionLock;
-  reshuffleBtn2.style.display = showReshuffle ? '' : 'none';
-  reshuffleBtn2.disabled = !showReshuffle || state.discard.length < 2;
+  reshuffleBtn2.style.display = showStockChoice ? '' : 'none';
+  reshuffleBtn2.disabled = !showStockChoice || state.discard.length < 2;
 }
 
 function highlightActiveSeat(seat){
@@ -2950,7 +2933,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 21;
+  const PAGE_REVISION = 22;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
