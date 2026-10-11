@@ -1,0 +1,316 @@
+
+<!-- Revision 5 | Saturday, October 10, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standard Rummy Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .example-box p + p {
+    margin-top: 10px;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="games/Rummy.html">Back to Standard Rummy</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Standard Rummy Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>The history of Rummy is rooted in Conquian, a card game that originated in Mexico. Conquian is a two-player game that was played first with Spanish cards and later with French-suited playing cards. Some sources place its emergence in the 17th century, and its basic rules resemble those of modern Rummy. The game later traveled north to the United States. In 1909, Elwood Baker of New York, a member of the Knickerbocker Whist Club, established a version of Rummy that became associated with Gin Rummy.</p>
+
+      <h2>Overview</h2>
+      <p>The objective of each round is to be the first player to get rid of all your cards. Players do this by forming sets of three or four cards of the same rank or runs of three or more consecutive cards in the same suit. The winner of each round scores points based on the cards remaining in the other players&rsquo; hands. Rounds continue until a player reaches a cumulative score of 300 and wins the game.</p>
+
+      <h2>Players</h2>
+      <p>The game has four players: one human player and three AI-controlled players. Each player competes individually; there are no partnerships.</p>
+      <p class="note">Note: In this game, West is Eve, North is Kevin, East is Jim, and South is You.</p>
+
+      <h2>Cards</h2>
+      <p>The game uses one standard 52-card deck. Cards rank from Ace low to King high, and Aces are worth 1 point. An Ace may appear only below a 2 in a run; it may not follow a King.</p>
+      <p>The game is played by clicking on the cards and your hand can be rearranged by using the Drag and Drop method.</p>
+
+      <h2>The Deal</h2>
+      <p>The dealer is selected randomly for the first round. Each player receives 7 cards dealt face down, one card at a time. After every completed round, the player to the left of the previous dealer becomes the new dealer. Continue rotating the deal clockwise until the game ends.</p>
+
+      <h2 class="print-page-break">Game Play</h2>
+      <!-- <h2>Game Play</h2>  -->
+      <p>After dealing, place the remaining cards face down to form the stock pile. Turn the top card of the stock pile face up beside it to begin the discard pile. The player to the left of the dealer takes the first turn. Play then continues clockwise until the round ends.</p>
+
+      <p>Players perform the following actions when it is their turn:</p>
+      <ol>
+        <li><strong>Draw:</strong> The player must begin the turn by taking exactly one card: either the top face-down card of the stock pile or the top face-up card of the discard pile. A card drawn from the stock pile is visible only to the player who drew it. A card taken from the discard pile remains known to all players. No card below the top card of either pile may be selected.</li>
+        <li><strong>Meld (optional):</strong> A player may place one or more legal melds face up on the table. A set consists of three or four cards of the same rank. A run consists of three or more consecutive cards of the same suit. A player may keep a completed meld in hand for strategic reasons instead of playing it immediately.</li>
+        <li><strong>Lay Off (optional):</strong> After playing at least one meld of their own - including one played earlier in the same turn - a player may add any number of cards from their hand to legal melds already on the table, including their own. Each added card must leave the affected meld as a valid set or run. Cards already in a meld may not be removed or rearranged to create a new meld. A player is never required to lay off a card.</li>
+        <li><strong>Discard:</strong> The player ends his or her turn by discarding one card face up to the discard pile. If the player drew the card at the top of the discard pile at the beginning of the turn, they are not allowed to discard that same card on the same turn (except when it is the only card in their hand), but they can on subsequent turns if desired. Once the discard is done then the turn is over and the player cannot meld or lay off any additional cards until it is the player&rsquo;s next turn.</li>
+      </ol>
+
+      <h3>Stock Exhaustion</h3>
+      <div class="example-box">
+        <p>If the last card of the stock pile has been drawn and no player has gone out, the next player may draw the top card of the discard pile. If that player instead chooses to draw from the stock pile, leave the top card of the discard pile face up, shuffle all remaining discarded cards, and place them face down to create a new stock pile. The player then draws the top card of the new stock pile, and play continues normally.</p>
+        <p>If the stock and discard piles are too depleted to support a draw, the round is considered &ldquo;blocked&rdquo; and the round ends with no scoring. The deal is passed to the next dealer and the game resumes.</p>
+      </div>
+      <br>
+      <h2>End of Round</h2>
+      <p>A player wins the round by going out. To go out, the player must dispose of every card except one by forming melds or laying cards off, then discard the final card to end the turn. A player may not go out by placing all remaining cards into melds without making a final discard.</p>
+      <p>Once a player has gone out then the round is over and other players may not meld or lay off cards even if they have valid combinations in their hand.</p>
+      <p>If there are three reshuffles and no meld or lay-off has been played, the round is considered &ldquo;blocked&rdquo; and the round ends with no scoring.</p>
+      <h2>Scoring</h2>
+      <p>When a player goes out, the other players total the point values of the cards remaining in their hands. Cards have the following point values:</p>
+      <ul>
+        <li>Aces = 1</li>
+        <li>Face Cards = 10</li>
+        <li>Others = Face Value</li>
+      </ul>
+      <p>Add those totals together and award the combined amount to the player who went out. Continue playing rounds until a player reaches or exceeds a cumulative score of 300; that player wins the game.</p>
+      <p>A player goes &ldquo;Rummy&rdquo; by going out without having played any melds during an earlier turn. The player plays all eligible cards from their hand in melds or as lay-offs and discards the final card. Going Rummy doubles the points awarded for that round.</p>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 5;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
