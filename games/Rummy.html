@@ -1,5 +1,5 @@
 
-<!-- Revision 22 | Saturday, October 10, 2026 -->
+<!-- Revision 23 | Sunday, October 11, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1101,6 +1101,7 @@ function createInitialState(){
     viewAllCards: false,
     spacebarPauseEnabled: false,
     soundEnabled: true,
+    statusBarEnabled: true,
     paused: false,
 
     // Revision 20, point 2: counts consecutive reshuffles (the stock pile
@@ -1122,6 +1123,7 @@ try {
     if(typeof savedOptions.viewAllCards === 'boolean') state.viewAllCards = savedOptions.viewAllCards;
     if(typeof savedOptions.spacebarPauseEnabled === 'boolean') state.spacebarPauseEnabled = savedOptions.spacebarPauseEnabled;
     if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+    if(typeof savedOptions.statusBarEnabled === 'boolean') state.statusBarEnabled = savedOptions.statusBarEnabled;
   }
 } catch(e) { /* ignore */ }
 
@@ -2305,6 +2307,9 @@ function render(){
   updateScoreTable();
   updateSessionWinsDisplay();
 
+  const statusBoxEl = document.getElementById('statusBox');
+  if(statusBoxEl) statusBoxEl.style.display = state.statusBarEnabled ? '' : 'none';
+
   const dealerSeat = SEATS[state.dealerIdx];
   SEATS.forEach(seat=>{
     const tagHtml = (seat === dealerSeat) ? `<span class="tag">Dealer</span>` : '';
@@ -2800,6 +2805,10 @@ document.getElementById('optionsBtn').addEventListener('click', ()=>{
 
       <p style="grid-column: 1 / -1; font-size:1.045rem; font-weight:600; text-align:center; text-decoration: underline; margin: 7px 0;">These Options are Provided for Learning Purposes</p>
 
+      <div class="options-question">Status/Directions Bar</div>
+      <span class="opt-pair"><label for="statusBarOnRadio">On</label><input type="radio" id="statusBarOnRadio" name="statusBarSetting" ${state.statusBarEnabled ? 'checked' : ''}></span>
+      <span class="opt-pair"><label for="statusBarOffRadio">Off</label><input type="radio" id="statusBarOffRadio" name="statusBarSetting" ${!state.statusBarEnabled ? 'checked' : ''}></span>
+
       <div class="options-question">View All Cards</div>
       <span class="opt-pair"><label for="viewAllOnRadio">On</label><input type="radio" id="viewAllOnRadio" name="viewAllSetting" ${state.viewAllCards ? 'checked' : ''}></span>
       <span class="opt-pair"><label for="viewAllOffRadio">Off</label><input type="radio" id="viewAllOffRadio" name="viewAllSetting" ${!state.viewAllCards ? 'checked' : ''}></span>
@@ -2829,11 +2838,13 @@ document.getElementById('yourNameInput').addEventListener('change', ()=>{
 
 function saveOptions(){
   state.soundEnabled = document.getElementById('soundOnRadio').checked;
+  state.statusBarEnabled = document.getElementById('statusBarOnRadio').checked;
   state.viewAllCards = document.getElementById('viewAllOnRadio').checked;
   state.spacebarPauseEnabled = document.getElementById('spacebarOnRadio').checked;
   try {
     localStorage.setItem(GAME_OPTIONS_KEY, JSON.stringify({
       soundEnabled: state.soundEnabled,
+      statusBarEnabled: state.statusBarEnabled,
       viewAllCards: state.viewAllCards,
       spacebarPauseEnabled: state.spacebarPauseEnabled
     }));
@@ -2933,7 +2944,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 22;
+  const PAGE_REVISION = 23;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
