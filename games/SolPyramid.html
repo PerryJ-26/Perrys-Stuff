@@ -1,5 +1,5 @@
 
-<!-- Revision 29 | Tuesday, September 29, 2026 -->
+<!-- Revision 30 | Thursday, October 15, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -44,16 +44,18 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* Centers the whole button-column + felt group as one unit within the
-     page, both horizontally and vertically - same technique as Klondike. */
+  /* Anchors the whole button-column + felt group to the BOTTOM of the
+     page (not centered), so the bottom of the button column - the
+     Name/Score box - lines up with the felt's own bottom edge, same
+     pattern as Yukon. */
   body {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
   }
   #gameLayout {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 24px;
     padding: 10px;
   }
@@ -411,7 +413,6 @@
     <h1 id="pageTitle">Pyramid</h1>
     <button id="newGameBtn" title="Start a new game with a fresh shuffle.">New Game</button>
     <button id="restartBtn" title="Restart the current game.">Restart</button>
-    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
     <button id="undoBtn" title="Undo the last move.">Undo</button>
     <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
     <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
@@ -1269,7 +1270,7 @@
   }
   document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
 
-  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  /* ---- New Game / Restart / Undo / Exit ---- */
   document.getElementById('newGameBtn').addEventListener('click', ()=>{
     if(!gameEverStarted){ dealNewGame(true); return; }
     showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
@@ -1284,12 +1285,6 @@
     `, false);
   });
   document.getElementById('undoBtn').addEventListener('click', undoLastMove);
-  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
-    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
-      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
-      <button onclick="closeModal()">Cancel</button>
-    `, false);
-  });
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
     saveResumeState();
     window.location.href = '../SolPyramidInstruc.html';
@@ -1401,7 +1396,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 29;
+  const PAGE_REVISION = 30;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
