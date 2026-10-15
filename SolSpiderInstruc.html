@@ -1,0 +1,337 @@
+
+<!-- Revision 1 | Wednesday, October 14, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spider Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .example-box p + p {
+    margin-top: 10px;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Spider layout diagram - centered, scales down on narrow screens,
+     never grows past its own natural size */
+  .layout-image {
+    display: block;
+    max-width: 100%;
+    width: 423px;
+    height: auto;
+    margin: 0 auto 16px;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="games/SolSpider.html?resume=1">Back to Spider</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Spider Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>Spider Solitaire is one of the most popular single player card games of the digital age. While solitaire itself has been played for centuries, Spider is a more recent addition. First mentioned in the early 1900s and later made famous by Microsoft Windows, Spider Solitaire has become a favorite for players around the world, and it is easy to see why.</p>
+      <p>Spider Solitaire was first recorded in the 20th century. Some sources trace it to a 1917 book written by the famous American bridge expert Ely Culbertson, titled <em>Culbertson&rsquo;s Card Game Complete with Official Rules</em>. While it&rsquo;s unclear if Culbertson created the game himself, his book provides the earliest solid evidence of Spider&rsquo;s existence.</p>
+
+      <h2>Overview</h2>
+      <p>The objective of Spider Solitaire is to arrange all 104 cards into descending, same-suit sequences from King to Ace. Each completed sequence is removed from the tableau and placed in the foundation. You win when all eight sequences have been removed and no cards remain in the tableau or stock.</p>
+
+      <h2>Players</h2>
+      <p>Spider is a single-player game.</p>
+
+      <h2>Cards</h2>
+      <p>Spider Solitaire is played with two full decks, 104 cards.</p>
+      <p>Cards can be moved to the best legal spot by clicking them or using drag and drop.</p>
+
+      <h2>Setup</h2>
+      <p>The cards are dealt facedown into 10 columns in the tableau. The first 4 columns have 6 cards each, the other 6 columns have 5 cards each. The top card of each column is turned faceup; the others are facedown. The remaining 50 cards are placed in a stock pile at the top of the screen.</p>
+
+      <img class="layout-image" src="images/SolSpiderLayout.jpg" alt="Spider board layout: Stock pile at top left, Foundation piles across the top, ten Tableau columns below">
+
+      <h2>Tableau</h2>
+      <p>You may move a faceup card onto another faceup card that is exactly one rank higher, regardless of suit.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> You may move the 7 of clubs onto any 8, including the 8 of clubs, hearts, diamonds, or spades.</p>
+      </div>
+
+      <p>You may place cards on higher-ranked cards of any suit, but only same-suit sequences can be moved together or removed from the tableau. Mixed-suit stacks can still be useful for uncovering facedown cards or creating temporary space, but they do not count as completed sequences.</p>
+      <p>You may move multiple faceup cards together only when they form an unbroken descending sequence in the same suit and no cards are stacked on top of that sequence.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Suppose a column contains the 8, 7, and 6 of clubs in descending order, with the 6 on top. You may select the 8 and move all three cards together onto any 9. If the sequence is the 8 of clubs, 7 of hearts, and 6 of diamonds instead, the cards do not form a same-suit sequence, so you may move only the exposed 6.</p>
+      </div>
+
+      <p>If a column is empty, then any card or partial run is allowed to be moved onto it.</p>
+      <p>A full run does not have to be the only thing on a column to be removed.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> A column might have three facedown cards and then a full run from King to Ace in the same suit, and then the run would automatically go to the foundation, and the three facedown cards would remain.</p>
+      </div>
+
+      <p>Whenever a move uncovers a facedown card at the top of a column, that card is turned faceup and becomes available for play.</p>
+
+      <h2>The Stock</h2>
+      <p>When there are no more moves that can be made in the tableau, you can click on the stock in the upper left corner. That will move 10 cards from the stock onto the tableau, one card onto each column. It is required that there is at least one card in each column when the stock is clicked. If there is an empty column on the tableau, you must first move one or more cards onto it before you can click on the stock. If there are fewer than ten cards in play, you can no longer have at least a single card per column and thus cannot add cards from the stock.</p>
+
+      <h2>The Foundation</h2>
+      <p>When you complete a same-suit sequence from King to Ace in the tableau, the sequence can be removed and placed in the foundation.</p>
+
+      <h2>Game Over</h2>
+      <p>The game ends when all eight completed sequences are in the foundation.</p>
+
+      <h2>Scoring</h2>
+      <p>You start with 500 points. For each move you make, one point gets subtracted. For each run you remove from the tableau, you&rsquo;ll get 100 extra points.</p>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> If you&rsquo;ve managed to make three full runs in 70 moves, you&rsquo;ll have<br>(500-70) + (3*100) = 730 points.</p>
+      </div>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 1;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
