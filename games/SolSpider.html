@@ -1,0 +1,1662 @@
+
+<!-- Revision 7 | Thursday, October 15, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spider - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - reused verbatim from Yukon (Dev Note 3: "Use all of the Yukon colors") ===== */
+  :root {
+    --board-green: #3f9142;
+    --board-green-dark: #327638;
+    --board-border: #111111;
+    --page-bg: #dfe7f0;
+    --card-bg: #fffdf8;
+    --card-border: #b7b7b7;
+    --ink: #1b1b1b;
+    --red: #b3261e;
+
+    --cream: #fffdf5;
+    --cream-border: #222;
+
+    --green-btn: #2f7d3a;
+    --green-btn-dark: #235c2b;
+
+    --cardback-1: #d6394a;
+    --cardback-2: #ffffff;
+    --cardback-border: #7a1c26;
+
+    --shadow-soft: rgba(255,255,255,.55);
+    --shadow-medium: rgba(0,0,0,.4);
+    --shadow-strong: rgba(0,0,0,.6);
+
+    --drop-target-color: #57e389;
+    --hint-color: #ffd43b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--page-bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  /* Revised margin: about .25in (24px) above AND below the felt (originally
+     .375in per Dev Note 4, tightened by Perry to free up more room for the
+     Tableau) - same technique Yukon uses (reserved as <html> padding,
+     outside the bottom-anchored flex content, so it's never swallowed by
+     that content's own overflow-clipping once a tall tableau pushes past
+     the window). */
+  html {
+    height: 100vh;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+  body {
+    height: 100%;
+  }
+
+  /* Dev Note 6: center the felt and the Action buttons on the page - anchored
+     to the bottom of the page the same way Yukon is, so the felt's own
+     bottom edge is never the part that runs short of room first. */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  #gameLayout {
+    display: flex;
+    align-items: flex-end;
+    gap: 24px;
+    padding: 0 10px;
+  }
+
+  .revBadge {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    z-index: 9999;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  /* ---- Left-side action button stack (Dev Note 2: New Game, Restart, Undo,
+     Instructions, Recorded Scores, Options, Exit - no Select a Game, no
+     Autoplay) ---- */
+  #buttonGroup{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 168px;
+    flex-shrink: 0;
+  }
+  #pageTitle{
+    margin: 0 0 10px;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #1e3a22;
+    text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+  }
+  #buttonGroup button{
+    background: var(--cream);
+    color: var(--ink);
+    border: 2px solid var(--board-border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  #buttonGroup button:hover{ background: #fff; }
+
+  #nameScoreBox{
+    margin-top: 10px;
+    background: var(--shadow-soft);
+    border: 2px solid #000000;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: .8rem;
+  }
+  #nameScoreBox label{
+    display: block;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  #nameScoreBox input{
+    width: 100%;
+    box-sizing: border-box;
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid #000;
+    font-family: inherit;
+    font-size: .8rem;
+    background: var(--cream);
+    color: #000;
+    margin-bottom: 8px;
+  }
+  #scoreDisplay{
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e3a22;
+    text-align: center;
+  }
+  .scoreLabel{ text-align: center; }
+
+  /* ---- Felt / board ----
+     Revised margins (originally Dev Notes 5, 7, 8, 9): wide enough for 10
+     Tableau columns; the Foundation/Stock row now about .125in from the
+     felt's own top edge (tightened from .25in); the Tableau now starting
+     about .25in below that row (tightened from .5in) and still ending
+     about .5in above the felt's own bottom edge (unchanged). Like Yukon,
+     the felt is a fixed height from the moment the game starts (Dev Note
+     8) and never grows - and, same as Yukon, that fixed height is tuned to
+     Perry's own actual browser window (measured via window.innerHeight:
+     549px, the same window Yukon was tuned to) so the whole page - header,
+     buttons, Stock/Foundation row, and Tableau - fits with no page-level
+     scrollbar and nothing clipped by the html/body overflow:hidden above.
+     Budget: 549px window - 48px reserved as <html> padding (24px top +
+     24px bottom, revised margin above) = 501px available for #table-wrap;
+     see .tableau-scroll below for how that height divides up. Width is
+     fixed the same way Yukon's is, since a 10-column grid needs a fixed
+     column template:
+     20px padding + 10 x 71.4px cards + 9 x 12px gaps (822px) + 20px padding
+     + 4px border each side = 870px. */
+  #table-wrap{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--board-green);
+    border: 4px solid var(--board-border);
+    border-radius: 14px;
+    padding: 12px 20px 48px 20px;
+    margin: 0;
+    width: 870px;
+    box-sizing: border-box;
+  }
+  /* Stock pile (slot 1) + one blank spot (slot 2) + 8 Foundation piles
+     (slots 3-10) - Dev Note 9's alignment requirement (Stock lines up with
+     Tableau column 1 and with the Foundation row) falls out for free by
+     giving this row the exact same 10-column grid template as the Tableau
+     below it. */
+  .top-row{
+    display: grid;
+    grid-template-columns: repeat(10, 71.4px);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .blank-spot{
+    width: 71.4px;
+    height: 100.3px;
+  }
+  .pile{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.55);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,.65);
+    font-size: 1.87rem;
+    font-weight: 800;
+    cursor: pointer;
+    position: relative;
+  }
+  /* The Tableau sits inside a fixed-height window from the moment the game
+     starts - it is "height", not "max-height", so the felt is already at
+     its full size on the very first deal instead of growing as columns
+     fill in (Dev Note 8). Unlike Yukon, Spider's Tableau has no cap on how
+     deep a single column can get (repeated Stock deals keep adding cards
+     all game long - Dev Note/Q&A point 8: "No cap"), so there is no fixed
+     height that can guarantee a column will never need to scroll. This
+     height is instead the largest one that still fits #table-wrap's 501px
+     budget (see the #table-wrap comment above): 433px of inner content -
+     100.3px top-row - 24px margin-bottom = 308.7px, minus 4px of safety
+     margin the same way Yukon's felt keeps a few spare px = 304.7px. That
+     comfortably covers the entire initial deal (the deepest starting
+     column, 6 cards, is only ~157px tall) with plenty of room to spare
+     into the game; only once a column grows past that does a small
+     scrollbar appear INSIDE the felt for that pane alone - the page itself
+     never scrolls or clips, since #table-wrap's own height never changes. */
+  .tableau-scroll{
+    height: 304.7px;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .tableau-row{
+    display: grid;
+    grid-template-columns: repeat(10, 71.4px);
+    gap: 12px;
+  }
+  .tableau-col{
+    position: relative;
+    min-height: 100.3px;
+  }
+  .tableau-col .empty-slot{
+    width: 71.4px; height: 100.3px;
+    border: 2px dashed rgba(255,255,255,.35);
+    border-radius: 6px;
+  }
+  .cardWrap{ position: relative; perspective: 700px; touch-action: none; }
+  .tableau-col .cardWrap.faceDown:not(:first-child){ margin-top: -90.3px; }
+  .tableau-col .cardWrap.faceUp:not(:first-child){ margin-top: -83.3px; }
+
+  /* ---- Dramatic reveal animation (reused verbatim from Yukon's .flip3d) ---- */
+  .flip3d{
+    width: 71.4px; height: 100.3px;
+    position: relative;
+    transform-style: preserve-3d;
+    transform-origin: left center;
+    animation: flip3dRotate 0.3s ease-out both;
+  }
+  @keyframes flip3dRotate{
+    0%   { transform: translateX(0) rotateY(0deg); }
+    100% { transform: translateX(100%) rotateY(180deg); }
+  }
+  .flip3d-face{
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .flip3d-face.flip3d-back{
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .flip3d-face.flip3d-front{
+    transform: rotateY(180deg);
+  }
+  .flip3d-face.flip3d-front .card{
+    width: 100%;
+    height: 100%;
+  }
+
+  @keyframes foundationLand{
+    0%   { transform: scale(1.9) rotate(-12deg); box-shadow: 0 0 0 6px #fff, 0 0 30px 12px rgba(255,215,0,.9); }
+    55%  { transform: scale(0.9) rotate(4deg); box-shadow: 0 0 0 3px #fff, 0 0 16px 6px rgba(255,215,0,.55); }
+    100% { transform: scale(1) rotate(0deg); box-shadow: 1px 2px 3px var(--shadow-medium); }
+  }
+  .foundation-anim{ animation: foundationLand 0.55s cubic-bezier(.34,1.56,.64,1); }
+
+  /* ---- Drag and drop (same Pointer-Events technique as Yukon) ---- */
+  .dragGhost{
+    position: fixed;
+    top: 0; left: 0;
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0.92;
+    filter: drop-shadow(2px 4px 6px var(--shadow-strong));
+  }
+  .dragSourceHidden{ opacity: 0.35; }
+  .dropTargetValid{
+    outline: 3px solid var(--drop-target-color);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Hint: after 8 seconds with no move, glow the next legal move -
+     a different color (gold) from the green drag-and-drop drop-target
+     outline above, so the two are never confused. Applied to the source
+     card(s) (.hintCard) and, for a Tableau destination, the target column
+     itself (.hintTarget); a Stock-only hint just glows the Stock pile. */
+  @keyframes hintPulse{
+    0%, 100% { box-shadow: 0 0 0 3px var(--hint-color), 0 0 14px 6px rgba(255,212,59,.85); }
+    50%      { box-shadow: 0 0 0 3px var(--hint-color), 0 0 22px 10px rgba(255,212,59,.35); }
+  }
+  .hintCard{
+    border-radius: 6px;
+    animation: hintPulse 1s ease-in-out infinite;
+  }
+  .hintTarget{
+    outline: 3px solid var(--hint-color);
+    outline-offset: 3px;
+    border-radius: 6px;
+    animation: hintPulse 1s ease-in-out infinite;
+  }
+
+  /* ---- Troubleshooting log (same pattern used across the Game Hub) ---- */
+  #diagLogToggleBtn{
+    position: fixed;
+    bottom: 0; left: 0;
+    width: 44px; height: 44px;
+    padding: 0; margin: 0; border: none;
+    background: transparent;
+    opacity: 0;
+    cursor: default;
+    z-index: 600;
+  }
+  #diagLogPanel{
+    display: none;
+    position: fixed;
+    bottom: 10px; left: 10px;
+    width: 320px;
+    max-height: 520px;
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    z-index: 550;
+    box-shadow: 0 4px 20px var(--shadow-strong);
+  }
+  #diagLogPanel.show{ display: flex; flex-direction: column; }
+  #diagLogPanelTitle{
+    font-weight: 800;
+    font-size: .9rem;
+    margin-bottom: 6px;
+    flex: 0 0 auto;
+  }
+  #diagLog{
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    line-height: 1.45;
+    max-height: 460px;
+    width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
+    background: var(--cream);
+    color: var(--ink);
+    padding: 0;
+  }
+
+  /* ---- Playing cards (face-up / face-down) ---- */
+  .card{
+    width: 71.4px; height: 100.3px;
+    border-radius: 6px;
+    box-shadow: 1px 2px 3px var(--shadow-medium);
+    user-select: none;
+  }
+  .card-face-img{
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    -webkit-user-drag: none;
+  }
+  .cardback{
+    width: 71.4px; height: 100.3px;
+    background-color: var(--cardback-1);
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 4px, var(--cardback-2) 4px 8px),
+      repeating-linear-gradient(-45deg, transparent 0 4px, var(--cardback-2) 4px 8px);
+    border: 1px solid var(--cardback-border);
+    border-radius: 6px;
+  }
+  .card.clickable, .cardback.clickable, .flip3d.clickable{ cursor: pointer; }
+  .card.clickable:hover{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+  .flip3d.clickable:hover .flip3d-front .card{
+    box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--board-border), 1px 2px 3px var(--shadow-medium);
+  }
+
+  /* ---- Generic universalModal system (same pattern used across the Game Hub) ---- */
+  #universalModal{
+    display:none;
+    position:fixed; inset:0;
+    background: transparent;
+    z-index:100;
+  }
+  #universalModal .modalBox{
+    position: fixed;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+    background: var(--cream);
+    color: var(--ink);
+    border: 3px solid var(--board-border);
+    border-radius: 12px;
+    padding: 22px;
+    max-width: 560px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
+  @keyframes blink-win{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+  .win-blink{ animation: blink-win 1s step-start infinite; }
+  #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
+  #universalModal .modalBtns{ display:flex; gap:10px; justify-content:center; margin-top:16px; flex-wrap: wrap; }
+  #universalModal button{
+    background: var(--green-btn); color: #fff;
+    border:2px solid var(--board-border); border-radius:6px;
+    padding:8px 16px; cursor:pointer; font-weight:600;
+    font-family: inherit;
+  }
+  #universalModal button:hover{ background: var(--green-btn-dark); }
+
+  .scores-table{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: .85rem;
+  }
+  .scores-table th, .scores-table td{
+    border: 1px solid var(--card-border);
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .scores-table th{ background: #e8e2c8; }
+
+  .options-grid{
+    display: grid;
+    grid-template-columns: auto auto auto auto auto;
+    row-gap: 14px;
+    column-gap: 12px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 10px;
+  }
+  .options-grid label{ font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .options-grid .options-question{ font-weight: 600; white-space: nowrap; text-align: left; }
+
+  #universalModal .modalBox.optionsModal{ max-width: 704px; }
+
+  #universalModal .modalBox.scoresModal{ max-width: 680px; max-height: 500px; }
+  .scores-scroll{ max-height: 300px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+  <div class="revBadge" id="revBadge"></div>
+
+  <div id="gameLayout">
+  <div id="buttonGroup">
+    <h1 id="pageTitle">Spider</h1>
+    <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
+    <button id="restartBtn" title="Restart the current game.">Restart</button>
+    <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
+    <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
+    <button id="optionsBtn" title="Customize the game.">Options</button>
+    <button id="exitBtn" title="Quit the game.">Exit</button>
+
+    <div id="nameScoreBox">
+      <label for="playerNameInput">Name</label>
+      <input type="text" id="playerNameInput" maxlength="16" placeholder="Player 1">
+      <label class="scoreLabel">Points</label>
+      <div id="scoreDisplay" title="The current points total.">0</div>
+    </div>
+  </div>
+
+  <div id="table-wrap">
+    <div class="top-row" id="topRow">
+      <div class="pile" id="stockPile" onclick="onStockClick()" title="Click to deal 10 more cards, one onto each column."></div>
+      <div class="blank-spot"></div>
+      <div class="pile" id="foundation-0"></div>
+      <div class="pile" id="foundation-1"></div>
+      <div class="pile" id="foundation-2"></div>
+      <div class="pile" id="foundation-3"></div>
+      <div class="pile" id="foundation-4"></div>
+      <div class="pile" id="foundation-5"></div>
+      <div class="pile" id="foundation-6"></div>
+      <div class="pile" id="foundation-7"></div>
+    </div>
+    <div class="tableau-scroll" id="tableauScroll">
+      <div class="tableau-row" id="tableauArea">
+        <div class="tableau-col" id="tableau-0"></div>
+        <div class="tableau-col" id="tableau-1"></div>
+        <div class="tableau-col" id="tableau-2"></div>
+        <div class="tableau-col" id="tableau-3"></div>
+        <div class="tableau-col" id="tableau-4"></div>
+        <div class="tableau-col" id="tableau-5"></div>
+        <div class="tableau-col" id="tableau-6"></div>
+        <div class="tableau-col" id="tableau-7"></div>
+        <div class="tableau-col" id="tableau-8"></div>
+        <div class="tableau-col" id="tableau-9"></div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <div id="universalModal">
+    <div class="modalBox">
+      <h2 id="modalTitle">Title</h2>
+      <div class="modalBody" id="modalBody">Body</div>
+      <div class="modalBtns" id="modalBtns"></div>
+    </div>
+  </div>
+
+  <button id="diagLogToggleBtn" aria-label="Toggle troubleshooting log"></button>
+  <div id="diagLogPanel">
+    <div id="diagLogPanelTitle">Troubleshooting Log</div>
+    <textarea id="diagLog" readonly></textarea>
+  </div>
+
+<script type="module">
+  // Firebase Realtime Database - same project as the rest of the Game Hub,
+  // its own path (SolSpiderScores) so Spider's leaderboard is separate from
+  // every other game's.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAJLWtpWR8VYmRYLa3kBD9lh2JO_-hFAEc",
+    authDomain: "perrys-stuff.firebaseapp.com",
+    databaseURL: "https://perrys-stuff-default-rtdb.firebaseio.com",
+    projectId: "perrys-stuff",
+    storageBucket: "perrys-stuff.firebasestorage.app",
+    messagingSenderId: "604958963124",
+    appId: "1:604958963124:web:d02aca2cdb29915b306ee1"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const scoresRef = ref(db, 'SolSpiderScores');
+
+  window.pushSharedScore = function(entry){
+    return push(scoresRef, entry).catch(err => console.error('pushSharedScore error', err));
+  };
+  onValue(scoresRef, (snapshot) => {
+    const val = snapshot.val() || {};
+    const list = Object.keys(val).map(key => ({ id: key, ...val[key] }));
+    if (window.onSharedScoresUpdate) window.onSharedScoresUpdate(list);
+  }, (err) => console.error('onValue(scoresRef) error', err));
+</script>
+
+<script>
+  /* ============================================================
+     SPIDER SOLITAIRE - game engine
+     Two full 52-card decks (104 cards). 10 Tableau columns: the first 4
+     start with 6 cards, the other 6 start with 5 - all dealt face down,
+     then the exposed (last) card of each column is flipped face up. The
+     remaining 50 cards sit in the Stock, dealt 10 at a time (one per
+     column) on demand.
+     A face-up card may be placed on another face-up card exactly one rank
+     higher, regardless of suit. Several face-up cards can move together
+     only when they already form an unbroken same-suit descending run with
+     nothing stacked past the end of it - see movableRunStart() below.
+     Move interaction: one click sends the clicked card (and every card
+     below it, if that span is itself a valid run) to the first legal
+     column found scanning left to right - see handleTableauCardClick().
+     Completing a same-suit King-to-Ace run anywhere removes it to the
+     Foundation automatically - see foundationSweep() - there is no manual
+     "send to Foundation" action and nothing ever comes back off it.
+     ============================================================ */
+
+  const SUIT_CHARS = ['♠','♥','♣','♦'];
+  const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const RANK_VALUE = {}; RANKS.forEach((r,i)=> RANK_VALUE[r] = i+1);
+  const SUIT_FILE_CODE = { '♠':'S', '♥':'H', '♣':'C', '♦':'D' };
+  const RANK_FILE_CODE = { 'A':'A','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9','10':'T','J':'J','Q':'Q','K':'K' };
+  function cardImageSrc(card){
+    return `../cards/${RANK_FILE_CODE[card.rank]}${SUIT_FILE_CODE[card.suit]}.svg`;
+  }
+
+  const PLAYER_NAME_KEY = 'solSpiderPlayerName_v1';
+  const RESUME_KEY = 'solSpiderResumeState_v1';
+  const OPTIONS_KEY = 'solSpiderOptions_v1';
+
+  const COL_COUNT = 10;
+  const FOUNDATION_SLOTS = 8;
+  const TABLEAU_INITIAL_COUNTS = [6,6,6,6,5,5,5,5,5,5]; // 54 cards total
+
+  // ---- Troubleshooting log (double-click the hidden corner button) ----
+  const DIAGNOSTIC_LOG_MAX = 200;
+  function debugLog(msg){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    const t = new Date();
+    const stamp = [t.getHours(), t.getMinutes(), t.getSeconds()].map(n => String(n).padStart(2,'0')).join(':');
+    const lines = el.value ? el.value.split('\n') : [];
+    lines.push(`[${stamp}] ${msg}`);
+    while(lines.length > DIAGNOSTIC_LOG_MAX) lines.shift();
+    el.value = lines.join('\n');
+    fitDiagLogHeight();
+    el.scrollTop = el.scrollHeight;
+  }
+  function fitDiagLogHeight(){
+    const el = document.getElementById('diagLog');
+    if(!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function makeDeck(){
+    // Two full decks - Spider plays with 104 cards.
+    const deck = [];
+    for(let d=0; d<2; d++){
+      SUIT_CHARS.forEach(suit => RANKS.forEach(rank => deck.push({ suit, rank })));
+    }
+    return deck;
+  }
+  function shuffle(deck){
+    const d = [...deck];
+    for(let i=d.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [d[i],d[j]] = [d[j],d[i]];
+    }
+    return d;
+  }
+
+  const state = {
+    tableau: Array.from({length:COL_COUNT}, ()=>[]),
+    stock: [],
+    foundationPiles: [], // { suit } entries, one per completed run, in the order they were completed
+    soundEnabled: true,
+    moves: 0,
+    startTime: 0,        // used only to compute the Time column for Recorded Scores - never shown live (Dev discussion point 9)
+    dealOrder: null,
+    gameActive: true,
+    undoStack: []
+  };
+
+  const animFlags = {
+    flipCols: [],              // ordered list of tableau column indexes that just turned face up - sets the 0.3s stagger
+    newFoundationIndexes: new Set() // foundation slot indexes that just received a completed run
+  };
+
+  /* ---- Sound effects (Web Audio API - synthesized, reused verbatim from Yukon) ---- */
+  let audioCtx = null;
+  function getAudioCtx(){
+    if(!audioCtx){
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(audioCtx.state === 'suspended'){
+      audioCtx.resume().catch(()=>{});
+    }
+    return audioCtx;
+  }
+  function tone(freq, startTime, duration, waveType, peakGain){
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = waveType || 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(peakGain != null ? peakGain : 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + duration + 0.03);
+  }
+  function playSound(effect){
+    if(!state.soundEnabled) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    switch(effect){
+      case 'move':
+        tone(320, now, 0.09, 'triangle', 0.14);
+        break;
+      case 'foundation':
+        tone(659, now, 0.11, 'sine', 0.16);
+        tone(988, now + 0.08, 0.16, 'sine', 0.16);
+        break;
+      case 'win':
+        tone(523, now, 0.14, 'sine', 0.18);
+        tone(659, now + 0.13, 0.14, 'sine', 0.18);
+        tone(784, now + 0.26, 0.14, 'sine', 0.18);
+        tone(1047, now + 0.39, 0.30, 'sine', 0.20);
+        break;
+      case 'stuck':
+        tone(300, now, 0.18, 'sawtooth', 0.14);
+        tone(200, now + 0.16, 0.30, 'sawtooth', 0.14);
+        break;
+    }
+  }
+  function playFlipSnap(ctx, startTime){
+    const duration = 0.05;
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i=0;i<bufferSize;i++){
+      const decay = Math.pow(1 - i / bufferSize, 2.2);
+      data[i] = (Math.random() * 2 - 1) * decay;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    const bandpass = ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.setValueAtTime(2400, startTime);
+    bandpass.Q.setValueAtTime(0.8, startTime);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+    noise.connect(bandpass);
+    bandpass.connect(gain);
+    gain.connect(ctx.destination);
+    noise.start(startTime);
+    noise.stop(startTime + duration + 0.01);
+  }
+  function scheduleFlipSounds(count, baseDelay){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime + (baseDelay || 0);
+    for(let i=0;i<count;i++){
+      playFlipSnap(ctx, now + i * 0.3);
+    }
+  }
+
+  const DEAL_FLIGHT_MS = 472.2, DEAL_STAGGER_MS = 50.4;
+  const STOCK_FLIGHT_MS = 350, STOCK_STAGGER_MS = 90;
+
+  /* Generic "fly a batch of already-rendered elements in from one point"
+     animation - used both for the initial deal (origin: below the felt)
+     and for a Stock deal (origin: the Stock pile itself). FLIP technique:
+     render() has already built the correct final DOM: this only changes
+     how the elements arrive, never what ends up shown. */
+  function flyInFromPoint(elements, originX, originY, staggerMs, flightMs, onAllDone){
+    if(elements.length === 0){ if(onAllDone) onAllDone(); return; }
+    const tableWrap = document.getElementById('table-wrap');
+    const prevOverflow = tableWrap.style.overflow;
+    tableWrap.style.overflow = 'visible';
+    elements.forEach((el)=>{
+      const r = el.getBoundingClientRect();
+      const dx = originX - (r.left + r.width/2);
+      const dy = originY - (r.top + r.height/2);
+      el.style.transition = 'none';
+      el.style.opacity = '0';
+      el.style.transform = `translate(${dx}px, ${dy}px) scale(0.8)`;
+    });
+    elements.forEach((el, i)=>{
+      setTimeout(()=>{
+        void el.offsetWidth;
+        el.style.transition = `transform ${flightMs}ms cubic-bezier(.22,.85,.4,1), opacity 180ms ease`;
+        requestAnimationFrame(()=>{
+          el.style.opacity = '1';
+          el.style.transform = 'translate(0,0) scale(1)';
+        });
+      }, i*staggerMs);
+    });
+    const totalMs = (elements.length-1)*staggerMs + flightMs + 60;
+    setTimeout(()=>{
+      tableWrap.style.overflow = prevOverflow;
+      elements.forEach(el=>{ el.style.transition=''; el.style.opacity=''; el.style.transform=''; });
+      if(onAllDone) onAllDone();
+    }, totalMs);
+  }
+
+  /* ---- Initial deal: back-and-forth zig-zag round robin, ALL 54 cards
+     dealt face down (Dev Note 10) - every column's own exposed (last) card
+     is only flipped face up afterward, once every card has landed. */
+  function buildTableauDealOrder(){
+    const pointers = new Array(COL_COUNT).fill(0);
+    const order = [];
+    let active = TABLEAU_INITIAL_COUNTS.map((c,i)=>i);
+    let dir = 1;
+    while(active.length){
+      const seq = dir === 1 ? active.slice() : active.slice().reverse();
+      for(const c of seq){
+        if(pointers[c] < TABLEAU_INITIAL_COUNTS[c]){
+          order.push(c);
+          pointers[c]++;
+        }
+      }
+      active = active.filter(c => pointers[c] < TABLEAU_INITIAL_COUNTS[c]);
+      dir *= -1;
+    }
+    return order; // 54 column indexes, in deal order
+  }
+
+  function animateInitialDealFlyIn(dealSeq, onAllDone){
+    const pointers = new Array(COL_COUNT).fill(0);
+    const elements = [];
+    dealSeq.forEach((col)=>{
+      const occ = pointers[col]++;
+      const colEl = document.getElementById('tableau-' + col);
+      elements.push(colEl.children[occ]);
+    });
+    const tableWrap = document.getElementById('table-wrap');
+    const wrapRect = tableWrap.getBoundingClientRect();
+    const originX = wrapRect.left + wrapRect.width / 2;
+    const originY = wrapRect.bottom + 40;
+
+    if(state.soundEnabled){
+      const ctx = getAudioCtx();
+      if(ctx){
+        const now = ctx.currentTime;
+        elements.forEach((el, i)=> playFlipSnap(ctx, now + i * (DEAL_STAGGER_MS/1000)));
+      }
+    }
+    flyInFromPoint(elements, originX, originY, DEAL_STAGGER_MS, DEAL_FLIGHT_MS, onAllDone);
+  }
+
+  function dealNewGame(freshShuffle){
+    gameEverStarted = true;
+    if(freshShuffle || !state.dealOrder){
+      state.dealOrder = shuffle(makeDeck());
+    }
+    const deck = state.dealOrder;
+    const dealSeq = buildTableauDealOrder(); // 54 entries, 1:1 with the first 54 cards of `deck`
+    state.tableau = Array.from({length:COL_COUNT}, ()=>[]);
+    dealSeq.forEach((col, i)=>{
+      state.tableau[col].push({ ...deck[i], faceUp: false });
+    });
+    state.stock = deck.slice(54).map(c => ({...c})); // 50 cards, dealt 10 at a time from the front
+    state.foundationPiles = [];
+    state.moves = 0;
+    state.startTime = Date.now();
+    state.gameActive = true;
+    state.undoStack = [];
+    noMovesAlreadyShown = false;
+    lastRealMove = null;
+
+    closeModal();
+    render(); // every card shows face down, Stock full, Foundation empty
+    animateInitialDealFlyIn(dealSeq, ()=>{
+      // Flip the exposed (last) card of each column face up, staggered -
+      // reuses the same flip3d reveal mechanism as any mid-game reveal.
+      for(let i=0;i<COL_COUNT;i++) flipExposedTop(i);
+      render();
+      saveResumeState();
+      scheduleHint();
+    });
+  }
+
+  /* ---- Legality checks ---- */
+  // The longest same-suit, unbroken, descending run ending at the exposed
+  // (last) card of `col` - the only cards that can ever move as a group.
+  // Returns -1 if the column is empty or its exposed card is face down.
+  function movableRunStart(col){
+    if(col.length === 0) return -1;
+    let i = col.length - 1;
+    if(!col[i].faceUp) return -1;
+    while(i > 0 && col[i-1].faceUp && col[i-1].suit === col[i].suit && RANK_VALUE[col[i-1].rank] === RANK_VALUE[col[i].rank] + 1){
+      i--;
+    }
+    return i;
+  }
+  function canMoveToTableau(card, colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length === 0) return true; // any card or partial run may fill an empty column
+    const top = col[col.length-1];
+    if(!top.faceUp) return false;
+    return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1; // suit doesn't matter for landing
+  }
+  function firstLegalTableauTarget(card, skipCol){
+    for(let i=0;i<COL_COUNT;i++){
+      if(i === skipCol) continue;
+      if(canMoveToTableau(card, i)) return i;
+    }
+    return -1;
+  }
+
+  function flipExposedTop(colIndex){
+    const col = state.tableau[colIndex];
+    if(col.length > 0 && !col[col.length-1].faceUp){
+      col[col.length-1].faceUp = true;
+      animFlags.flipCols.push(colIndex);
+    }
+  }
+
+  // Finds and removes every completed same-suit King-to-Ace run, one at a
+  // time (foundationSweepOnce), looping until none remain - a run can only
+  // ever sit at the very bottom (exposed end) of a column, 13 cards deep,
+  // since movableRunStart()'s own same-suit/descending rule is exactly
+  // what a completed run also satisfies.
+  function isCompleteRun(cards){
+    if(cards.length !== 13) return false;
+    if(!cards.every(c => c.faceUp)) return false;
+    if(cards[0].rank !== 'K') return false;
+    for(let i=0;i<12;i++){
+      if(cards[i].suit !== cards[i+1].suit) return false;
+      if(RANK_VALUE[cards[i].rank] !== RANK_VALUE[cards[i+1].rank] + 1) return false;
+    }
+    return true; // 13 cards, same suit, descending by 1 from K - lands on A automatically
+  }
+  function foundationSweepOnce(){
+    for(let i=0;i<COL_COUNT;i++){
+      const col = state.tableau[i];
+      if(col.length < 13) continue;
+      const run = col.slice(col.length - 13);
+      if(isCompleteRun(run)){
+        col.length -= 13;
+        state.foundationPiles.push({ suit: run[0].suit });
+        animFlags.newFoundationIndexes.add(state.foundationPiles.length - 1);
+        flipExposedTop(i);
+        playSound('foundation');
+        debugLog(`Foundation: completed ${run[0].suit} run (K-A) from col${i}`);
+        return true;
+      }
+    }
+    return false;
+  }
+  function foundationSweep(){
+    while(foundationSweepOnce()){}
+  }
+
+  /* ---- Snapshot / Undo (up to MAX_UNDO levels) - Undo does not count as a
+     move and restores the points/move-count from exactly before the
+     undone move, since it's just restoring this same snapshot's own
+     `moves` value. ---- */
+  const MAX_UNDO = 20;
+  function takeSnapshot(){
+    return JSON.parse(JSON.stringify({
+      tableau: state.tableau, stock: state.stock, foundationPiles: state.foundationPiles, moves: state.moves
+    }));
+  }
+  function pushUndoSnapshot(snap){
+    state.undoStack.push(snap);
+    if(state.undoStack.length > MAX_UNDO) state.undoStack.shift();
+  }
+  function restoreSnapshot(snap){
+    state.tableau = snap.tableau;
+    state.stock = snap.stock;
+    state.foundationPiles = snap.foundationPiles;
+    state.moves = snap.moves;
+  }
+  function undoLastMove(){
+    if(state.undoStack.length === 0) return;
+    restoreSnapshot(state.undoStack.pop());
+    state.gameActive = true;
+    lastRealMove = null; // the board just jumped to an earlier state - nothing to avoid reversing
+    render();
+    saveResumeState();
+    scheduleHint();
+  }
+
+  /* ---- Click handler - one click, automatic destination (Cards section:
+     "Cards can be moved to the best legal spot by clicking them") ---- */
+  let suppressNextClick = false;
+  function handleTableauCardClick(colIndex, cardIndex){
+    if(suppressNextClick){ suppressNextClick = false; return; }
+    if(!state.gameActive) return;
+    const col = state.tableau[colIndex];
+    const card = col[cardIndex];
+    if(!card || !card.faceUp) return;
+    const runStart = movableRunStart(col);
+    if(runStart === -1 || cardIndex < runStart) return; // not the head of a movable run
+    const group = col.slice(cardIndex);
+    const target = firstLegalTableauTarget(group[0], colIndex);
+    if(target === -1) return;
+
+    const tentative = takeSnapshot();
+    state.tableau[target].push(...group);
+    col.length = cardIndex;
+    state.moves++;
+    playSound('move');
+    debugLog(`Click: ${group.length}-card group (${group[0].rank}${group[0].suit} lead) col${colIndex} -> col${target}`);
+    pushUndoSnapshot(tentative);
+    lastRealMove = { fromCol: colIndex, toCol: target };
+    flipExposedTop(colIndex);
+    foundationSweep();
+    afterMove();
+  }
+
+  function afterMove(){
+    render();
+    checkGameEnd();
+    saveResumeState();
+    scheduleHint();
+  }
+
+  /* ---- Drag and drop - built on Pointer Events, same technique as
+     Yukon/Klondike. The only legal drop target in Spider is another
+     Tableau column - completed runs leave the board automatically, so
+     there's nothing to drag onto a Foundation. ---- */
+  const DRAG_MOVE_THRESHOLD = 5;
+  let dragState = null;
+
+  function startDragCandidate(e, source){
+    if(dragState) return;
+    if(!state.gameActive) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    if(document.getElementById('universalModal').style.display === 'flex') return;
+
+    const col = state.tableau[source.col];
+    const card = col[source.index];
+    if(!card || !card.faceUp) return;
+    const runStart = movableRunStart(col);
+    if(runStart === -1 || source.index < runStart) return; // not a movable group head
+    const cards = col.slice(source.index);
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragState = {
+      pointerId: e.pointerId,
+      source, cards,
+      startX: e.clientX, startY: e.clientY,
+      grabOffsetX: e.clientX - rect.left, grabOffsetY: e.clientY - rect.top,
+      moved: false,
+      ghostEl: null,
+      hoverEl: null,
+    };
+    document.addEventListener('pointermove', onDragPointerMove);
+    document.addEventListener('pointerup', onDragPointerUp);
+    document.addEventListener('pointercancel', onDragPointerUp);
+  }
+
+  function beginVisualDrag(){
+    const ghost = document.createElement('div');
+    ghost.className = 'tableau-col dragGhost';
+    ghost.innerHTML = dragState.cards.map(card =>
+      `<div class="cardWrap faceUp">${cardHtml(card)}</div>`
+    ).join('');
+    document.body.appendChild(ghost);
+    dragState.ghostEl = ghost;
+
+    const colEl = document.getElementById('tableau-' + dragState.source.col);
+    Array.from(colEl.children).slice(dragState.source.index).forEach(el => el.classList.add('dragSourceHidden'));
+  }
+
+  function updateGhostPosition(x, y){
+    dragState.ghostEl.style.transform = `translate(${x - dragState.grabOffsetX}px, ${y - dragState.grabOffsetY}px)`;
+  }
+
+  function findDropTargetAt(x, y){
+    const el = document.elementFromPoint(x, y);
+    if(!el) return null;
+    const col = el.closest('.tableau-col');
+    if(col) return { type:'tableau', col: parseInt(col.id.slice('tableau-'.length), 10), el: col };
+    return null;
+  }
+
+  function isDropTargetValid(target){
+    if(!target || target.type !== 'tableau') return false;
+    if(target.col === dragState.source.col) return false;
+    return canMoveToTableau(dragState.cards[0], target.col);
+  }
+
+  function updateHoverTarget(x, y){
+    const target = findDropTargetAt(x, y);
+    const validEl = (target && isDropTargetValid(target)) ? target.el : null;
+    if(dragState.hoverEl !== validEl){
+      if(dragState.hoverEl) dragState.hoverEl.classList.remove('dropTargetValid');
+      if(validEl) validEl.classList.add('dropTargetValid');
+      dragState.hoverEl = validEl;
+    }
+  }
+
+  function onDragPointerMove(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    if(!dragState.moved){
+      if(Math.hypot(e.clientX - dragState.startX, e.clientY - dragState.startY) < DRAG_MOVE_THRESHOLD) return;
+      dragState.moved = true;
+      beginVisualDrag();
+    }
+    updateGhostPosition(e.clientX, e.clientY);
+    updateHoverTarget(e.clientX, e.clientY);
+  }
+
+  function cleanupDragVisuals(){
+    if(dragState.ghostEl) dragState.ghostEl.remove();
+    document.querySelectorAll('.dragSourceHidden').forEach(el => el.classList.remove('dragSourceHidden'));
+    document.querySelectorAll('.dropTargetValid').forEach(el => el.classList.remove('dropTargetValid'));
+  }
+
+  function performDragMove(target){
+    const cards = dragState.cards;
+    const tentative = takeSnapshot();
+    const col = state.tableau[dragState.source.col];
+    state.tableau[target.col].push(...cards);
+    col.length = dragState.source.index;
+    state.moves++;
+    playSound('move');
+    debugLog(`Drag: ${cards.length}-card group (${cards[0].rank}${cards[0].suit} lead) col${dragState.source.col} -> col${target.col}`);
+    pushUndoSnapshot(tentative);
+    lastRealMove = { fromCol: dragState.source.col, toCol: target.col };
+    flipExposedTop(dragState.source.col);
+    foundationSweep();
+    afterMove();
+  }
+
+  function onDragPointerUp(e){
+    if(!dragState || e.pointerId !== dragState.pointerId) return;
+    document.removeEventListener('pointermove', onDragPointerMove);
+    document.removeEventListener('pointerup', onDragPointerUp);
+    document.removeEventListener('pointercancel', onDragPointerUp);
+
+    const wasRealDrag = dragState.moved;
+    const target = wasRealDrag ? findDropTargetAt(e.clientX, e.clientY) : null;
+    const valid = target && isDropTargetValid(target);
+    if(wasRealDrag) cleanupDragVisuals();
+
+    if(wasRealDrag){
+      suppressNextClick = true;
+      setTimeout(()=>{ suppressNextClick = false; }, 0);
+    }
+
+    if(valid) performDragMove(target);
+    dragState = null;
+  }
+
+  /* ---- Stock ---- */
+  function scheduleStockDealSounds(count){
+    if(!state.soundEnabled || count <= 0) return;
+    const ctx = getAudioCtx();
+    if(!ctx) return;
+    const now = ctx.currentTime;
+    for(let i=0;i<count;i++) playFlipSnap(ctx, now + i * (STOCK_STAGGER_MS/1000));
+  }
+  function onStockClick(){
+    if(!state.gameActive) return;
+    if(state.stock.length === 0){ flashMessage('The stock pile is empty.'); return; }
+    if(state.tableau.some(col => col.length === 0)){
+      flashMessage('Every column must have at least one card before you can deal from the stock. Move a card onto each empty column first.');
+      return;
+    }
+    const tentative = takeSnapshot();
+    const dealt = state.stock.splice(0, 10);
+    dealt.forEach((card, i) => { card.faceUp = true; state.tableau[i].push(card); });
+    state.moves++;
+    pushUndoSnapshot(tentative);
+    lastRealMove = null; // a Stock deal isn't a tableau move to avoid reversing
+    debugLog('Stock: dealt 10 cards, one per column');
+    render();
+
+    const originEl = document.getElementById('stockPile');
+    const originRect = originEl.getBoundingClientRect();
+    const originX = originRect.left + originRect.width/2;
+    const originY = originRect.top + originRect.height/2;
+    const elements = [];
+    for(let i=0;i<COL_COUNT;i++) elements.push(document.getElementById('tableau-'+i).lastElementChild);
+    scheduleStockDealSounds(10);
+    flyInFromPoint(elements, originX, originY, STOCK_STAGGER_MS, STOCK_FLIGHT_MS, ()=>{
+      foundationSweep();
+      afterMove();
+    });
+  }
+
+  function foundationCount(){ return state.foundationPiles.length; }
+  function currentScore(){ return 500 - state.moves + 100 * foundationCount(); } // negative scores are allowed - no floor
+
+  /* ---- "Is any move still possible" check for the no-more-moves popup -
+     a single-move-deep search: any Tableau card/group with a legal
+     destination, or a Stock deal (Stock non-empty and every column
+     non-empty). Simpler than Yukon's own deep search (no need here to look
+     several moves ahead to rule out an endless sideways shuffle, since a
+     Spider board practically always has the Stock as a fallback until it
+     runs out) - if a false "stuck" report ever turns up, this is the
+     place to deepen, the same way Yukon's own check was deepened after
+     Perry's bug reports. ---- */
+  function anyTableauMoveExists(){
+    for(let i=0;i<COL_COUNT;i++){
+      const col = state.tableau[i];
+      const start = movableRunStart(col);
+      if(start === -1) continue;
+      for(let k=start; k<col.length; k++){
+        if(firstLegalTableauTarget(col[k], i) !== -1) return true;
+      }
+    }
+    return false;
+  }
+  function stockDealAvailable(){
+    return state.stock.length > 0 && state.tableau.every(col => col.length > 0);
+  }
+  function isStuck(){
+    return !anyTableauMoveExists() && !stockDealAvailable();
+  }
+
+  /* ---- Hint: after 8 seconds with no move, glow a legal move for the
+     player. "No movement" is measured in actual game moves (a card moved,
+     a Stock deal, an Undo, a fresh deal) - not mouse motion - the same way
+     the no-more-moves check above measures progress, not activity. The
+     timer is reset (and any current glow cleared) every time a move
+     happens, and paused while any modal is open so idle time reading a
+     popup is never held against the player.
+
+     findHintMove() only ever suggests a move the game itself considers
+     legal, but legal isn't the same as helpful - two different ways:
+
+     1) isUsefulMove() screens out a move that doesn't actually accomplish
+        anything: it only counts as useful if it flips a new face-down
+        card, empties its source column, or lands on a same-suit card (an
+        actual step toward a completed run).
+
+     2) Even a "useful" move can still ping-pong forever: with two decks in
+        play, a card can have two same-suit, same-rank landing spots that
+        are themselves identical (Perry's second report - an Ace of
+        diamonds that can sit on either of two 2s of diamonds). Both score
+        as useful, so the very first fix still happily suggested whichever
+        one the player's last move just vacated. lastRealMove remembers
+        the (fromCol, toCol) of the last actual move the player made, and
+        a candidate that would exactly undo it - move a card back to the
+        column it just came from - is heavily penalized rather than
+        outright excluded, so it only resurfaces if it's truly the only
+        option left. */
+  const HINT_DELAY_MS = 8000;
+  let hintTimer = null;
+  let hintEls = [];
+  let lastRealMove = null; // {fromCol, toCol} of the last actual tableau move - null after a Stock deal, Undo, or new deal, since none of those has a tableau move to avoid reversing
+
+  function isUsefulMove(fromCol, cardIndex, toCol){
+    const col = state.tableau[fromCol];
+    const card = col[cardIndex];
+    const emptiesSource = cardIndex === 0; // moving the whole column away
+    const flipsCard = cardIndex > 0 && !col[cardIndex - 1].faceUp; // uncovers a new card
+    const destCol = state.tableau[toCol];
+    const destTop = destCol.length > 0 ? destCol[destCol.length - 1] : null;
+    const sameSuit = !!destTop && destTop.suit === card.suit; // builds toward a run
+    return emptiesSource || flipsCard || sameSuit;
+  }
+
+  function findHintMove(){
+    let best = null, bestScore = -Infinity;
+    function consider(move, score){
+      if(score > bestScore){ bestScore = score; best = move; }
+    }
+    for(let i=0;i<COL_COUNT;i++){
+      const col = state.tableau[i];
+      const start = movableRunStart(col);
+      if(start === -1) continue;
+      for(let k=start; k<col.length; k++){
+        const card = col[k];
+        for(let j=0;j<COL_COUNT;j++){
+          if(j === i || !canMoveToTableau(card, j)) continue;
+          let score = isUsefulMove(i, k, j) ? 2 : 0;
+          if(lastRealMove && lastRealMove.fromCol === j && lastRealMove.toCol === i) score -= 10;
+          consider({ type:'tableau', fromCol:i, cardIndex:k, toCol:j }, score);
+        }
+      }
+    }
+    if(stockDealAvailable()) consider({ type:'stock' }, 1); // ranks above a non-useful or reversing tableau move, below a genuine useful one
+    return best;
+  }
+
+  function clearHintHighlight(){
+    hintEls.forEach(el => el.classList.remove('hintCard', 'hintTarget'));
+    hintEls = [];
+  }
+
+  function clearHintTimer(){
+    if(hintTimer){ clearTimeout(hintTimer); hintTimer = null; }
+  }
+
+  function isModalOpen(){
+    return document.getElementById('universalModal').style.display === 'flex';
+  }
+
+  function showHint(){
+    hintTimer = null;
+    if(!state.gameActive || isModalOpen()) return;
+    const move = findHintMove();
+    if(!move) return;
+    if(move.type === 'stock'){
+      const el = document.getElementById('stockPile');
+      el.classList.add('hintCard');
+      hintEls = [el];
+    } else {
+      const colEl = document.getElementById('tableau-' + move.fromCol);
+      const cardEls = Array.from(colEl.children).slice(move.cardIndex);
+      cardEls.forEach(el => el.classList.add('hintCard'));
+      const destEl = document.getElementById('tableau-' + move.toCol);
+      destEl.classList.add('hintTarget');
+      hintEls = cardEls.concat([destEl]);
+    }
+  }
+
+  // Called after every move (click, drag, Stock deal, Undo, new deal) and
+  // whenever a modal closes - restarts the 8-second "no movement" clock
+  // and clears any hint glow left over from before.
+  function scheduleHint(){
+    clearHintTimer();
+    clearHintHighlight();
+    if(!state.gameActive || isModalOpen()) return;
+    hintTimer = setTimeout(showHint, HINT_DELAY_MS);
+  }
+
+  let noMovesAlreadyShown = false;
+
+  function checkGameEnd(){
+    if(!state.gameActive) return;
+    if(foundationCount() === FOUNDATION_SLOTS){
+      state.gameActive = false;
+      playSound('win');
+      showEndModal();
+      return;
+    }
+    if(!isStuck()){
+      debugLog('Check: OK, a move is available');
+      noMovesAlreadyShown = false;
+      return;
+    }
+    if(noMovesAlreadyShown){
+      debugLog('Check: still stuck (popup already shown)');
+      return;
+    }
+    noMovesAlreadyShown = true;
+    debugLog('Check: STUCK - no legal move found, showing popup');
+    playSound('stuck');
+    const body = `
+      <p>Points: <strong>${currentScore()}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(elapsedSeconds())}</strong></p>
+      <p>No move leads to further progress.</p>
+    `;
+    showModal('There Are No More Moves.', body, `
+      <button onclick="recordScore(); dealNewGame(true);">New Game</button>
+      <button onclick="recordScore(); dealNewGame(false);">Restart</button>
+      <button onclick="closeModal()">Continue<br>Playing</button>
+      <button onclick="recordScore(); confirmExitFromEndPopup();">Exit</button>
+    `, false);
+  }
+
+  function recordScore(){
+    const name = (document.getElementById('playerNameInput').value || 'Player 1').trim() || 'Player 1';
+    if(window.pushSharedScore){
+      window.pushSharedScore({
+        name, points: currentScore(), moves: state.moves, time: elapsedSeconds(),
+        date: new Date().toLocaleDateString()
+      });
+    }
+  }
+
+  // Used by the ordinary sidebar Exit button (active mid-game play, unlike
+  // the win/no-more-moves popups below, which already record the score
+  // through their own buttons before ever reaching a confirm dialog).
+  // Guarded by gameEverStarted so exiting before a game has even been
+  // dealt doesn't log a meaningless 0-move, 500-point row.
+  function exitSpiderGame(){
+    if(gameEverStarted) recordScore();
+    location.href = '../index.html';
+  }
+
+  function confirmExitFromEndPopup(){
+    showModal('Exit Spider', 'Are you sure you want to exit?', `
+      <button onclick="location.href='../index.html';">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  }
+
+  function elapsedSeconds(){ return Math.max(0, Math.round((Date.now()-state.startTime)/1000)); }
+  function formatTime(totalSeconds){
+    const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  function showEndModal(){
+    const score = currentScore();
+    const time = elapsedSeconds();
+    recordScore();
+    const body = `
+      <p>Points: <strong>${score}</strong> &nbsp; Moves: <strong>${state.moves}</strong> &nbsp; Time: <strong>${formatTime(time)}</strong></p>
+      <p>All 104 cards are on the Foundations.</p>
+    `;
+    showModal('You Win!', body, `
+      <button onclick="dealNewGame(true)">New Game</button>
+      <button onclick="dealNewGame(false)">Restart</button>
+      <button onclick="confirmExitFromEndPopup()">Exit</button>
+    `, true);
+    document.getElementById('modalTitle').style.color = 'red';
+    document.getElementById('modalTitle').classList.add('win-blink');
+    render();
+  }
+
+  function flashMessage(msg){
+    showModal('One Moment', `<p>${msg}</p>`, `<button onclick="closeModal()">OK</button>`, true);
+  }
+
+  /* ---- Rendering ---- */
+  function cardHtml(card){
+    return `<div class="card clickable"><img class="card-face-img" src="${cardImageSrc(card)}" alt="${card.rank} of ${card.suit}" draggable="false"></div>`;
+  }
+  function flipperHtml(card, delaySeconds){
+    const style = delaySeconds > 0 ? ` style="animation-delay:${delaySeconds.toFixed(2)}s"` : '';
+    return `<div class="flip3d clickable"${style}>
+      <div class="flip3d-face flip3d-back"></div>
+      <div class="flip3d-face flip3d-front">${cardHtml(card)}</div>
+    </div>`;
+  }
+
+  function render(){
+    // Stock pile (top-left slot)
+    const stockEl = document.getElementById('stockPile');
+    stockEl.innerHTML = state.stock.length > 0 ? '<div class="cardback clickable"></div>' : '';
+
+    // Foundation (8 slots) - filled slots show a King of the completed suit;
+    // nothing ever comes back off one.
+    for(let i=0;i<FOUNDATION_SLOTS;i++){
+      const el = document.getElementById('foundation-' + i);
+      const pile = state.foundationPiles[i];
+      if(pile){
+        const fCard = { suit: pile.suit, rank: 'K' };
+        const anim = animFlags.newFoundationIndexes.has(i) ? ' foundation-anim' : '';
+        el.innerHTML = `<div class="card${anim}"><img class="card-face-img" src="${cardImageSrc(fCard)}" alt="Completed ${pile.suit} run" draggable="false"></div>`;
+      } else {
+        el.innerHTML = '';
+      }
+    }
+    animFlags.newFoundationIndexes.clear();
+
+    // Tableau
+    for(let i=0;i<COL_COUNT;i++){
+      const el = document.getElementById('tableau-' + i);
+      const col = state.tableau[i];
+      if(col.length === 0){
+        el.innerHTML = '<div class="empty-slot"></div>';
+        continue;
+      }
+      const runStart = movableRunStart(col);
+      el.innerHTML = col.map((card, idx)=>{
+        if(!card.faceUp) return '<div class="cardWrap faceDown"><div class="cardback"></div></div>';
+        const isTop = (idx === col.length - 1);
+        const staggerIndex = isTop ? animFlags.flipCols.indexOf(i) : -1;
+        const inner = staggerIndex !== -1 ? flipperHtml(card, staggerIndex*0.3) : cardHtml(card);
+        return `<div class="cardWrap faceUp">${inner}</div>`;
+      }).join('');
+      Array.from(el.children).forEach((wrap, idx)=>{
+        const movable = runStart !== -1 && idx >= runStart;
+        if(movable){
+          wrap.onclick = ()=> handleTableauCardClick(i, idx);
+          wrap.onpointerdown = (e)=> startDragCandidate(e, { col:i, index:idx });
+        } else {
+          wrap.onclick = null;
+          wrap.onpointerdown = null;
+        }
+      });
+    }
+
+    scheduleFlipSounds(new Set(animFlags.flipCols).size, 0);
+    animFlags.flipCols = [];
+
+    document.getElementById('scoreDisplay').textContent = currentScore();
+    document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+  }
+
+  /* ---- Options (Sound only - Dev Note 11: duplicate Yukon's Options
+     design, minus the Autoplay row, since Spider has no Autoplay) ---- */
+  document.getElementById('optionsBtn').addEventListener('click', ()=>{
+    showModal('Options', `
+      <div class="options-grid">
+        <div class="options-question">Select the default for Sounds</div>
+        <label for="soundOnRadio">On</label>
+        <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
+        <label for="soundOffRadio">Off</label>
+        <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+      </div>
+    `, `
+      <button onclick="saveOptions()">Save</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, true, 'optionsModal');
+  });
+  function saveOptions(){
+    state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    closeModal();
+    saveResumeState();
+    try {
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ soundEnabled: state.soundEnabled }));
+    } catch(e) {}
+  }
+
+  /* ---- Recorded Scores (Firebase-backed) - Dev Note 12: Yukon's popup
+     design, minus the Scoring Explanation button, "Score" renamed to
+     "Points", ranked highest Points, then lowest Moves, then lowest Time,
+     then newest Date. ---- */
+  const MAX_RECORDED_SCORES = 30;
+  let sharedScores = null;
+  window.onSharedScoresUpdate = function(list){
+    sharedScores = list;
+    const modal = document.getElementById('universalModal');
+    if(modal && modal.style.display === 'flex' && document.getElementById('modalTitle').textContent === 'Recorded Scores'){
+      showScoresModal();
+    }
+  };
+  function formatScoreRow(entry, rank){
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.points}</td><td>${entry.moves}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+  }
+  function showScoresModal(){
+    let listHtml;
+    if(sharedScores === null){
+      listHtml = `<p>Loading scores&hellip; (or unable to reach the shared scoreboard right now)</p>`;
+    } else {
+      const list = [...sharedScores].sort((a,b)=>
+        (b.points - a.points) || (a.moves - b.moves) || (a.time - b.time) || (new Date(b.date) - new Date(a.date))
+      ).slice(0, MAX_RECORDED_SCORES);
+      if(list.length === 0){
+        listHtml = `<p>No scores recorded yet. Play a game to add one!</p>`;
+      } else {
+        listHtml = `<div class="scores-scroll"><table class="scores-table">
+          <tr><th>Rank</th><th>Player</th><th>Points</th><th>Moves</th><th>Time</th><th>Date</th></tr>
+          ${list.map((entry,i)=>formatScoreRow(entry,i+1)).join('')}
+        </table></div>`;
+      }
+    }
+    showModal('Recorded Scores', listHtml, `
+      <button onclick="closeModal()">OK</button>
+    `, true, 'scoresModal');
+  }
+  document.getElementById('scoresBtn').addEventListener('click', showScoresModal);
+
+  document.getElementById('diagLogToggleBtn').addEventListener('dblclick', ()=>{
+    const panel = document.getElementById('diagLogPanel');
+    panel.classList.toggle('show');
+    if(panel.classList.contains('show')){
+      fitDiagLogHeight();
+      const el = document.getElementById('diagLog');
+      el.scrollTop = el.scrollHeight;
+      el.focus();
+    }
+  });
+
+  /* ---- New Game / Restart / Undo / Exit ---- */
+  document.getElementById('newGameBtn').addEventListener('click', ()=>{
+    if(!gameEverStarted){ dealNewGame(true); return; }
+    showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
+      <button onclick="dealNewGame(true)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    showModal('Restart This Game?', '<p>This replays the exact same deal from the very beginning. Your current progress will be lost.</p>', `
+      <button onclick="dealNewGame(false)">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+  document.getElementById('undoBtn').addEventListener('click', undoLastMove);
+  document.getElementById('instructionsBtn').addEventListener('click', ()=>{
+    saveResumeState();
+    window.location.href = '../SolSpiderInstruc.html';
+  });
+  document.getElementById('exitBtn').addEventListener('click', ()=>{
+    showModal('Exit Spider', 'Are you sure you want to exit?', `
+      <button onclick="exitSpiderGame()">Yes</button>
+      <button onclick="closeModal()">Cancel</button>
+    `, false);
+  });
+
+  // Traps the mouse/trackpad "Back" action so a stray Back press can't lose
+  // a game in progress without warning - same pattern used across the site.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    document.getElementById('exitBtn').click();
+  });
+
+  /* ---- Options (Sound default), persisted the same permanent way the
+     player name is below. ---- */
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
+    if(savedOptions){
+      if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+    }
+  } catch(e) {}
+
+  /* ---- Player name (persisted, matches the pattern used elsewhere on the site) ---- */
+  const nameInput = document.getElementById('playerNameInput');
+  try {
+    const saved = localStorage.getItem(PLAYER_NAME_KEY);
+    if(saved) nameInput.value = saved;
+  } catch(e) {}
+  nameInput.addEventListener('change', ()=>{
+    const newName = nameInput.value.trim();
+    try {
+      if(newName) localStorage.setItem(PLAYER_NAME_KEY, newName);
+      else localStorage.removeItem(PLAYER_NAME_KEY);
+    } catch(e) {}
+  });
+
+  /* ---- Generic universalModal system ---- */
+  function showModal(title, bodyHtml, btnHtml, dismissable, extraClass){
+    clearHintTimer();
+    clearHintHighlight();
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalTitle').style.color = '';
+    document.getElementById('modalTitle').classList.remove('win-blink');
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalBtns').innerHTML = btnHtml || `<button onclick="closeModal()">OK</button>`;
+    const modal = document.getElementById('universalModal');
+    modal.style.display = 'flex';
+    modal.dataset.dismissable = dismissable ? '1' : '0';
+    const box = modal.querySelector('.modalBox');
+    box.className = 'modalBox' + (extraClass ? ' ' + extraClass : '');
+    box.style.top = '50%';
+    box.style.transform = 'translate(-50%, -50%)';
+    const feltRect = document.getElementById('table-wrap').getBoundingClientRect();
+    box.style.left = (feltRect.left + feltRect.width / 2) + 'px';
+  }
+  function closeModal(){
+    document.getElementById('universalModal').style.display = 'none';
+    scheduleHint();
+  }
+  document.getElementById('universalModal').addEventListener('click', (e)=>{
+    if(e.target.id === 'universalModal' && e.target.dataset.dismissable === '1') closeModal();
+  });
+
+  /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
+     back via the ?resume=1 tagged link, same convention as every other
+     Solitaire game on the site. ---- */
+  function saveResumeState(){
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
+    } catch(e) { console.error('saveResumeState error', e); }
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e) {}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e) { return false; }
+    if(!raw) return false;
+    sessionStorage.removeItem(RESUME_KEY);
+    try {
+      const saved = JSON.parse(raw);
+      Object.assign(state, saved);
+      render();
+      scheduleHint();
+      return true;
+    } catch(e) {
+      console.error('tryRestoreResumeState error', e);
+      return false;
+    }
+  }
+
+  /* ---- Startup ---- */
+  const arrivedViaInstructionsBack = /(?:^|[?&])resume=1(?:&|$)/.test(location.search);
+  let gameEverStarted = arrivedViaInstructionsBack && tryRestoreResumeState();
+  if(!gameEverStarted){
+    clearResumeState();
+    render();
+  }
+</script>
+
+<script>
+  const PAGE_REVISION = 7;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
