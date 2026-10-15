@@ -1,5 +1,5 @@
 
-<!-- Revision 51 | Tuesday, September 29, 2026 -->
+<!-- Revision 52 | Thursday, October 15, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -46,24 +46,18 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* Centers the whole button-column + felt group as one unit within the
-     page, both horizontally and vertically, so the empty margin above
-     the felt matches the empty margin below it instead of the group
-     sitting pinned to the top with all the leftover space at the
-     bottom. */
+  /* Anchors the whole button-column + felt group to the BOTTOM of the
+     page (not centered), so the bottom of the button column - the
+     Name/Score box - lines up with the felt's own bottom edge, same
+     pattern as Yukon. */
   body {
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
   }
-  /* align-items: center (not flex-start) so the felt and the button
-     column share the same center line - the button column is actually
-     taller than the felt, so top-aligning them left the felt itself
-     sitting above true center even though the two columns together, as
-     a block, were centered on the page correctly. */
   #gameLayout {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 24px;
     padding: 10px;
   }
@@ -566,7 +560,6 @@
     <h1 id="pageTitle">Klondike</h1>
     <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
     <button id="restartBtn" title="Restart the current game.">Restart</button>
-    <button id="selectGameBtn" title="Select a version of Solitaire.">Select a Game</button>
     <button id="undoBtn" title="Undo the last move.">Undo</button>
     <button id="autoplayBtn" title="Automatically move eligible cards to the foundation">Autoplay: ON</button>
     <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
@@ -2091,7 +2084,7 @@
     }
   });
 
-  /* ---- New Game / Restart / Select a Game / Undo / Exit ---- */
+  /* ---- New Game / Restart / Undo / Exit ---- */
   document.getElementById('newGameBtn').addEventListener('click', ()=>{
     if(!gameEverStarted){ dealNewGame(true); return; }
     showModal('Start New Game?', '<p>This deals a brand-new shuffled game. Your current game will be lost.</p>', `
@@ -2106,15 +2099,6 @@
     `, false);
   });
   document.getElementById('undoBtn').addEventListener('click', undoLastMove);
-  document.getElementById('selectGameBtn').addEventListener('click', ()=>{
-    // Deliberately clears (rather than saves) the resume state - going out
-    // through the Solitaire Menu should always deal a fresh game on the
-    // way back in, unlike the Instructions round-trip below.
-    showModal('Select a Different Game?', '<p>This takes you back to the Solitaire Menu. Your current game will be lost.</p>', `
-      <button onclick="clearResumeState(); window.location.href='../SolMenu.html';">Yes</button>
-      <button onclick="closeModal()">Cancel</button>
-    `, false);
-  });
   document.getElementById('instructionsBtn').addEventListener('click', ()=>{
     saveResumeState();
     window.location.href = '../SolKlondikeInstruc.html';
@@ -2207,14 +2191,14 @@
   });
 
   /* ---- Resume-state (sessionStorage) - survives a trip to Instructions and
-     back, but NOT a trip through the Solitaire Menu (see selectGameBtn
-     below), which should always deal a fresh game. Resuming only actually
-     happens when the page is opened via the Instructions page's own "Back
-     to Klondike" link, which tags the URL with ?resume=1 (see Startup
-     below) - just checking "is there saved data?" isn't enough on its
-     own, since leaving Instructions any OTHER way (Home, say) still left
-     a saved snapshot sitting here that a later, unrelated trip through
-     the Solitaire Menu would otherwise pick back up by mistake. ---- */
+     back, but NOT a trip through the Solitaire Menu, which should always
+     deal a fresh game. Resuming only actually happens when the page is
+     opened via the Instructions page's own "Back to Klondike" link, which
+     tags the URL with ?resume=1 (see Startup below) - just checking "is
+     there saved data?" isn't enough on its own, since leaving Instructions
+     any OTHER way (Home, say) still left a saved snapshot sitting here
+     that a later, unrelated trip through the Solitaire Menu would
+     otherwise pick back up by mistake. ---- */
   function saveResumeState(){
     try {
       sessionStorage.setItem(RESUME_KEY, JSON.stringify(state));
@@ -2258,7 +2242,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 51;
+  const PAGE_REVISION = 52;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
