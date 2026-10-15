@@ -1,5 +1,5 @@
 
-<!-- Revision 7 | Thursday, October 15, 2026 -->
+<!-- Revision 9 | Thursday, October 15, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -479,6 +479,7 @@
     <button id="newGameBtn" title="Start a new game using this version.">New Game</button>
     <button id="restartBtn" title="Restart the current game.">Restart</button>
     <button id="undoBtn" title="Undo the last move.">Undo</button>
+    <button id="autoplayBtn" title="Automatically send a completed King-to-Ace run to the Foundation as soon as it's finished.">Autoplay: ON</button>
     <button id="instructionsBtn" title="Instructions for playing this game.">Instructions</button>
     <button id="scoresBtn" title="Scores recorded from previous games.">Recorded Scores</button>
     <button id="optionsBtn" title="Customize the game.">Options</button>
@@ -582,8 +583,12 @@
      below it, if that span is itself a valid run) to the first legal
      column found scanning left to right - see handleTableauCardClick().
      Completing a same-suit King-to-Ace run anywhere removes it to the
-     Foundation automatically - see foundationSweep() - there is no manual
-     "send to Foundation" action and nothing ever comes back off it.
+     Foundation automatically when Autoplay is ON (the default) - see
+     foundationSweep(). With Autoplay OFF, a completed run instead stays
+     put in the Tableau until the player clicks its King to send it to the
+     Foundation manually (handleTableauCardClick() - same one-click
+     convention as any other move, since a complete run has nowhere else
+     to go). Either way, nothing ever comes back off the Foundation.
      ============================================================ */
 
   const SUIT_CHARS = ['♠','♥','♣','♦'];
@@ -646,6 +651,7 @@
     stock: [],
     foundationPiles: [], // { suit } entries, one per completed run, in the order they were completed
     soundEnabled: true,
+    autoplay: true, // ON sends a completed run to the Foundation the instant it's finished; OFF leaves it in the Tableau until clicked
     moves: 0,
     startTime: 0,        // used only to compute the Time column for Recorded Scores - never shown live (Dev discussion point 9)
     dealOrder: null,
@@ -929,7 +935,9 @@
     return false;
   }
   function foundationSweep(){
-    while(foundationSweepOnce()){}
+    let sweptAny = false;
+    while(foundationSweepOnce()){ sweptAny = true; }
+    return sweptAny;
   }
 
   /* ---- Snapshot / Undo (up to MAX_UNDO levels) - Undo does not count as a
@@ -974,6 +982,27 @@
     const runStart = movableRunStart(col);
     if(runStart === -1 || cardIndex < runStart) return; // not the head of a movable run
     const group = col.slice(cardIndex);
+
+    // With Autoplay OFF, a completed King-to-Ace run can be sitting in the
+    // Tableau waiting for the player (see state.autoplay). Clicking its
+    // King is the manual way to send it to the Foundation now - a complete
+    // run has no other legal destination, so this takes priority over the
+    // usual "find a Tableau spot" search below.
+    if(isCompleteRun(group)){
+      const tentative = takeSnapshot();
+      col.length -= 13;
+      state.foundationPiles.push({ suit: group[0].suit });
+      animFlags.newFoundationIndexes.add(state.foundationPiles.length - 1);
+      state.moves++;
+      playSound('foundation');
+      debugLog(`Foundation (manual): completed ${group[0].suit} run (K-A) from col${colIndex}`);
+      pushUndoSnapshot(tentative);
+      lastRealMove = null;
+      flipExposedTop(colIndex);
+      afterMove();
+      return;
+    }
+
     const target = firstLegalTableauTarget(group[0], colIndex);
     if(target === -1) return;
 
@@ -986,7 +1015,7 @@
     pushUndoSnapshot(tentative);
     lastRealMove = { fromCol: colIndex, toCol: target };
     flipExposedTop(colIndex);
-    foundationSweep();
+    if(state.autoplay) foundationSweep();
     afterMove();
   }
 
@@ -1102,7 +1131,7 @@
     pushUndoSnapshot(tentative);
     lastRealMove = { fromCol: dragState.source.col, toCol: target.col };
     flipExposedTop(dragState.source.col);
-    foundationSweep();
+    if(state.autoplay) foundationSweep();
     afterMove();
   }
 
@@ -1158,7 +1187,7 @@
     for(let i=0;i<COL_COUNT;i++) elements.push(document.getElementById('tableau-'+i).lastElementChild);
     scheduleStockDealSounds(10);
     flyInFromPoint(elements, originX, originY, STOCK_STAGGER_MS, STOCK_FLIGHT_MS, ()=>{
-      foundationSweep();
+      if(state.autoplay) foundationSweep();
       afterMove();
     });
   }
@@ -1455,18 +1484,24 @@
 
     document.getElementById('scoreDisplay').textContent = currentScore();
     document.getElementById('undoBtn').disabled = (state.undoStack.length === 0);
+    document.getElementById('autoplayBtn').textContent = 'Autoplay: ' + (state.autoplay ? 'ON' : 'OFF');
   }
 
-  /* ---- Options (Sound only - Dev Note 11: duplicate Yukon's Options
-     design, minus the Autoplay row, since Spider has no Autoplay) ---- */
+  /* ---- Options (Sound / Autoplay defaults, matching Yukon's Options design) ---- */
   document.getElementById('optionsBtn').addEventListener('click', ()=>{
     showModal('Options', `
       <div class="options-grid">
-        <div class="options-question">Select the default for Sounds</div>
+        <div class="options-question">Select the default for Sound Effects</div>
         <label for="soundOnRadio">On</label>
         <input type="radio" id="soundOnRadio" name="soundSetting" ${state.soundEnabled?'checked':''}>
         <label for="soundOffRadio">Off</label>
         <input type="radio" id="soundOffRadio" name="soundSetting" ${!state.soundEnabled?'checked':''}>
+
+        <div class="options-question">Select the default for Autoplay</div>
+        <label for="autoplayOnRadio">On</label>
+        <input type="radio" id="autoplayOnRadio" name="autoplaySetting" ${state.autoplay?'checked':''}>
+        <label for="autoplayOffRadio">Off</label>
+        <input type="radio" id="autoplayOffRadio" name="autoplaySetting" ${!state.autoplay?'checked':''}>
       </div>
     `, `
       <button onclick="saveOptions()">Save</button>
@@ -1475,12 +1510,41 @@
   });
   function saveOptions(){
     state.soundEnabled = document.getElementById('soundOnRadio').checked;
+    const autoplayDefault = document.getElementById('autoplayOnRadio').checked;
     closeModal();
-    saveResumeState();
+    // If the chosen Autoplay default differs from the game's current
+    // Autoplay setting, flip it the same way clicking the Autoplay button
+    // does, instead of just changing the flag out from under the button -
+    // reusing that click keeps the Undo snapshot (and, when turning it
+    // on, the immediate sweep of any run already sitting in the Tableau)
+    // working correctly. That click already saves its own resume
+    // snapshot, so this only needs to below when Autoplay itself didn't
+    // change.
+    if(autoplayDefault !== state.autoplay){
+      document.getElementById('autoplayBtn').click();
+    } else {
+      saveResumeState();
+    }
     try {
-      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ soundEnabled: state.soundEnabled }));
+      localStorage.setItem(OPTIONS_KEY, JSON.stringify({ soundEnabled: state.soundEnabled, autoplayDefault }));
     } catch(e) {}
   }
+
+  /* ---- Autoplay toggle ---- */
+  document.getElementById('autoplayBtn').addEventListener('click', ()=>{
+    state.autoplay = !state.autoplay;
+    if(state.autoplay){
+      // Turning Autoplay back on can immediately sweep away a completed
+      // run that was left sitting in the Tableau - that needs its own
+      // Undo snapshot taken first, the same fix Yukon's Autoplay toggle
+      // uses, or the sweep could never be undone.
+      const tentative = takeSnapshot();
+      if(foundationSweep()) pushUndoSnapshot(tentative);
+      checkGameEnd();
+    }
+    render(); // reflects the button's own new On/Off state right away
+    saveResumeState();
+  });
 
   /* ---- Recorded Scores (Firebase-backed) - Dev Note 12: Yukon's popup
      design, minus the Scoring Explanation button, "Score" renamed to
@@ -1566,12 +1630,13 @@
     document.getElementById('exitBtn').click();
   });
 
-  /* ---- Options (Sound default), persisted the same permanent way the
-     player name is below. ---- */
+  /* ---- Options (Sound / Autoplay defaults), persisted the same permanent
+     way the player name is below. ---- */
   try {
     const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_KEY));
     if(savedOptions){
       if(typeof savedOptions.soundEnabled === 'boolean') state.soundEnabled = savedOptions.soundEnabled;
+      if(typeof savedOptions.autoplayDefault === 'boolean') state.autoplay = savedOptions.autoplayDefault;
     }
   } catch(e) {}
 
@@ -1654,7 +1719,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 7;
+  const PAGE_REVISION = 9;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
