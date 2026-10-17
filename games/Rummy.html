@@ -1,5 +1,5 @@
 
-<!-- Revision 23 | Sunday, October 11, 2026 -->
+<!-- Revision 26 | Saturday, October 17, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -774,39 +774,6 @@
   #universalModal table{ width:100%; border-collapse: collapse; font-size:.85rem; }
   #universalModal td, #universalModal th{ padding:3px 6px; border-bottom:1px solid #ccc; text-align:left;}
 
-  /* ---------- Revision 14, point 3: end-of-round score reveal ---------- */
-  #scoreRevealOverlay{
-    display:none;
-    position:fixed; inset:0;
-    align-items:center; justify-content:center;
-    pointer-events:none;
-    z-index:95; /* above the board and meld preview, below the universal modal (100) that follows it */
-  }
-  #scoreRevealBox{
-    background: var(--cream-panel);
-    border: 3px solid var(--board-frame);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.5);
-    padding: 20px 28px;
-    text-align:center;
-  }
-  #scoreRevealBox h2{
-    margin: 0 0 14px;
-    color: var(--suit-accent-ink);
-    font-size: 1.3rem;
-  }
-  #scoreRevealRow{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap: 20px;
-  }
-  #scoreRevealTotal{
-    font-size: 3rem;
-    font-weight: 800;
-    color: var(--ink-primary);
-    min-width: 1.4em;
-  }
   #universalModal th:not(:first-child),
   #universalModal td:not(:first-child){ text-align:center; }
   #universalModal td:first-child,
@@ -973,20 +940,6 @@
   </div>
 </div>
 
-<!-- Revision 14, point 3: the end-of-round card-by-card score reveal -
-     shown over the board (the opponents' own cardback stacks shrink in
-     step with it, see runScoreReveal) before the existing Hand Complete
-     popup appears. -->
-<div id="scoreRevealOverlay">
-  <div id="scoreRevealBox">
-    <h2 id="scoreRevealTitle">Someone wins this round!</h2>
-    <div id="scoreRevealRow">
-      <div id="scoreRevealCard"></div>
-      <div id="scoreRevealTotal">0</div>
-    </div>
-  </div>
-</div>
-
 <script>
 /* =====================================================================
    Standard Rummy — standalone game
@@ -1071,9 +1024,8 @@ const DEAL_FLIGHT_MS = 800;        // how long each individual card takes to fly
 const DEAL_STAGGER_MS = 100;        // delay between each successive card starting its flight during the deal
 const DEAL_END_BUFFER_MS = 80;      // extra pause after the last dealt card lands, before play begins
 // 27 gaps * DEAL_STAGGER_MS + DEAL_FLIGHT_MS + DEAL_END_BUFFER_MS = 4500ms (4.5s) to deal all 28 cards (4 seats x 7 cards)
-const DRAW_DISCARD_SLIDE_MS = 400; // how long a card takes to slide to/from the Stock and Discard piles when drawn or discarded
+const DRAW_DISCARD_SLIDE_MS = 300; // how long a card takes to slide to/from the Stock and Discard piles when drawn or discarded
 const MELD_HOLD_MS = 1800;          // Revision 11, point 4: how long a newly-selected meld or lay-off is held, shown centered over the Stock/Discard piles, before it's actually created
-const SCORE_REVEAL_CARD_MS = 700;   // Revision 14, point 3: how long each opponent's card is held on screen during the end-of-round score reveal before the next one is counted - no exact pace was given, so this is a judgment call
 
 // ---------------------------------------------------------------------
 // STATE
@@ -2106,56 +2058,7 @@ function handleGoOut(seat){
   state.scores[seat] += awarded;
   addLog(`${SEAT_NAME[seat]} goes out${wentRummy ? ' with Rummy (points doubled)!' : '.'} +${awarded} points.`);
   render();
-  runScoreReveal(seat, () => showHandSummaryModal(seat, wentRummy, perSeatRemaining, awarded, previousScores));
-}
-
-// Revision 14, point 3: before the Hand Complete popup, the winner's cards
-// are counted up opponent by opponent - each opponent's hand is revealed
-// one card at a time with a running total, in turn order starting with
-// the player to the winner's left (same order play would have continued
-// in). Each revealed card is actually removed from that seat's hand as it
-// counts, so the board's own cardback stack (or your own hand, if you're
-// the one being counted) visibly shrinks in step with the box - that's
-// safe here because perSeatRemaining above already captured each seat's
-// point total from the real hands before this runs, and the hand is over
-// regardless (phase is already 'scoring', so nothing else reads these
-// hands meanwhile).
-function runScoreReveal(winnerSeat, afterDone){
-  const opponents = rotateFrom(winnerSeat).filter(s => s !== winnerSeat);
-  let runningTotal = 0;
-  const overlay = document.getElementById('scoreRevealOverlay');
-  const titleEl = document.getElementById('scoreRevealTitle');
-  const cardEl = document.getElementById('scoreRevealCard');
-  const totalEl = document.getElementById('scoreRevealTotal');
-  titleEl.textContent = `${SEAT_NAME[winnerSeat]} wins this round!`;
-  cardEl.innerHTML = '';
-  totalEl.textContent = '0';
-  overlay.style.display = 'flex';
-
-  function nextCard(seat, afterSeat){
-    const hand = state.hands[seat];
-    if(hand.length === 0){ afterSeat(); return; }
-    const card = hand[0];
-    runningTotal += pointValue(card);
-    cardEl.innerHTML = cardHtml(card, false);
-    totalEl.textContent = String(runningTotal);
-    state.hands[seat] = hand.slice(1);
-    render();
-    pausableTimeout(() => nextCard(seat, afterSeat), SCORE_REVEAL_CARD_MS);
-  }
-
-  function nextOpponent(i){
-    if(i >= opponents.length){
-      pausableTimeout(() => {
-        overlay.style.display = 'none';
-        afterDone();
-      }, SCORE_REVEAL_CARD_MS);
-      return;
-    }
-    nextCard(opponents[i], () => nextOpponent(i+1));
-  }
-
-  nextOpponent(0);
+  showHandSummaryModal(seat, wentRummy, perSeatRemaining, awarded, previousScores);
 }
 
 // Revision 20, point 2: shared by every way a hand can end immediately
@@ -2944,7 +2847,7 @@ if(!gameEverStarted){
 </script>
 
 <script>
-  const PAGE_REVISION = 23;
+  const PAGE_REVISION = 26;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
