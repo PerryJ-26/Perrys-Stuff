@@ -1,5 +1,5 @@
 
-<!-- Revision 13 | Friday, October 16, 2026 -->
+<!-- Revision 14 | Saturday, October 17, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1279,7 +1279,18 @@
     const destCol = state.tableau[toCol];
     const destTop = destCol.length > 0 ? destCol[destCol.length - 1] : null;
     const sameSuit = !!destTop && destTop.suit === card.suit; // builds toward a run
-    return emptiesSource || flipsCard || sameSuit;
+    // A card (or run) that's already resting correctly on a same-suit,
+    // next-higher card right where it sits is already "attached" into a
+    // partial run in place - moving it to a DIFFERENT same-suit landing
+    // spot doesn't build anything new, it's just a lateral relocation.
+    // Only credit sameSuit as useful when the card isn't already attached
+    // this way (Perry's third report: with several cards of the same rank
+    // available - four 2s and one Ace - an already-paired Ace kept getting
+    // hinted back and forth between the 2s with no real progress).
+    const belowCard = cardIndex > 0 ? col[cardIndex - 1] : null;
+    const alreadyAttached = !!belowCard && belowCard.suit === card.suit &&
+      RANK_VALUE[belowCard.rank] === RANK_VALUE[card.rank] + 1;
+    return emptiesSource || flipsCard || (sameSuit && !alreadyAttached);
   }
 
   function findHintMove(){
@@ -1758,7 +1769,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 13;
+  const PAGE_REVISION = 14;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
