@@ -1,5 +1,5 @@
 
-<!-- Revision 9 | Thursday, October 08, 2026 -->
+<!-- Revision 13 | Saturday, October 17, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -158,6 +158,11 @@
   }
 
   /* ---- Felt / board ---- */
+  /* min-height trimmed from 600px (Perry's report: that left ~95-100px of
+     dead green space below the player's cards - tall enough to sometimes
+     need a page scrollbar - since the gameplay screen's own content only
+     ever needs about 500px). 520px keeps a little breathing room above
+     that without reintroducing the empty strip at the bottom. */
   #table-wrap{
     display: flex;
     flex-direction: column;
@@ -168,7 +173,7 @@
     padding: 24px;
     margin: 0;
     width: 760px;
-    min-height: 600px;
+    min-height: 520px;
     box-sizing: border-box;
   }
 
@@ -268,11 +273,18 @@
   #dealerArea{ text-align: center; }
   #dealerCardRow{ display: flex; justify-content: center; min-height: 120.36px; position: relative; }
 
+  /* justify-content: flex-start (not center) so the bet chip always sits at
+     the TOP of this area - a fixed "up" position - instead of the chip+
+     buttons group re-centering itself (and the chip shifting a few pixels
+     up or down) whenever the row below it changes height, such as between
+     the action buttons and the post-hand controls, or as cards are
+     played. Per Perry's report: "the poker chip with the bet moves up and
+     down - keep it in the up position." */
   #centerArea{
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
     min-height: 120px;
     position: relative;
@@ -291,7 +303,12 @@
     font-family: inherit;
   }
   #actionButtons button:hover{ filter: brightness(1.06); }
-  #actionButtons button.hidden{ display: none; }
+  /* visibility (not display) - an illegal button still reserves its slot in
+     the row, so Hit and Stand (always the first two) never shift position
+     depending on whether Double/Split/Surrender happen to be legal right
+     now. Per Perry's report: "don't move the Hit and Stand buttons when the
+     other buttons disappear - keep them in a static position." */
+  #actionButtons button.hidden{ visibility: hidden; }
 
   #postHandControls{ display: none; gap: 12px; }
   #postHandControls.show{ display: flex; }
@@ -299,8 +316,35 @@
     background: var(--green-btn); color: #fff;
     border: 2px solid var(--board-border); border-radius: 8px;
     padding: 9px 20px; cursor: pointer; font-weight: 700; font-family: inherit;
+    /* Was the browser's own default button size (13.3333px) before Perry's
+       first +2px request brought it to 15.3333px; this second +2px request
+       brings it to 17.3333px. */
+    font-size: 17.3333px;
   }
   #postHandControls button:hover{ background: var(--green-btn-dark); }
+
+  /* Positioned absolutely, offset to the right of #pendingBetLine2's own
+     center (26px = the chip's own half-width, plus a 12px gap) - taking it
+     completely out of the flex flow so it has no effect on the chip's own
+     centering. The chip is the row's only in-flow child, so
+     justify-content:center on #pendingBetLine2 centers the chip itself
+     (Perry: "center the poker chip horizontally"), regardless of whether
+     this button happens to be showing. Not clickable until the hand
+     resolves - see showPostHand in render() - since there's nothing to
+     change mid-hand. */
+  #changeBetBtn{
+    position: absolute;
+    left: calc(50% + 38px);
+    top: 50%;
+    transform: translateY(-50%);
+    visibility: hidden;
+    background: var(--green-btn); color: #fff;
+    border: 2px solid var(--board-border); border-radius: 8px;
+    padding: 9px 20px; cursor: pointer; font-weight: 700; font-family: inherit;
+    white-space: nowrap;
+  }
+  #changeBetBtn.show{ visibility: visible; }
+  #changeBetBtn:hover{ background: var(--green-btn-dark); }
 
   #playerArea{ text-align: center; }
   #handsRow{ display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; min-height: 120.36px; }
@@ -515,8 +559,9 @@
       </div>
 
       <div id="centerArea">
-        <div id="pendingBetLine2" style="display:flex; align-items:center; gap:12px;">
+        <div id="pendingBetLine2" style="position:relative; width:100%; display:flex; align-items:center; justify-content:center;">
           <div class="betChipIcon" id="activeBetChip">$0</div>
+          <button id="changeBetBtn" onclick="onChangeBet()">Change Your Bet</button>
         </div>
         <div id="actionButtons">
           <button id="hitBtn" onclick="onHit()">Hit</button>
@@ -582,7 +627,9 @@
      BLACKJACK - game engine
      4-deck shoe, dealer hits soft 17, natural Blackjack pays 3:2,
      Double Down (incl. after Split), Split up to 3 times (4 hands),
-     Aces split only once (one card each, no further action),
+     Aces split only once (re-splitting a later Ace isn't offered), but a
+     split Ace is otherwise played normally - hit or stand like any other
+     split hand, no forced auto-stand after one card,
      Surrender (first action only), Insurance/Even Money on a dealer
      Ace upcard, and an immediate dealer peek against any Ace or
      10-value upcard so a natural Blackjack never pays out before a
@@ -915,6 +962,7 @@
       updateActionButtons();
       const showPostHand = (state.phase === 'resolved');
       document.getElementById('postHandControls').classList.toggle('show', showPostHand);
+      document.getElementById('changeBetBtn').classList.toggle('show', showPostHand);
       document.getElementById('actionButtons').style.display = (state.phase === 'playerTurn') ? 'flex' : 'none';
     }
 
@@ -1184,16 +1232,13 @@
     newHandB.cards.push(drawCard(1));
     scheduleDealSounds(2);
 
-    // Each split Ace receives exactly one additional card and then stands
-    // automatically - no further action on that hand.
-    if(isAceSplit){
-      newHandA.status = 'stood';
-      newHandB.status = 'stood';
-    }
+    // A split Ace is played exactly like any other split hand - hit or
+    // stand freely - rather than being auto-stood after its one card.
+    // Re-splitting a later Ace still isn't offered (see computeLegalActions'
+    // split rule below), but otherwise there's no special-casing here
+    // anymore (Perry's report: a split Ace that drew another Ace landed on
+    // a hard 12 with no way to hit out of it).
     render();
-    if(isAceSplit){
-      setTimeout(advanceAfterHandAction, 500);
-    }
   }
   function onSurrender(){
     const hand = state.hands[state.activeHandIndex];
@@ -1305,9 +1350,26 @@
   }
 
   // ---- Next hand / betting round ----
+  // Per Perry's request: with Repeat Last Bet set to Yes, pressing "Deal
+  // Next Hand" deals the next hand immediately at the same bet, without
+  // opening the Place Your Bid screen at all (not just pre-filling it, as
+  // before). It falls back to that screen when Repeat Last Bet is No, or
+  // when the last bet is no longer affordable. The "Change Your Bet" button
+  // next to the bet chip (onChangeBet, below) is the escape hatch for
+  // reaching the betting screen manually even when Repeat Last Bet is Yes.
   function startNextBettingRound(){
+    if(state.repeatLastBet && state.lastBet > 0 && state.lastBet <= state.bankroll){
+      state.pendingBet = state.lastBet;
+      startHand();
+    } else {
+      state.phase = 'betting';
+      state.pendingBet = 0;
+      render();
+    }
+  }
+  function onChangeBet(){
     state.phase = 'betting';
-    state.pendingBet = state.repeatLastBet ? Math.min(state.lastBet, state.bankroll) : 0;
+    state.pendingBet = 0;
     render();
   }
 
@@ -1621,7 +1683,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 9;
+  const PAGE_REVISION = 13;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
