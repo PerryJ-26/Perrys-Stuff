@@ -1,5 +1,5 @@
 
-<!-- Revision 14 | Saturday, October 17, 2026 -->
+<!-- Revision 15 | Saturday, October 17, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -903,12 +903,30 @@
     if(!top.faceUp) return false;
     return RANK_VALUE[top.rank] === RANK_VALUE[card.rank] + 1; // suit doesn't matter for landing
   }
+  // Click-to-move destination priority (Perry's rule): a same-suit column
+  // (builds toward a run) beats a different-suit column, and any non-empty
+  // column beats an empty one - only fall back to an empty column when no
+  // card-topped column is legal at all.
   function firstLegalTableauTarget(card, skipCol){
+    let sameSuit = -1, otherSuit = -1, empty = -1;
     for(let i=0;i<COL_COUNT;i++){
       if(i === skipCol) continue;
-      if(canMoveToTableau(card, i)) return i;
+      if(!canMoveToTableau(card, i)) continue;
+      const col = state.tableau[i];
+      if(col.length === 0){
+        if(empty === -1) empty = i;
+      } else {
+        const top = col[col.length-1];
+        if(top.suit === card.suit){
+          if(sameSuit === -1) sameSuit = i;
+        } else {
+          if(otherSuit === -1) otherSuit = i;
+        }
+      }
     }
-    return -1;
+    if(sameSuit !== -1) return sameSuit;
+    if(otherSuit !== -1) return otherSuit;
+    return empty;
   }
 
   function flipExposedTop(colIndex){
@@ -1769,7 +1787,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 14;
+  const PAGE_REVISION = 15;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
