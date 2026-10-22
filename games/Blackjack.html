@@ -1,5 +1,5 @@
 
-<!-- Revision 13 | Saturday, October 17, 2026 -->
+<!-- Revision 14 | Wednesday, October 21, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -380,7 +380,14 @@
      per Perry's request for split hands specifically; a single (un-split)
      hand still shows its total up in the shared Player label instead. */
   .handCount{ color: #fff; font-weight: 800; font-size: .95rem; }
+  /* Always present in the DOM (see renderHandSlot) so its box - including
+     the .handSlot gap above it - is reserved at all times; visibility
+     (not display) toggles whether it's actually seen, so a hand with no
+     badge to show still holds the exact same amount of vertical space as
+     one that does, per Perry's request to stop it from changing the
+     felt's overall height when "Doubled"/"Surrendered" appears. */
   .handBadge{
+    visibility: hidden;
     font-size: .72rem;
     font-weight: 800;
     color: #fff;
@@ -389,6 +396,7 @@
     padding: 1px 8px;
     min-height: 1.4em;
   }
+  .handBadge.show{ visibility: visible; }
 
   /* ---- Playing cards - same visual family as Klondike - sized 20% larger
      than the original 71.4px x 100.3px, per Perry's request ---- */
@@ -896,7 +904,18 @@
     // Surrendered) isn't one of Perry's mockup ribbons, so it stays below
     // the cards as plain text.
     const bannerOverlayHtml = (badgeText && bannerCls) ? `<div class="bannerOverlay"><div class="banner ${bannerCls}">${badgeText}</div></div>` : '';
-    const plainBadgeHtml = (badgeText && !bannerCls) ? `<div class="handBadge">${badgeText}</div>` : '';
+    // Always rendered (never left out of the DOM), just toggled between
+    // visible and invisible via the "show" class - same visibility-based
+    // reserve-space technique already used for #changeBetBtn below. This
+    // badge (Doubled / Surrendered) sits in normal flow, stacked below the
+    // cards - unlike the overlay banners above, which don't affect layout
+    // at all - so letting it appear/disappear from the DOM entirely was
+    // changing #table-wrap's own height each time, and since the whole
+    // felt is centered in the window, that shifted everything else on
+    // screen up or down with it, per Perry's report. Reserving its space
+    // at all times keeps the felt's height constant instead.
+    const plainBadgeShown = !!(badgeText && !bannerCls);
+    const plainBadgeHtml = `<div class="handBadge${plainBadgeShown ? ' show' : ''}">${plainBadgeShown ? badgeText : ' '}</div>`;
     // Split hands (compact) each show their own count underneath their
     // cards, since a shared total in the Player label wouldn't make sense
     // once there's more than one hand in play.
@@ -1683,7 +1702,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 13;
+  const PAGE_REVISION = 14;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
