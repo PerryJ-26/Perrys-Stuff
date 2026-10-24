@@ -1,5 +1,5 @@
 
-<!-- Revision 48 | Friday, October 23, 2026 -->
+<!-- Revision 50 | Saturday, October 24, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -2475,6 +2475,26 @@
       `<button onclick="startNewGame()">Yes</button><button onclick="closeModal()">Cancel</button>`, false);
   });
   document.getElementById('rulesBtn').addEventListener('click', ()=>{
+    // The 'cut' (cutting for the starter card) and 'show' (the Calculate
+    // Score walkthrough) phases aren't in the resumable whitelist above -
+    // both depend on in-flight animations, timers, or the Show's own step
+    // counter that can't be saved and picked back up. Rather than letting
+    // Instructions navigate away and come back to a brand-new game, per
+    // Perry's request, it's blocked outright during these two phases with
+    // an explanation - he checks Instructions most often while verifying a
+    // hand's points, which is exactly when the game can't safely let him
+    // leave and come back.
+    if(state.phase === 'cut'){
+      showModal('Instructions Unavailable', '<p>Instructions are unavailable until the cards have been cut.</p>',
+        `<button onclick="closeModal()">OK</button>`, true);
+      return;
+    }
+    if(state.phase === 'show'){
+      showModal('Instructions Unavailable', '<p>Instructions are unavailable until the point calculations have been completed.</p>',
+        `<button onclick="closeModal()">OK</button>`, true);
+      return;
+    }
+    saveResumeState();
     window.location.href = '../CribbageInstructions.html';
   });
   function confirmExit(){
@@ -2482,6 +2502,19 @@
       `<button onclick="location.href='../index.html';">Yes</button><button onclick="closeModal()">Cancel</button>`, false);
   }
   document.getElementById('exitBtn').addEventListener('click', confirmExit);
+
+  // ---- Back-button trap, per Perry's request: pressing the mouse's Back
+  // button (or the browser's own Back button/gesture) shows the same Exit
+  // confirmation as the Exit button, instead of silently leaving the page.
+  // Same pattern as Blackjack/Klondike - a dummy history entry is pushed on
+  // load, so navigating "back" from here lands on that entry (firing
+  // popstate) rather than actually leaving; the entry is immediately
+  // re-pushed so a repeated Back press keeps being caught the same way.
+  history.pushState(null, '', location.href);
+  window.addEventListener('popstate', function(){
+    history.pushState(null, '', location.href);
+    confirmExit();
+  });
 
   // ---- Card click handling ----
   document.getElementById('playerHandRow').addEventListener('click', (e)=>{
@@ -2534,6 +2567,57 @@
     const rawWins = sessionStorage.getItem(SESSION_WINS_KEY);
     if(rawWins) state.sessionWins = JSON.parse(rawWins);
   } catch(e){}
+
+  // ---- Resume (sessionStorage) - lets an in-progress hand survive a trip
+  // to Instructions and back, per Perry's report that returning from
+  // CribbageInstructions.html was starting a brand-new game instead of
+  // continuing the one he was in the middle of. Same pattern as Blackjack/
+  // Klondike's own Instructions round-trip.
+  //
+  // Only the 'discard' and 'play' phases are saved/restored - the other
+  // phases ('dealercut', 'cut', 'show', 'gameover') all depend on
+  // in-progress ribbon animations, timers, or the Show walkthrough's own
+  // step counter, none of which live in `state` or survive a page reload -
+  // restoring mid-ribbon or mid-Show would leave the game soft-locked, or
+  // (for the Show) risk re-scoring a step that was already scored. The
+  // rulesBtn click handler below blocks Instructions outright during 'cut'
+  // and 'show' (with an explanation) rather than letting it navigate away
+  // to a game it can't safely restore, per Perry's follow-up request -
+  // 'dealercut' and 'gameover' are brief/terminal enough that falling back
+  // to a fresh game there is a non-issue, so those are left as they are.
+  function saveResumeState(){
+    try { sessionStorage.setItem(RESUME_KEY, JSON.stringify(state)); } catch(e){}
+  }
+  function clearResumeState(){
+    try { sessionStorage.removeItem(RESUME_KEY); } catch(e){}
+  }
+  function tryRestoreResumeState(){
+    let raw;
+    try { raw = sessionStorage.getItem(RESUME_KEY); } catch(e){ return false; }
+    if(!raw) return false;
+    clearResumeState(); // consume once, whether or not it turns out to be valid
+    try {
+      const saved = JSON.parse(raw);
+      const validPhase = saved.phase === 'discard' || saved.phase === 'play';
+      const validDealer = saved.dealer === 'player' || saved.dealer === 'ai';
+      const validHands = saved.hands && Array.isArray(saved.hands.player) && Array.isArray(saved.hands.ai);
+      const validScores = saved.scores && typeof saved.scores.player === 'number' && typeof saved.scores.ai === 'number';
+      const validDeck = Array.isArray(saved.deck) && Array.isArray(saved.crib);
+      if(!validPhase || !validDealer || !validHands || !validScores || !validDeck){
+        return false;
+      }
+      Object.assign(state, saved);
+      render();
+      // The AI's own turn is normally driven by a setTimeout chain (see
+      // aiTakeTurn's call sites) - a restore has no pending timer to pick
+      // that back up, so re-arm it here the same way Blackjack re-arms its
+      // dealerPlayStep after a restore.
+      if(state.phase === 'play' && state.turn === 'ai'){
+        setTimeout(aiTakeTurn, 700);
+      }
+      return true;
+    } catch(e){ return false; }
+  }
 
   // ---- Keep the felt exactly 0.25in clear of the Action buttons - measured
   // from the buttons' own actual rendered width rather than a guessed
@@ -2983,11 +3067,17 @@
   // Perry's request, instead of idling on "Welcome to Cribbage" waiting for
   // a New Game click. No sound plays until the player actually clicks a
   // ribbon card, so this doesn't try to play audio before a user gesture.
-  startNewGame();
+  // A saved resume state (see tryRestoreResumeState above) takes priority
+  // over that fresh start, so returning from Instructions continues the
+  // hand that was in progress instead of starting over.
+  const resumed = tryRestoreResumeState();
+  if(!resumed){
+    startNewGame();
+  }
 </script>
 
 <script>
-  const PAGE_REVISION = 48;
+  const PAGE_REVISION = 50;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
