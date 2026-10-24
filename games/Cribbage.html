@@ -1,5 +1,5 @@
 
-<!-- Revision 50 | Saturday, October 24, 2026 -->
+<!-- Revision 51 | Saturday, October 24, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1117,12 +1117,21 @@
       if(subset.length >= 2 && sum === 15){ entries.push({ cards: subset, type: 'Fifteen', points: 2 }); }
     }
 
-    // Pairs: every unique pair of same rank - one row each (so a Pair Royal
-    // of 3 naturally becomes 3 separate "Pair" rows worth 2 each, and a
-    // Double Pair Royal of 4 becomes 6 rows, matching standard scoring).
-    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
-      if(all5[i].rank === all5[j].rank) entries.push({ cards: [all5[i], all5[j]], type: 'Pair', points: 2 });
-    }
+    // Pairs / Pair Royal / Double Pair Royal: one row per same-rank group
+    // (2, 3, or 4 cards), rather than enumerating every individual pair
+    // within it - per Perry's report, a three-of-a-kind was showing as
+    // three separate "Pair" rows (2 points each) instead of one "Pair
+    // Royal" row worth 6, which doesn't match the Instructions page or the
+    // pegging claim breakdown's own wording for the same thing. The total
+    // points are identical either way (2+2+2 = 6), so this only changes how
+    // the Show's scoring table displays it, not any actual scoring.
+    const rankGroups = {};
+    all5.forEach(c => { (rankGroups[c.rank] = rankGroups[c.rank] || []).push(c); });
+    Object.values(rankGroups).forEach(group => {
+      if(group.length === 2) entries.push({ cards: group, type: 'Pair', points: 2 });
+      else if(group.length === 3) entries.push({ cards: group, type: 'Pair Royal', points: 6 });
+      else if(group.length === 4) entries.push({ cards: group, type: 'Double Pair Royal', points: 12 });
+    });
 
     // Sequences (runs): maximal consecutive stretch(es) of distinct
     // rank-order values, length >= 3 - when a rank in the run is duplicated
@@ -3077,7 +3086,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 50;
+  const PAGE_REVISION = 51;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
