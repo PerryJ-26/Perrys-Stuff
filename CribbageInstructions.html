@@ -1,0 +1,358 @@
+
+<!-- Revision 2 | Saturday, October 17, 2026 -->
+<!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cribbage Instructions - Game Hub</title>
+<style>
+  /* ===== ALL COLORS LIVE HERE - soft blue theme, matches the rest of the site ===== */
+  :root {
+    --bg: #eaf2fb;
+    --header-bg: #4a90c2;
+    --header-text: #ffffff;
+
+    --nav-bg: #ffffff;
+    --nav-border: #4a90c2;
+    --nav-text: #2c6693;
+    --nav-hover-bg: #dceaf7;
+
+    --card-bg: #ffffff;
+    --card-border: #cfe0ef;
+    --body-text: #1c2b36;
+    --heading-text: #2c6693;
+    --table-header-bg: #dceaf7;
+    --table-border: #cfe0ef;
+    --note-bg: #f0f4f8;
+    --note-text: #5f6b76;
+
+    --suit-red: #c0392b;
+    --suit-black: #1c1c1c;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  html {
+    overflow-y: scroll;
+  }
+
+  .site-header-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    text-align: center;
+    padding: 1.5rem 1rem 1.2rem;
+    position: relative;
+  }
+
+  .revBadge {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #000000;
+    pointer-events: none;
+  }
+
+  header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    letter-spacing: 1px;
+  }
+
+  nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: var(--nav-bg);
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+
+  nav a, nav button {
+    color: var(--nav-text);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    padding: 8px 20px;
+    border: 1px solid var(--nav-border);
+    border-radius: 6px;
+    background: var(--nav-bg);
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 150ms ease;
+  }
+
+  nav a:hover, nav button:hover {
+    background: var(--nav-hover-bg);
+  }
+
+  main {
+    max-width: min(892px, calc(100% - 40px));
+    margin: 30px auto;
+    padding: 0 20px 40px;
+  }
+
+  .page-title {
+    font-size: 30px;
+    font-weight: bold;
+    text-align: center;
+    color: var(--body-text);
+    margin: 0 0 18px;
+  }
+
+  .instructions-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1in;
+  }
+
+  .instructions-card h2 {
+    color: var(--heading-text);
+    font-size: 1.3rem;
+    margin: 28px 0 10px;
+    border-bottom: 2px solid var(--card-border);
+    padding-bottom: 6px;
+  }
+
+  .instructions-card h2:first-child {
+    margin-top: 0;
+  }
+
+  .instructions-card h3 {
+    color: var(--heading-text);
+    font-size: 1.1rem;
+    margin: 20px 0 8px;
+  }
+
+  .instructions-card p {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+  }
+
+  .instructions-card ol, .instructions-card ul {
+    color: var(--body-text);
+    font-size: 1.02rem;
+    line-height: 1.6rem;
+    margin: 0 0 14px;
+    padding-left: 24px;
+  }
+
+  .instructions-card li {
+    margin-bottom: 4px;
+  }
+
+  .example-box {
+    background: var(--note-bg);
+    border-left: 4px solid var(--header-bg);
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border-radius: 4px;
+  }
+
+  .example-box p {
+    margin: 0;
+    font-size: 0.98rem;
+  }
+
+  .example-box p + p {
+    margin-top: 10px;
+  }
+
+  .note {
+    color: var(--note-text);
+    font-size: 0.9rem;
+    font-style: italic;
+  }
+
+  /* Suit symbols color-coded like a real deck: hearts/diamonds red, clubs/spades black */
+  .suit-red {
+    color: var(--suit-red);
+  }
+
+  .suit-black {
+    color: var(--suit-black);
+  }
+
+  /* Print button lives in the nav; hidden entirely when actually printing */
+  #printBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---- Print styles: strip away site chrome, keep just the instructions ---- */
+  @page {
+    margin: 0.6in;
+  }
+
+  @media print {
+    /* Forces a fresh printed page to start right before whichever
+       heading has this class - has zero effect when just viewing
+       the page in a browser. Add class="print-page-break" to any
+       <h2> where you want printing to start a new page. */
+    .print-page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    body {
+      background: #ffffff;
+    }
+    .site-header-wrap {
+      position: static;
+    }
+    nav {
+      display: none;
+    }
+    header {
+      display: none;
+    }
+    main {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    .instructions-card {
+      border: none;
+      padding: 0;
+    }
+    .instructions-card h2 {
+      border-bottom: 1px solid #999999;
+    }
+    .example-box {
+      border-left: 3px solid #666666;
+      background: #f5f5f5;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <div class="site-header-wrap">
+    <header>
+      <h1>Game Hub</h1>
+      <span class="revBadge" id="revBadge"></span>
+    </header>
+
+    <nav>
+      <a href="games/Cribbage.html">Back to Cribbage</a>
+      <button id="printBtn" onclick="window.print()">🖨 Print</button>
+    </nav>
+  </div>
+
+  <main>
+    <h2 class="page-title">Cribbage Instructions</h2>
+    <div class="instructions-card">
+
+      <h2>History</h2>
+      <p>Most historians credit the invention of cribbage to Sir John Suckling, an English poet and courtier of the early 1600s. Suckling was a genuine character: soldier, gambler, and by most accounts a cheat on an industrial scale. The legend goes that he mailed decks of subtly marked cards to wealthy friends, then dropped by to relieve them of their money.</p>
+      <p>The earliest rules were published in England and appear in Cotgrave (1662).</p>
+      <p>The continuing popularity of cribbage is due in some part to the influence of the Victorian novelist Charles Dickens, who depicted the game in his novel <em>The Old Curiosity Shop</em>.</p>
+      <p>Cribbage was popular among prospectors in the American West, and the small mining town of Nelson, Montana, to this day has a sign proclaiming it the &ldquo;Cribbage Capital of the World.&rdquo;</p>
+
+      <h2>Overview</h2>
+      <p>The objective of Cribbage is to be the first player to reach 121 points. Each round has three parts: The Deal, when each player receives six cards and puts two into the dealer&rsquo;s crib; The Play, when players play their remaining four cards and score combinations as the running total climbs toward 31; and The Show, when the non-dealer&rsquo;s hand, the dealer&rsquo;s hand, and the dealer&rsquo;s crib are scored in that order.</p>
+
+      <h2>Players</h2>
+      <p>This Cribbage version is a two-player game: you against an AI-controlled opponent.</p>
+      <p class="note">Note: In this game, your opponent is named George.</p>
+
+      <h2>Cards</h2>
+      <p>A standard 52 card deck. Cards rank from high to low: K, Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2, Ace.</p>
+      <p>Cards are selected or put into play by clicking on them.</p>
+
+      <h2 class="print-page-break">The Deal</h2>
+      <p>The game starts with both players drawing a card from the deck to find out who the dealer is. The person that gets the lower card becomes the dealer. If the players draw equal cards, then they draw again until the dealer can be determined. This way of determining the dealer is only done in the first round. In subsequent rounds, the role of the dealer will alternate between the two players.</p>
+      <p>The dealer deals 6 cards to themself and their opponent. Each player then chooses two cards from their hand to put face down into the <em>crib</em>. The crib belongs to the dealer and is used at the end of the round to gain extra points.</p>
+      <p>At this point each player has four cards in their hand, and the Crib has four cards. The deck of cards is then put to the side, and the non-dealer cuts the deck and then reveals the top card. This card is referred to as <em>the starter</em> or <em>the cut</em>. If the starter is a Jack, then the dealer immediately scores 2 points. This is known as <em>Two for his heels</em>. Once the starter card has been shown, the players are ready to proceed to the next part of the game.</p>
+
+      <h2>The Play</h2>
+      <p>The non-dealer plays first. Players take turns laying down one card and announcing the running total: a 6 is announced as &lsquo;Six&rsquo;; a following 5 makes &lsquo;Eleven&rsquo;. An ace counts as 1, face cards count as 10, and other cards count as their number. A player must play a card if one can be played without taking the total above 31. If none can, the player says &lsquo;Go&rsquo;, and the opponent continues playing any cards that fit. When neither player can continue, the player who played the last card scores 1 point if the total is below 31. Reaching exactly 31 scores 2 points instead, with no additional Go or last-card point. The count then resets to 0. The player who did not play the last card leads next; if that player has no cards left, the other player continues. Play proceeds with the remaining cards until both hands are exhausted.</p>
+      <p>During this phase there are several ways to score points, based on how you lay down your cards. Points are scored as you lay down your cards, e.g. if your opponent has just laid down a 4 and then you lay down another 4 on top of it then you will score a pair. The starter/cut card is not used at all in this part of the game.</p>
+      <p>Players announce the running total whenever they play a card and announce any points earned, such as &lsquo;15 for 2&rsquo; or &lsquo;31 for 2&rsquo;. When a count ends below 31 because neither player can play another card, the player who played last scores 1 point, often announced as &lsquo;1 for the Go&rsquo;. When the final card of The Play leaves the total below 31, that point may be announced as &lsquo;1 for last&rsquo;. These are alternative descriptions of the same one-point last-card award, not separate bonuses.</p>
+
+      <h2>Scoring During The Play</h2>
+      <ul>
+        <li><strong>Fifteen:</strong> For adding a card that makes the total 15, score 2 points.</li>
+        <li><strong>Pair:</strong> For adding a card of the same rank as the card just played, score 2 points.</li>
+        <li><strong>Pair Royal (Three of a kind):</strong> For adding a card of the same rank as the last two cards, score 6.</li>
+        <li><strong>Double Pair Royal (Four of a kind):</strong> For adding a card of the same rank as the last 3 cards, score 12.</li>
+        <li><strong>Run (sequence of three or more cards):</strong> Score 1 point for each card in the longest run completed by the card just played. A run uses an unbroken group of the most recently played cards in the current count. Their ranks must be consecutive, with no repeated rank, but they may be played in any order. For example, after <span class="suit-red">&hearts;</span>2, <span class="suit-black">&clubs;</span>8, <span class="suit-red">&diams;</span>6, <span class="suit-red">&hearts;</span>7, <span class="suit-black">&spades;</span>5, the final four cards form the run 5-6-7-8 and score 4 points. After <span class="suit-red">&hearts;</span>2, <span class="suit-black">&clubs;</span>5, <span class="suit-black">&clubs;</span>7, <span class="suit-red">&diams;</span>7, <span class="suit-black">&spades;</span>6, the final card does not complete a run: the repeated 7 interrupts the sequence, and cards cannot be skipped. A new count starts a new sequence; cards from before the reset cannot be included.</li>
+        <li><strong>Last card, total value less than 31:</strong> Score 1 point.</li>
+        <li><strong>Last card, total value exactly 31:</strong> Score 2 points.</li>
+      </ul>
+
+      <p>It&rsquo;s worth noting that even though all face cards count as 10, you cannot create a pair, pair royal or double pair royal with cards unless they have the same &lsquo;real&rsquo; rank. E.g. two queens are a pair, a queen and a king aren&rsquo;t, even though they are both valued at 10. For sequences an ace is always low, you can&rsquo;t make a sequence with a king and an ace next to each other.</p>
+
+      <div class="example-box">
+        <p>It&rsquo;s also worth noting that you can make points in many ways with the same cards. E.g. if the cards on the table are <strong><span class="suit-red">&diams;</span>A<span class="suit-black">&clubs;</span>7</strong> and you lay down <strong><span class="suit-red">&hearts;</span>7</strong> you will get 2 points because 1+7+7=15 and 2 points because 7+7 is a pair of sevens. So, in that case you would announce, &lsquo;Fifteen for 4&rsquo;.</p>
+      </div>
+
+      <p>This part of the game continues until both players have played all their cards. The pegs are moved as soon as a player gets points, and if a player reaches the target score, 121, the game is finished immediately.</p>
+
+      <h2 class="print-page-break">The Show</h2>
+      <p>Once <em>The Play</em> is finished, the players take back their cards from the table and it&rsquo;s time to calculate the score for their hands, and the crib. These are always scored in the same order: non-dealer&rsquo;s hand, dealer&rsquo;s hand, dealer&rsquo;s crib. As before, the scores are added to the scoreboard as soon as they are calculated, and if a player reaches 121 the game is over immediately, the other player doesn&rsquo;t get to count their score. This means that there&rsquo;s no chance of a tie, or both players going over 121 in the same round. The dealer will normally get more points since they score both their hand and the crib, but the non-dealer scores their hand first, so if they&rsquo;re both close to 121 the non-dealer might win, even though the dealer would have gotten more points if they were allowed to count them.</p>
+
+      <h2>The Show Scoring</h2>
+      <p>The scoring for <em>The Show</em> is similar to the scoring for <em>The Play</em>, but with some important differences. The starter card is used here with both hands and the crib, so a hand is the hand + the starter, and the crib is the crib + the starter. You can use the same card for many different combinations, e.g. it can be part of a pair and also part of a sequence.</p>
+      <ul>
+        <li><strong>One for their nob:</strong> For having the jack of the same suit as the starter, score 1 point. E.g. starter is <span class="suit-red">&hearts;</span>4, you have <span class="suit-red">&hearts;</span>J.</li>
+        <li><strong>Fifteen:</strong> Score 2 points for each distinct combination of cards whose counting values total 15. A card may be used in different combinations, but only once within any one combination.</li>
+      </ul>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> With <span class="suit-red">&hearts;</span>J, <span class="suit-black">&spades;</span>J and <span class="suit-black">&clubs;</span>5, <span class="suit-red">&hearts;</span>J with <span class="suit-black">&clubs;</span>5 scores 2 points, and <span class="suit-black">&spades;</span>J with <span class="suit-black">&clubs;</span>5 scores another 2 points.</p>
+      </div>
+
+      <ul>
+        <li><strong>Pair:</strong> For any pair of cards, e.g. <span class="suit-black">&spades;</span>Q<span class="suit-red">&diams;</span>Q, score 2 points.</li>
+        <li><strong>Pair Royal (Three of a kind):</strong> For any three cards of the same rank, e.g. <span class="suit-black">&spades;</span>8<span class="suit-black">&clubs;</span>8<span class="suit-red">&hearts;</span>8, score 6 points.</li>
+        <li><strong>Double Pair Royal (Four of a kind):</strong> For any four cards of the same rank, e.g. <span class="suit-red">&hearts;</span>A<span class="suit-black">&spades;</span>A<span class="suit-red">&diams;</span>A<span class="suit-black">&clubs;</span>A, score 12 points.</li>
+        <li><strong>Run (Sequence) of three or more cards:</strong> Score 1 point for each card in each distinct longest run. Card order and suit do not matter. For example, <span class="suit-black">&spades;</span>A, <span class="suit-red">&hearts;</span>2, <span class="suit-black">&clubs;</span>3, <span class="suit-red">&diams;</span>4 form one four-card run worth 4 points; do not also count the three-card runs inside it. Duplicate ranks can create multiple runs during The Show. For example, 3, 3, 4, 5 and K contain two distinct three-card runs, worth 6 points, plus the pair of 3s, worth 2 points, for a total of 8.</li>
+        <li><strong>Flush, 4 cards:</strong> If all the cards in your hand are of the same suit, e.g. <span class="suit-black">&spades;</span>A<span class="suit-black">&spades;</span>5<span class="suit-black">&spades;</span>9<span class="suit-black">&spades;</span>J, score 4 points. These four cards all must be in your hand, you cannot have three cards in your hand + the starter count as a flush. A 4-card flush also can&rsquo;t be used for the crib, only for your hand.</li>
+        <li><strong>Flush, 5 cards:</strong> If all the cards in your hand, and the starter card, are of the same suit, e.g. <span class="suit-black">&spades;</span>A<span class="suit-black">&spades;</span>5<span class="suit-black">&spades;</span>9<span class="suit-black">&spades;</span>J<span class="suit-black">&spades;</span>Q, score 5 points. You can also get a 5-card flush for your crib, if all the cards in the crib and the starter are of the same suit.</li>
+      </ul>
+
+      <div class="example-box">
+        <p><strong>Example:</strong> Your hand is <span class="suit-black">&clubs;</span>3, <span class="suit-red">&diams;</span>3, <span class="suit-red">&hearts;</span>4 and <span class="suit-black">&spades;</span>5, and the starter is <span class="suit-black">&clubs;</span>K. There are two fifteens: <span class="suit-black">&spades;</span>5 with <span class="suit-black">&clubs;</span>K, and <span class="suit-black">&clubs;</span>3 with <span class="suit-red">&diams;</span>3, <span class="suit-red">&hearts;</span>4 and <span class="suit-black">&spades;</span>5, for 4 points. The pair of 3s scores 2 points. Each 3 forms a separate 3-4-5 run, so the two runs score 6 points. There is no flush and no jack matching the starter&rsquo;s suit. The hand scores 12 points in total.</p>
+      </div>
+
+      <h2>Game Over</h2>
+      <p>The game ends immediately when a player reaches or exceeds 121 points, whether the points come from a jack starter, The Play, a hand or the crib. That player wins; no further cards are played or scores counted.</p>
+
+      <h2>Skunks and Double Skunks</h2>
+      <p>A skunk is when a player wins by over 30 points, their opponent has less than 91 points when the game is over. A double skunk is when a player wins by over 60 points, the opponent has less than 61 points. Both Skunks are highlighted on the board with Gold dividing lines, Skunks are displayed on the Recorded Scores list.</p>
+
+    </div>
+  </main>
+
+<script>
+  const PAGE_REVISION = 2;
+  document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
+</script>
+
+</body>
+</html>
