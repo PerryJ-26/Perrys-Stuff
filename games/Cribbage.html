@@ -1,5 +1,5 @@
 
-<!-- Revision 54 | Sunday, October 25, 2026 -->
+<!-- Revision 60 | Sunday, October 25, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -1640,19 +1640,20 @@
   // ---------------------------------------------------------------------
   // Cut animation (split / collapse / reunite / reveal), per Perry's request
   // to duplicate a reference video of a different cribbage website's cut
-  // animation: when the PLAYER clicks a ribbon card to make a cut, the
-  // ribbon visually splits into two groups at the click point (left group
-  // rises, right group drops), each group then tightens from its loose fan
-  // into a solid-looking stack while sliding further apart - staggered, so
-  // the left group finishes collapsing noticeably before the right group -
-  // both stacks then slide back together and reunite at one spot (the real
-  // stock-pile spot on the left of the table, so the cut visually gathers
-  // the deck back into the same spot it's dealt from afterward - see
-  // animateDeal), and only then does the picked card flip face-up and fly
-  // to its destination. This only runs for an interactive (player-clicked)
-  // pick - an automatic/AI pick never goes through a click, so there's no
-  // "split" moment for it to react to, and it keeps the simpler, instant
-  // revealAndFly it already used.
+  // animation: the ribbon visually splits into two groups at the cut point
+  // (left group rises, right group drops), each group then tightens from
+  // its loose fan into a solid-looking stack while sliding further apart -
+  // staggered, so the left group finishes collapsing noticeably before the
+  // right group - both stacks then slide back together and reunite at one
+  // spot (the real stock-pile spot on the left of the table, so the cut
+  // visually gathers the deck back into the same spot it's dealt from
+  // afterward - see animateDeal), and only then does the picked card flip
+  // face-up and fly to its destination. Used for both the player's own
+  // click and George's automatic pick in the per-hand starter cut
+  // (performCut) - per Perry's request to duplicate the animation for
+  // George's cut too. The cut-for-dealer (runDealerCut) still uses the
+  // simpler, instant revealAndFly for both picks - see that function's own
+  // comments for its separate display/wait/clear sequence.
   //
   // CUT_ANIMATION_SPEED is the one knob to turn if the overall pace ever
   // needs adjusting again - 1 is the original speed, 2 is half speed
@@ -1663,7 +1664,7 @@
   // compressRibbonToStock does for the cut-for-dealer, below) proportionally
   // - nothing else needs to change.
   // ---------------------------------------------------------------------
-  const CUT_ANIMATION_SPEED = 2;
+  const CUT_ANIMATION_SPEED = 3;
   const CUT_SPLIT_MS = 200 * CUT_ANIMATION_SPEED;            // Phase 1: rise/drop
   const CUT_COLLAPSE_STAGGER_MS = 100 * CUT_ANIMATION_SPEED; // gap before the right group starts collapsing
   const CUT_COLLAPSE_MS = 280 * CUT_ANIMATION_SPEED;         // Phase 2: each group collapses into a stack
@@ -1671,6 +1672,16 @@
   const CUT_REUNITE_MS = 280 * CUT_ANIMATION_SPEED;          // Phase 3: stacks reunite
   const CUT_REVEAL_PAUSE_MS = 120 * CUT_ANIMATION_SPEED;     // brief pause as one merged stack
   const CUT_REVEAL_FLIGHT_MS = 500 * CUT_ANIMATION_SPEED;    // Phase 4: flip + fly to destination
+
+  // How long the cut-for-dealer holds both drawn cards on screen, already
+  // displayed, before the leftover ribbon starts its compress-into-the-deck
+  // animation - per Perry's request. The Status/Directions bar updates with
+  // the result immediately when both cards are selected (not delayed by
+  // this), and once the compress animation finishes, the two displayed
+  // cards come off immediately too (no further delay). This is a flat
+  // duration, not scaled by CUT_ANIMATION_SPEED above, so it can be tuned
+  // independently of the rest of the cut animation's pace.
+  const DEALER_CUT_BOTH_SHOWN_PAUSE_MS = 1000;
 
   // Absolute start times (from the moment of the click), derived from the
   // per-phase durations above.
@@ -1764,8 +1775,8 @@
   // indices, which have already been revealed/flown elsewhere) into a
   // single stack at the deck's own spot, then calls onDone. Used by the
   // cut-for-dealer after both the player's and George's cards have been
-  // revealed, per Perry's request to show both cards for a full second
-  // before the leftover deck tidies itself away.
+  // revealed, to play the same "gather back into the deck" animation the
+  // per-hand starter cut uses - per Perry's request.
   function compressRibbonToStock(excludeIndices, onDone){
     if(!ribbonState){ if(onDone) onDone(); return; }
     const stockRect = document.getElementById('stockPileWrap').getBoundingClientRect();
@@ -1796,10 +1807,13 @@
       const playerCard = cutDeck[playerIdx];
       const bottomNameRect = document.getElementById('bottomName').getBoundingClientRect();
       // Both the player's and George's cards reveal with the plain, instant
-      // flip-and-fly (no split/collapse/reunite here) - per Perry's request,
-      // the leftover ribbon stays spread until BOTH cards have been shown
-      // and held for a full second, so there's a clear moment to compare
-      // the two draws before the rest of the deck tidies itself away.
+      // flip-and-fly (no split/collapse/reunite here). The moment both are
+      // selected, the Status/Directions bar updates with the result right
+      // away (no delay). The leftover ribbon then holds for
+      // DEALER_CUT_BOTH_SHOWN_PAUSE_MS before it plays its usual
+      // compress-into-the-deck animation; once that finishes, the two
+      // displayed cards come off immediately too, with no further delay -
+      // per Perry's request.
       revealAndFly(playerIdx, playerCard, { x: bottomNameRect.left + bottomNameRect.width/2, y: bottomNameRect.top - 60 });
       setStatus(`You drew ${playerCard.rank}${playerCard.suit}. Waiting for ${AI_NAME} to pick...`);
       setTimeout(() => {
@@ -1808,25 +1822,24 @@
         const aiCard = cutDeck[aiIdx];
         const topNameRect = document.getElementById('topName').getBoundingClientRect();
         revealAndFly(aiIdx, aiCard, { x: topNameRect.left + topNameRect.width/2, y: topNameRect.bottom + 60 });
-        // Both cards are now visible - hold for a full second (per Perry's
-        // request) before the leftover ribbon compresses back into the
-        // stock pile.
-        const BOTH_CARDS_SHOWN_PAUSE_MS = 1000;
+        const pv = RANK_ORDER[playerCard.rank], av = RANK_ORDER[aiCard.rank];
+        const isTie = pv === av;
+        if(isTie){
+          setStatus(`You both drew a ${playerCard.rank} - tie! Cutting again...`);
+        } else {
+          state.dealer = pv < av ? 'player' : 'ai';
+          setStatus(`You drew ${playerCard.rank}${playerCard.suit}, ${AI_NAME} drew ${aiCard.rank}${aiCard.suit}. ${state.dealer === 'player' ? 'You are' : AI_NAME + ' is'} the dealer!`);
+        }
         setTimeout(() => {
           compressRibbonToStock([playerIdx, aiIdx], () => {
-            setTimeout(() => {
-              const pv = RANK_ORDER[playerCard.rank], av = RANK_ORDER[aiCard.rank];
-              if(pv === av){
-                setStatus(`You both drew a ${playerCard.rank} - tie! Cutting again...`);
-                setTimeout(() => { clearRibbon(); runDealerCut(); }, 1600);
-                return;
-              }
-              state.dealer = pv < av ? 'player' : 'ai';
-              setStatus(`You drew ${playerCard.rank}${playerCard.suit}, ${AI_NAME} drew ${aiCard.rank}${aiCard.suit}. ${state.dealer === 'player' ? 'You are' : AI_NAME + ' is'} the dealer!`);
-              setTimeout(() => { clearRibbon(); startNewHand(); }, 1800);
-            }, 700);
+            clearRibbon();
+            if(isTie){
+              setTimeout(() => { runDealerCut(); }, 1600);
+            } else {
+              setTimeout(() => { startNewHand(); }, 1800);
+            }
           });
-        }, BOTH_CARDS_SHOWN_PAUSE_MS);
+        }, DEALER_CUT_BOTH_SHOWN_PAUSE_MS);
       }, 900);
     };
   }
@@ -1964,7 +1977,7 @@
     // option).
     const ribbon = buildRibbon(state.deck, { interactive: cutter === 'player', aboveStatusBox: true });
 
-    function finishCut(idx, interactive){
+    function finishCut(idx, animated){
       const card = state.deck[idx];
       const starterWrapRect = document.getElementById('starterWrap').getBoundingClientRect();
       // Centered on starterWrap's own footprint (60.69 x 85.255, 15% smaller
@@ -1972,11 +1985,12 @@
       // old pre-shrink card half-dimensions (35.7/50.15), a leftover bug from
       // that change that's fixed here too.
       const dest = { x: starterWrapRect.left + 60.69/2, y: starterWrapRect.top + 85.255/2 };
-      // Interactive (player-clicked) picks get the split/collapse/reunite/
-      // reveal animation Perry asked to duplicate from his reference video;
-      // the AI's automatic pick never goes through a click, so it keeps the
-      // simpler, instant revealAndFly it already used.
-      if(interactive){
+      // Both the player's click and George's automatic pick get the full
+      // split/collapse/reunite/reveal animation - per Perry's request to
+      // duplicate the (player's) starter-cut animation for George's own cut
+      // of the deck too, rather than leaving George's pick as the plain,
+      // instant revealAndFly it used before.
+      if(animated){
         animateCutAndReveal(idx, card, dest);
       } else {
         revealAndFly(idx, card, dest);
@@ -2007,13 +2021,13 @@
           setStatus(`Starter card: ${state.starter.rank}${state.starter.suit}.`);
         }
         setTimeout(startPlayPhase, 900);
-      }, interactive ? CUT_ANIMATION_TOTAL_MS + 150 : 650);
+      }, animated ? CUT_ANIMATION_TOTAL_MS + 150 : 650);
     }
 
     if(cutter === 'player'){
       ribbon.onPick = (idx) => finishCut(idx, true);
     } else {
-      setTimeout(()=>{ finishCut(Math.floor(Math.random() * state.deck.length), false); }, 900);
+      setTimeout(()=>{ finishCut(Math.floor(Math.random() * state.deck.length), true); }, 900);
     }
   }
 
@@ -3255,7 +3269,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 54;
+  const PAGE_REVISION = 60;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
