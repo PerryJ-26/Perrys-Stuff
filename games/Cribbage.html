@@ -1,5 +1,5 @@
 
-<!-- Revision 60 | Sunday, October 25, 2026 -->
+<!-- Revision 61 | Sunday, October 25, 2026 -->
 <!-- ALSO CHANGE PAGE_REVISION IN THE FINAL SCRIPT BLOCK AT THE BOTTOM OF THE FILE -->
 
 <!DOCTYPE html>
@@ -673,6 +673,9 @@
   #universalModal .modalBox.scoresModal{
     max-height: none;
     overflow-y: visible;
+    /* Wider than the default 560px modal box, to fit the added Opponent
+       column without crowding the existing columns. */
+    max-width: 700px;
   }
   #universalModal h2{ margin-top:0; color: var(--ink); text-align:center; }
   #universalModal .modalBody{ font-size:.92rem; line-height:1.5; text-align:center; }
@@ -2484,9 +2487,10 @@
     try { sessionStorage.setItem(SESSION_WINS_KEY, JSON.stringify(state.sessionWins)); } catch(e){}
     const elapsedSec = Math.round((Date.now() - state.gameStartTime)/1000);
     const winnerName = winner === 'player' ? state.playerName : AI_NAME;
+    const opponentName = winner === 'player' ? AI_NAME : state.playerName;
     if(window.pushSharedScore){
       window.pushSharedScore({
-        name: winnerName, margin, skunk,
+        name: winnerName, margin, skunk, opponent: opponentName,
         deals: state.dealsThisGame, time: elapsedSec,
         date: new Date().toLocaleDateString()
       });
@@ -2629,7 +2633,8 @@
   };
   function formatScoreRow(entry, rank){
     const skunk = entry.skunk || '';
-    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.margin}</td><td>${skunk}</td><td>${entry.deals}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
+    const opponent = entry.opponent || '';
+    return `<tr><td>${rank}</td><td>${entry.name}</td><td>${entry.margin}</td><td>${skunk}</td><td>${opponent}</td><td>${entry.deals}</td><td>${formatTime(entry.time)}</td><td>${entry.date}</td></tr>`;
   }
   function formatTime(totalSeconds){
     const m = Math.floor(totalSeconds/60), s = totalSeconds%60;
@@ -2650,7 +2655,7 @@
           <p class="scores-subtitle">Margin = The winner's final point lead over the opponent. <br> "X" = Skunk, "XX" = Double Skunk. </p>
           <div style="max-height:50vh;overflow-y:auto;">
             <table class="scores-table">
-              <tr><th>Rank</th><th>Name</th><th>Margin</th><th>Skunk</th><th>Deals</th><th>Time</th><th>Date</th></tr>
+              <tr><th>Rank</th><th>Name</th><th>Margin</th><th>Skunk</th><th>Opponent</th><th>Deals</th><th>Time</th><th>Date</th></tr>
               ${list.map((e,i)=>formatScoreRow(e,i+1)).join('')}
             </table>
           </div>`;
@@ -3269,7 +3274,7 @@
 </script>
 
 <script>
-  const PAGE_REVISION = 60;
+  const PAGE_REVISION = 61;
   document.getElementById('revBadge').textContent = 'Rev. ' + PAGE_REVISION;
 </script>
 
